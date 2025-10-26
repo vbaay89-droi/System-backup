@@ -1,0 +1,128 @@
+h1{
+  color: black;
+  align-content: center;
+
+}
+h3{
+  margin-left: 150px;
+  margin-bottom: 25px;
+  font-size: 20px;
+}
+.header-container {
+    display: flex;
+    align-items: center;
+    gap: 15px; /* Space between logo and text */
+    padding: 10px 20px;
+}
+.navbar { 
+  box-shadow: 0 2px 8px rgba(0,0,0,0.08); 
+}
+.dashboard-header {
+  margin-top: 90px;
+  margin-bottom: 24px;
+}
+.dashboard-actions {
+  margin-bottom: 32px;
+}
+.dashboard-actions .btn {
+  min-width: 180px;
+  font-size: 1.1em;
+  margin-right: 16px;
+}
+/*tesyling*/
+
+body {
+  background-color: #f8f9fa;
+  font-family: 'Segoe UI', sans-serif;
+}
+
+.interactive-brand:hover .brand-logo {
+  filter: brightness(0) saturate(100%) invert(32%) sepia(99%) saturate(749%) hue-rotate(183deg) brightness(97%) contrast(101%);
+}
+
+.interactive-brand:hover .brand-heading,
+.interactive-brand:hover .brand-subheading {
+  color: #0d6efd !important;
+}
+
+.card-stat {
+  border-left: 5px solid #ccc;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+  padding: 20px;
+  background: white;
+  border-radius: 8px;
+}
+
+.card-stat.completed {
+  border-color: #f1c40f; /* yellow border */
+}
+
+.status-pill {
+  font-size: 0.85rem;
+  font-weight: 600;
+  padding: 4px 10px;
+  border-radius: 20px;
+  color: #fff;
+  background-color: #28a745;
+}
+
+.filter-btns .btn {
+  border-radius: 20px;
+  padding: 6px 16px;
+  font-weight: 500;
+}
+
+.filter-btns .btn.active {
+  background-color: #001f3f;
+  color: #fff;
+}
+
+.sport-card {
+  border-radius: 10px;
+  background: #fff;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+  padding: 20px;
+  margin-bottom: 30px;
+  transition: all 0.3s ease;
+}
+
+.sport-card:hover {
+  box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+}
+
+.competition-badge {
+  font-size: 0.8rem;
+  background-color: #d4edda;
+  color: #155724;
+  padding: 4px 10px;
+  border-radius: 20px;
+}
+
+.check-event {
+  font-weight: 500;
+  color: #001f3f;
+  text-decoration: none;
+}
+
+.check-event:hover {
+  text-decoration: underline;
+}
+
+.divider {
+  height: 2px;
+  background-color: #f1c40f;
+  margin-top: 0;
+  margin-bottom: 20px;
+  border-radius: 10px;
+}
+
+footer.bg-dark {
+  margin-top: 40px;
+}
+.maroon-border {
+  border-left-color: maroon !important;
+}
+.maroon-bg {
+  background-color: maroon;
+  color: maroon;
+}

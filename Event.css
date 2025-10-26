@@ -1,0 +1,338 @@
+/* style.css */
+
+body {
+    background-color: #f8f9fa;
+    font-family: 'Segoe UI', sans-serif;
+    display: flex;
+    flex-direction: column;
+    min-height: 100vh;
+}
+.navbar {
+    box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+    width: 100%;
+}
+.interactive-brand:hover .brand-logo {
+    filter: brightness(0) saturate(100%) invert(32%) sepia(99%) saturate(749%) hue-rotate(183deg) brightness(97%) contrast(101%);
+}
+.interactive-brand:hover .brand-heading,
+.interactive-brand:hover .brand-subheading {
+    color: #0d6efd !important;
+}
+.card-stat {
+    border-left: 5px solid #ccc;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+    padding: 20px;
+    background: white;
+    border-radius: 8px;
+}
+.card-stat.completed {
+    border-color: #f1c40f; /* yellow border */
+}
+.card-stat.Total-Events {
+    border-color: maroon;
+}
+.status-pill {
+    font-size: 0.85rem;
+    font-weight: 600;
+    padding: 4px 10px;
+    border-radius: 20px;
+    color: #fff;
+    /* background-color is set dynamically by getEventCardStatusClass */
+}
+.filter-btns .btn {
+    border-radius: 20px;
+    padding: 6px 16px;
+    font-weight: 500;
+}
+.filter-btns .btn.active {
+    background-color: #001f3f;
+    color: #fff;
+}
+.sport-card {
+    border-radius: 10px;
+    background: #fff;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+    padding: 20px;
+    margin-bottom: 30px;
+    transition: all 0.3s ease;
+    height: 220px; /* Fixed height for uniformity */
+}
+.sport-card:hover {
+    box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+    transform: translateY(-2px);
+}
+
+/* Ensure description text wraps properly and truncates */
+.sport-card p.text-muted {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    display: -webkit-box;
+    -webkit-line-clamp: 3;
+line-clamp: 3; /* Limit to 3 lines, adjust as needed */
+    -webkit-box-orient: vertical;
+    white-space: normal;
+    word-wrap: break-word;
+    overflow-wrap: break-word;
+}
+
+.competition-badge {
+    font-size: 0.8rem;
+    background-color: #d4edda;
+    color: #155724;
+    padding: 4px 10px;
+    border-radius: 20px;
+}
+.check-event {
+    font-weight: 500;
+    color: #001f3f;
+    text-decoration: none;
+}
+.check-event:hover {
+    text-decoration: underline;
+}
+.divider {
+    height: 2px;
+    background-color: #f1c40f;
+    margin-top: 0;
+    margin-bottom: 20px;
+    border-radius: 10px;
+}
+footer.bg-dark {
+    margin-top: auto; /* Push footer to the bottom */
+}
+/* Styling for view modal details */
+.view-detail-item {
+    display: flex;
+    margin-bottom: 10px;
+    align-items: baseline;
+    flex-wrap: wrap;
+}
+.view-detail-label {
+    font-weight: bold;
+    flex-shrink: 0;
+    width: 120px;
+    margin-right: 15px;
+    white-space: nowrap;
+}
+.view-detail-value {
+    flex-grow: 1;
+    white-space: normal;
+    word-wrap: break-word;
+    overflow-wrap: break-word;
+}
+/* Custom text colors for icons if not covered by Bootstrap defaults */
+.text-orange { color: #fd7e14 !important; } /* Bootstrap's orange */
+.text-blue { color: #0d6efd !important; } /* Bootstrap's primary blue */
+.text-purple { color: #6f42c1 !important; } /* Bootstrap's purple */
+
+/* Iconify specific styling */
+.iconify {
+    vertical-align: -0.125em; /* Adjust vertical alignment for icons */
+}
+.gender-icon {
+    font-size: 0.8em; /* Make gender icon slightly smaller */
+    margin-right: 5px; /* Space between main icon and gender icon */
+}
+
+/* Styles for category sections */
+.category-section {
+    margin-bottom: 40px;
+}
+.category-section-heading {
+    font-size: 1.75rem;
+    font-weight: bold;
+    margin-bottom: 20px;
+    color: #343a40; /* Dark text for headings */
+    border-bottom: 2px solid #e9ecef; /* Light border below heading */
+    padding-bottom: 10px;
+}
+.no-events-in-category {
+    text-align: center;
+    color: #6c757d;
+    padding: 20px;
+    background-color: #e9ecef;
+    border-radius: 8px;
+    margin-bottom: 30px;
+}
+
+/* Styles for modal tabs */
+.modal-body .nav-tabs .nav-link {
+    color: #495057;
+    border-top-left-radius: 8px;
+    border-top-right-radius: 8px;
+}
+.modal-body .nav-tabs .nav-link.active {
+    color: #fff;
+    background-color: #0d6efd; /* Bootstrap primary blue */
+    border-color: #0d6efd;
+}
+.modal-body .tab-content {
+    padding-top: 20px;
+}
+.modal-body .medal-icon {
+    font-size: 1.2em;
+    margin-right: 5px;
+}
+.modal-body .gold-medal { color: gold; }
+.modal-body .silver-medal { color: silver; }
+.modal-body .bronze-medal { color: #cd7f32; }
+
+/* Match schedule styling within modal */
+/* Updated match-card for hover and layout */
+.modal-body .match-card {
+    background-color: #f8f9fa;
+    border: 1px solid #e9ecef;
+    border-radius: 8px;
+    padding: 15px; /* Increased padding */
+    margin-bottom: 15px;
+    box-shadow: 0 2px 5px rgba(0,0,0,0.05);
+    transition: all 0.2s ease-in-out;
+    cursor: pointer; /* Make the entire card clickable */
+}
+.modal-body .match-card:hover {
+    box-shadow: 0 4px 10px rgba(0,0,0,0.1);
+    transform: translateY(-2px);
+}
+
+/* Color-coded borders based on status */
+.modal-body .match-card.completed {
+    background-color: #e9ecef; /* Lighter grey for completed */
+    opacity: 0.9; /* Slightly less opaque */
+    border-left: 5px solid #6c757d; /* Grey border for completed */
+}
+.modal-body .match-card.ongoing {
+    border-left: 5px solid #28a745; /* Green border for ongoing */
+}
+.modal-body .match-card.upcoming {
+    border-left: 5px solid #17a2b8; /* Blue border for upcoming */
+}
+.modal-body .match-card.cancelled {
+    border-left: 5px solid #dc3545; /* Red border for cancelled */
+    text-decoration: line-through;
+    opacity: 0.7;
+}
+.modal-body .match-card.postponed {
+    border-left: 5px solid #ffc107; /* Yellow border for postponed */
+    color: #664d03;
+}
+
+/* Header for match card: Status, Date, Time */
+.match-card-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 10px;
+    padding-bottom: 8px; /* More space below header */
+    border-bottom: 1px solid rgba(0,0,0,0.08); /* Subtle separator */
+}
+.match-card-header .status-badge-pill {
+    font-size: 0.85rem; /* Slightly larger */
+    font-weight: 600;
+    padding: 5px 12px; /* More padding for pill */
+    border-radius: 50rem; /* Pill shape */
+    color: #fff;
+}
+/* Specific colors for badges to ensure override */
+.match-card-header .status-badge-pill.bg-info { background-color: #17a2b8 !important; }
+.match-card-header .status-badge-pill.bg-success { background-color: #28a745 !important; }
+.match-card-header .status-badge-pill.bg-secondary { background-color: #6c757d !important; }
+.match-card-header .status-badge-pill.bg-danger { background-color: #dc3545 !important; }
+.match-card-header .status-badge-pill.bg-warning { background-color: #ffc107 !important; color: #333 !important; }
+
+.match-card-header .datetime-info {
+    font-size: 0.9em; /* Muted, slightly smaller */
+    color: #6c757d;
+}
+.match-card-header .datetime-info i {
+    margin-right: 5px;
+    color: #495057; /* Icon color */
+}
+
+/* Main match details: Teams and VS */
+.match-card-teams {
+    margin-bottom: 10px;
+    text-align: center; /* Center the whole block */
+}
+.team-name-large {
+    font-weight: bold;
+    font-size: 1.3em; /* More emphasis */
+    color: #343a40; /* Darker text */
+    line-height: 1.2; /* Tighter line height */
+}
+.college-small {
+    font-size: 0.8em; /* Smaller college names */
+    color: #6c757d; /* Lighter color */
+    display: block; /* Ensure it's on its own line */
+}
+.team-vs-separator {
+    font-weight: bold;
+    font-size: 1.2em;
+    margin: 0 10px; /* Space around VS */
+    color: #495057;
+}
+
+/* Venue information */
+.match-card-venue {
+    display: flex;
+    align-items: center;
+    margin-top: 10px;
+    margin-bottom: 15px; /* More space below venue */
+    font-size: 0.95em;
+    color: #6c757d;
+    border-top: 1px dashed rgba(0,0,0,0.1); /* Dashed separator */
+    padding-top: 10px;
+}
+.match-card-venue i {
+    margin-right: 8px;
+    color: #495057;
+}
+
+/* Score / Countdown section */
+.match-score-section {
+    text-align: center;
+    padding-top: 10px;
+    border-top: 1px dashed rgba(0,0,0,0.1); /* Dashed separator */
+}
+.match-score {
+    font-size: 1.6em; /* Even larger score */
+    font-weight: bold;
+    color: #000; /* Black for scores */
+    margin-bottom: 5px;
+}
+.winner-text {
+    color: #28a745;
+    font-weight: bold;
+    font-size: 1.1em;
+    margin-bottom: 5px;
+}
+.countdown-timer {
+    font-weight: bold;
+    color: #007bff;
+    font-size: 1.1em;
+}
+.score-not-available {
+    color: #6c757d; /* Muted for not available */
+    font-style: italic;
+}
+
+/* Adjust vertical whitespace between section title and match cards */
+#matchScheduleContent > h5, #matchScheduleContent > h6 {
+    margin-bottom: 10px !important; /* Reduce space after date/sport headers */
+    margin-top: 25px !important; /* Slightly more space before new date/sport headers */
+}
+#matchScheduleContent > h5:first-child, #matchScheduleContent > h6:first-child {
+     margin-top: 0 !important; /* No top margin for the very first header */
+}
+
+/* Responsive adjustments for team names */
+@media (max-width: 767.98px) {
+    .match-card-teams .d-flex {
+        flex-direction: column !important; /* Stack teams vertically on small screens */
+    }
+    .match-card-teams .flex-grow-1 {
+        width: 100%; /* Take full width when stacked */
+    }
+    .team-vs-separator {
+        margin: 10px 0 !important; /* Adjust margin for vertical stack */
+    }
+}

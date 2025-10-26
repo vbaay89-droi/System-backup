@@ -1,0 +1,164 @@
+[
+    {
+        "id": 1,
+        "name": "College of Technology and Engineering",
+        "badge": "COTE",
+        "logo": "images\/COTE.png",
+        "description": "The College of Technology and Engineering is a formidable contender, known for its strategic and analytical prowess in various sports.",
+        "accentColor": "#800000",
+        "dean_name": "Romil L. Asoque",
+        "total_students": 0,
+        "sports_events": [
+            "TEST",
+            "TEST",
+            "TEST",
+            "TESTTEST",
+            "TEST",
+            "TEST"
+        ],
+        "upcoming_matches": [
+            {
+                "opponent": "COMED",
+                "date": "Oct 22",
+                "venue": "Court A"
+            }
+        ]
+    },
+    {
+        "id": 2,
+        "name": "College of Arts and Sciences",
+        "badge": "CAS",
+        "logo": "images\/CASlogo.png",
+        "description": "The College of Arts and Sciences teams often excel in sports that require a high degree of planning and coordination, demonstrating strong intellectual and physical abilities.",
+        "accentColor": "#FFFF00",
+        "dean_name": "Diana Rose P. Esmero",
+        "total_students": 0,
+        "sports_events": [],
+        "upcoming_matches": [
+            {
+                "opponent": "COTE",
+                "date": "Oct 20",
+                "venue": "Gymnasium"
+            },
+            {
+                "opponent": "PIT - TC",
+                "date": "Oct 23",
+                "venue": "Auditorium"
+            }
+        ]
+    },
+    {
+        "id": 3,
+        "name": "College of Maritime Education",
+        "badge": "COMED",
+        "logo": "uploads\/teams\/COMED.png",
+        "description": "Known for their discipline and resilience, the COMED teams are a force to be reckoned with, showcasing great teamwork in every competition.",
+        "accentColor": "#008000",
+        "dean_name": "Engr. Michael John O. Diansay",
+        "total_students": 0,
+        "sports_events": [],
+        "upcoming_matches": [
+            {
+                "opponent": "CTE",
+                "date": "Oct 21",
+                "venue": "Main Pool"
+            },
+            {
+                "opponent": "COTE",
+                "date": "Oct 22",
+                "venue": "Court A"
+            },
+            {
+                "opponent": "COTE",
+                "date": "Oct 22",
+                "venue": "Court A"
+            },
+            {
+                "opponent": "COTE",
+                "date": "Oct 22",
+                "venue": "Court A"
+            }
+        ]
+    },
+    {
+        "id": 4,
+        "name": "College Teachers Education",
+        "badge": "CTE",
+        "logo": "images\/CTE.png",
+        "description": "The CTE department is a strong contender with well-rounded athletes participating across all sports, always bringing energy and enthusiasm to every match.",
+        "accentColor": "#87CEEB",
+        "dean_name": "Dr. Nelson N. Enage",
+        "total_students": 0,
+        "sports_events": [],
+        "upcoming_matches": [
+            {
+                "opponent": "PIT - TC",
+                "date": "Oct 24",
+                "venue": "Field"
+            },
+            {
+                "opponent": "CAS",
+                "date": "Oct 25",
+                "venue": "Auditorium"
+            },
+            {
+                "opponent": "COTE",
+                "date": "3234",
+                "venue": "2342342"
+            },
+            {
+                "opponent": "COMED",
+                "date": "23424",
+                "venue": "24sdfsfa"
+            },
+            {
+                "opponent": "test",
+                "date": "wqweq",
+                "venue": "qsz"
+            },
+            {
+                "opponent": "qwe",
+                "date": "qe",
+                "venue": "qwe"
+            },
+            {
+                "opponent": "qwe",
+                "date": "qe",
+                "venue": "qwe"
+            },
+            {
+                "opponent": "qwe",
+                "date": "qe",
+                "venue": "qwe"
+            },
+            {
+                "opponent": "qwe",
+                "date": "qe",
+                "venue": "qwe"
+            }
+        ]
+    },
+    {
+        "id": 5,
+        "name": "Palompon Institute of Technology Tabango Campus",
+        "badge": "PIT - TC",
+        "logo": "uploads\/teams\/PIT_-_TC.png",
+        "description": "PIT - TC teams are known for their discipline and competitive drive, aiming for the top spots in every event.",
+        "accentColor": "#0000FF",
+        "dean_name": "Dr. Eutiquio Pernis",
+        "total_students": 0,
+        "sports_events": [],
+        "upcoming_matches": [
+            {
+                "opponent": "COMED",
+                "date": "Oct 21",
+                "venue": "Main Pool"
+            },
+            {
+                "opponent": "CAS",
+                "date": "Oct 23",
+                "venue": "Auditorium"
+            }
+        ]
+    }
+]
