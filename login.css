@@ -1,0 +1,148 @@
+/* login.css */
+
+body {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    min-height: 100vh;
+    background-color: #f0f2f5; /* Light grey background */
+    font-family: Arial, sans-serif;
+    margin: 0;
+    padding: 20px; /* Add padding around the container */
+    box-sizing: border-box; /* Include padding in element's total width/height */
+}
+
+.login-container {
+    background-color: #ffffff; /* White background for the main content area */
+    border: 10px solid #00509e; /* Dark blue border */
+    padding: 20px;
+    border-radius: 5px; /* Slight rounding for the inner container */
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+    max-width: 900px; /* Adjust as needed */
+    width: 100%;
+    display: flex; /* Use flexbox for layout */
+    align-items: flex-start; /* Align items to the top */
+    gap: 20px; /* Space between nav and other content (if added later) */
+}
+
+.login-header {
+    display: flex;
+    align-items: flex-start; /* Align logo and text block top */
+    margin-bottom: 20px;
+    width: 100%; /* Make header take full width */
+    padding-bottom: 15px;
+    border-bottom: 1px solid #eee; /* Subtle separator */
+}
+
+.logo {
+    height: 60px; /* Adjust size as needed */
+    width: auto;
+    margin-right: 15px;
+    flex-shrink: 0; /* Prevent logo from shrinking */
+}
+
+.title-section {
+    color: #333;
+}
+
+.title-section h1 {
+    font-size: 1.5em; /* Adjust size */
+    font-weight: bold;
+    margin: 0;
+    color: #003366; /* Dark blue title */
+}
+
+.title-section h2 {
+    font-size: 1.1em;
+    margin: 5px 0;
+    font-weight: normal;
+    color: #555;
+}
+
+.title-section p {
+    font-size: 0.9em;
+    color: #777;
+    margin: 0;
+    font-style: italic;
+}
+
+.login-options {
+    display: flex;
+    flex-direction: column; /* Stack buttons vertically */
+    gap: 15px; /* Space between buttons */
+    width: 200px; /* Fixed width for the button column */
+    flex-shrink: 0; /* Prevent this column from shrinking */
+    margin-top: 10px; /* Align roughly below header content */
+}
+
+.login-button {
+    display: flex; /* Use flexbox for icon alignment */
+    align-items: center; /* Center icon and text vertically */
+    padding: 12px 20px;
+    background-color: #4CAF50; /* Green background */
+    color: white;
+    text-decoration: none;
+    border-radius: 8px; /* Rounded corners */
+    font-size: 1em;
+    font-weight: bold;
+    text-align: left; /* Align text to the left */
+    border: none;
+    cursor: pointer;
+    transition: background-color 0.3s ease, transform 0.2s ease;
+    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+}
+
+.login-button i {
+    margin-right: 10px; /* Space between icon and text */
+    width: 20px; /* Fixed width for icon alignment */
+    text-align: center;
+}
+
+.login-button:hover {
+    background-color: #45a049; /* Darker green on hover */
+    transform: translateY(-2px); /* Slight lift effect */
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15);
+}
+
+.login-button:active {
+    background-color: #3e8e41; /* Even darker green when clicked */
+    transform: translateY(0);
+}
+
+.login-footer {
+    /* Styles for the footer if needed */
+    margin-top: 20px;
+    text-align: right;
+    width: 100%;
+}
+
+/* Responsive adjustments if needed */
+@media (max-width: 768px) {
+    .login-container {
+        flex-direction: column; /* Stack elements vertically */
+        border-width: 5px;
+    }
+
+    .login-header {
+        flex-direction: column; /* Stack logo and title on small screens */
+        align-items: center; /* Center header content */
+        text-align: center;
+    }
+
+    .logo {
+        margin-right: 0;
+        margin-bottom: 10px;
+    }
+
+    .login-options {
+        width: 100%; /* Make buttons take full width */
+        margin-top: 20px;
+        align-items: center; /* Center buttons horizontally */
+    }
+
+    .login-button {
+        width: 80%; /* Limit button width on small screens */
+        max-width: 300px;
+        justify-content: center; /* Center content within button */
+    }
+}
