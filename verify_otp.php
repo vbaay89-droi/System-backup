@@ -20,18 +20,33 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             // 🔑 CRITICAL: Promote the ID and Role from pending to active session
             $_SESSION['user_id'] = $_SESSION['pending_user_id']; 
             $_SESSION['username'] = $_SESSION['pending_username'];
-            $_SESSION['user_role'] = $_SESSION['pending_user_role']; // THIS is the final role!
+            
+            // --- START OF NEW REDIRECT LOGIC ---
 
-            // New unset: Clear all temporary data, including ID and Role
+            // 1. Get the role before we unset the pending session
+            $role = $_SESSION['pending_user_role'];
+            $_SESSION['user_role'] = $role; // Set the final, permanent role
+
+            // 2. Clear all temporary data
             unset(
                 $_SESSION['otp'], 
                 $_SESSION['otp_expiry'], 
-                $_SESSION['pending_user_id'], // new
+                $_SESSION['pending_user_id'],
                 $_SESSION['pending_username'], 
-                $_SESSION['pending_user_role'] // new
+                $_SESSION['pending_user_role']
             );
 
-            header("Location: admin_dashboard.php");
+            // 3. Redirect based on the role
+            if ($role === 'Event Manager') {
+                header("Location: event_manager_dashboard.php");
+            } elseif ($role === 'Administrator') {
+                header("Location: admin_dashboard.php");
+            } elseif ($role === 'Sports Director') {
+                header("Location: sports_director_dashboard.php");
+            } else {
+                // A safe fallback, just in case
+                header("Location: index.php");
+            }
             exit();
         } else {
             $error_message = "Invalid OTP. Please try again.";
