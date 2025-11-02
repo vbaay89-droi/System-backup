@@ -1,54 +1,97 @@
 <?php
 session_start();
-// Check if the user is logged in, if not, redirect to the login page
+require_once 'db_connect.php'; 
+
+// Security Check
 if (!isset($_SESSION['logged_in']) || $_SESSION['logged_in'] !== true || !isset($_SESSION['role']) || $_SESSION['role'] !== 'Administrator') {
     header('Location: login.php');
     exit();
 }
 
-// 1. --- DATABASE CONNECTION (MySQLi) ---
-require_once 'db_connect.php'; 
-
-// Get admin's name for welcome message
 $name = isset($_SESSION['username']) ? $_SESSION['username'] : 'Admin';
 $current_page = basename($_SERVER['PHP_SELF']);
+$message = '';
+$message_type = '';
 
-// --- This logic is for the sidebar accordion ---
+// --- FIX: Logic to keep accordion open ---
 $event_pages = ['Manage_Games.php', 'Manage_Game_Events.php', 'Manage_Categories.php'];
 $is_event_page = in_array($current_page, $event_pages);
-$management_pages = ['teams.php', 'events.php', 'results.php', 'reports.php'];
-$is_management_page = in_array($current_page, $management_pages);
+// --- End Fix ---
 
-
-// 2. --- DYNAMIC STATS & WIDGETS (MySQLi) ---
-$stats = [
-    'total_events' => 0, 'total_teams' => 0,
-    'total_users' => 0, 'pending_requests' => 0
-];
-
-// Helper function for fetching a single count
-function fetchCount($conn, $query) {
-    $result = $conn->query($query);
-    if ($result) {
-        return $result->fetch_assoc()['count'];
+// --- ACTION LOGIC ---
+// 1. ADD GAME
+if (isset($_POST['add_game'])) {
+    $game_name = $_POST['game_name'];
+    $stmt = $conn->prepare("INSERT INTO games (game_name) VALUES (?)");
+    $stmt->bind_param("s", $game_name);
+    if ($stmt->execute()) {
+        $_SESSION['message'] = "Game '{$game_name}' added successfully.";
+        $_SESSION['message_type'] = 'success';
+    } else {
+        $_SESSION['message'] = "Error: " . $stmt->error;
+        $_SESSION['message_type'] = 'danger';
     }
-    return 0; // Return 0 on error
+    $stmt->close();
+    header("Location: Manage_Games.php");
+    exit();
 }
 
-// Fetch live data for stat cards
-$stats['total_events'] = fetchCount($conn, "SELECT COUNT(*) as count FROM categories"); // L3 categories
-$stats['total_teams'] = fetchCount($conn, "SELECT COUNT(*) as count FROM teams");
-$stats['total_users'] = fetchCount($conn, "SELECT COUNT(*) as count FROM users");
-$stats['pending_requests'] = fetchCount($conn, "SELECT COUNT(*) as count FROM account_requests WHERE status = 'pending'");
+// 2. EDIT GAME
+if (isset($_POST['edit_game'])) {
+    $game_id = (int)$_POST['edit_game_id'];
+    $game_name = $_POST['edit_game_name'];
+    $stmt = $conn->prepare("UPDATE games SET game_name = ? WHERE game_id = ?");
+    $stmt->bind_param("si", $game_name, $game_id);
+    if ($stmt->execute()) {
+        $_SESSION['message'] = "Game updated successfully.";
+        $_SESSION['message_type'] = 'success';
+    } else {
+        $_SESSION['message'] = "Error: " . $stmt->error;
+        $_SESSION['message_type'] = 'danger';
+    }
+    $stmt->close();
+    header("Location: Manage_Games.php");
+    exit();
+}
 
+// 3. DELETE GAME
+if (isset($_POST['delete_game'])) {
+    $game_id = (int)$_POST['delete_game_id'];
+    $stmt = $conn->prepare("DELETE FROM games WHERE game_id = ?");
+    $stmt->bind_param("i", $game_id);
+    if ($stmt->execute()) {
+        $_SESSION['message'] = "Game deleted successfully.";
+        $_SESSION['message_type'] = 'success';
+    } else {
+        $_SESSION['message'] = "Error: " . $stmt->error;
+        $_SESSION['message_type'] = 'danger';
+    }
+    $stmt->close();
+    header("Location: Manage_Games.php");
+    exit();
+}
+
+// --- FETCH DATA (READ) ---
+$games = [];
+$result = $conn->query("SELECT * FROM games ORDER BY game_name");
+if ($result) {
+    $games = $result->fetch_all(MYSQLI_ASSOC);
+}
+
+// Check for session messages
+if (isset($_SESSION['message'])) {
+    $message = $_SESSION['message'];
+    $message_type = $_SESSION['message_type'];
+    unset($_SESSION['message']);
+    unset($_SESSION['message_type']);
+}
 ?>
 <!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Admin Dashboard - PIT SPORTS TALLYING</title>
-    <!-- CSS Links (Bootstrap, FontAwesome, Fonts) -->
+    <title>Manage Games (L1) - Admin Dashboard</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" rel="stylesheet">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=Poppins:wght@400;500;600;700;800&display=swap" rel="stylesheet">
@@ -159,7 +202,7 @@ $stats['pending_requests'] = fetchCount($conn, "SELECT COUNT(*) as count FROM ac
         .sidebar-nav .nav-link.active { color: white; background: rgba(255, 255, 255, 0.1); border-left-color: #3498db; font-weight: 600; }
         .sidebar-nav .text-muted { padding: 10px 25px; font-size: 0.75rem; font-weight: 600; color: rgba(255, 255, 255, 0.4); text-transform: uppercase; letter-spacing: 1px; }
 
-        /* --- Accordion CSS --- */
+        /* --- FIX: Accordion CSS (must be in all files) --- */
         .sidebar-nav .nav-link .sidebar-chevron {
             font-size: 0.7rem;
             margin-left: auto; /* Push chevron to the right */
@@ -213,27 +256,8 @@ $stats['pending_requests'] = fetchCount($conn, "SELECT COUNT(*) as count FROM ac
         }
         .sidebar.minimized ~ .main-content { margin-left: var(--sidebar-min-width); }
         .section-title { font-family: 'Poppins', sans-serif; font-weight: 600; color: #333; }
-        .hero-section { background: var(--primary-gradient); color: white; padding: 40px 30px; margin-bottom: 30px; border-radius: 15px; box-shadow: 0 8px 25px rgba(116, 81, 235, 0.3); position: relative; overflow: hidden; }
-        .hero-title { font-size: 2rem; font-weight: 700; margin-bottom: 5px; }
-        .hero-subtitle { font-size: 1rem; opacity: 0.9; font-weight: 300; }
-        .welcome-badge { background: rgba(255, 255, 255, 0.15); backdrop-filter: blur(5px); border: 1px solid rgba(255, 255, 255, 0.2); padding: 4px 10px; border-radius: 20px; font-weight: 600; font-size: 0.85rem; display: inline-block; margin-bottom: 10px; }
-        .clickable-card-link { text-decoration: none; display: block; height: 100%; color: inherit; }
-        .stat-card { background: white; border: none; border-radius: 15px; padding: 20px; box-shadow: var(--card-shadow); transition: var(--transition); position: relative; overflow: hidden; height: 100%; }
-        .clickable-card-link:hover .stat-card { transform: translateY(-5px); box-shadow: var(--card-hover-shadow); }
-        .stat-icon-wrapper { width: 60px; height: 60px; border-radius: 50%; display: flex; align-items: center; justify-content: center; color: white; font-size: 1.5rem; margin-right: 15px; flex-shrink: 0; }
-        .stat-count { font-size: 2.5rem; font-weight: 700; line-height: 1; margin-bottom: 5px; font-family: 'Poppins', sans-serif; }
-        .stat-events .stat-icon-wrapper { background: linear-gradient(45deg, #3498db, #2980b9); }
-        .stat-teams .stat-icon-wrapper { background: linear-gradient(45deg, #e74c3c, #c0392b); }
-        .stat-users .stat-icon-wrapper { background: linear-gradient(45deg, #2ecc71, #27ae60); }
-        .stat-requests .stat-icon-wrapper { background: linear-gradient(45deg, #f1c40f, #f39c12); }
-        .quick-action-card { border: none; border-radius: 15px; transition: var(--transition); box-shadow: var(--card-shadow); background: white; height: 100%; text-align: center; padding: 20px; }
-        .quick-action-card:hover { transform: translateY(-5px); box-shadow: var(--card-hover-shadow); }
-        .quick-action-card a { text-decoration: none; }
-        .quick-icon { font-size: 2rem; margin-bottom: 10px; }
-        .icon-teams-quick { color: #e74c3c; }
-        .icon-users-quick { color: #2ecc71; }
-        .icon-reports-quick { color: #9b55b6; }
-        .icon-requests-quick { color: #f39c12; }
+        .card { border: none; border-radius: 15px; box-shadow: var(--card-shadow); }
+        .card-header-flex { display: flex; justify-content: space-between; align-items: center; }
         
         /* Footer */
         footer { flex-shrink: 0; background: #2c3e50 !important; box-shadow: 0 -2px 10px rgba(0,0,0,0.1); margin-left: var(--sidebar-width); transition: margin-left var(--transition); position: relative; z-index: 1041; }
@@ -253,28 +277,8 @@ $stats['pending_requests'] = fetchCount($conn, "SELECT COUNT(*) as count FROM ac
         }
         @media (max-width: 576px) {
             .main-content { padding: 15px; }
-            .hero-title { font-size: 1.5rem; }
-            .hero-section { padding: 30px 20px; }
-            .stat-card .d-flex { flex-direction: column; align-items: center !important; text-align: center; }
-            .stat-icon-wrapper { margin-right: 0; margin-bottom: 10px; }
-            .stat-count { font-size: 2rem; }
             .user-dropdown .dropdown-toggle .user-name { display: none; }
             .user-dropdown .dropdown-toggle img { margin-right: 0; }
-        }
-        .hero-settings-link { text-decoration: none; color: white; opacity: 0.5; transition: var(--transition); display: inline-block; }
-        .hero-settings-link:hover { opacity: 1; transform: scale(1.1); }
-        .hero-settings-link .fa-users-cog { transition: var(--transition); }
-        .hero-settings-link:hover .fa-users-cog { transform: rotate(15deg); }
-
-        .navbar-profile-icon {
-            width: 36px; 
-            height: 36px; 
-            font-size: 36px; 
-            text-align: center;
-            line-height: 1;
-            border-radius: 50%; 
-            margin-right: 10px; 
-            color: rgba(255,255,255,0.8);
         }
     </style>
 </head>
@@ -294,8 +298,7 @@ $stats['pending_requests'] = fetchCount($conn, "SELECT COUNT(*) as count FROM ac
             </button>
             <div class="dropdown user-dropdown ms-auto me-2 me-lg-0">
                 <a href="#" class="dropdown-toggle" id="userDropdown" data-bs-toggle="dropdown" aria-expanded="false">
-                    
-                    <i class="fas fa-user-circle navbar-profile-icon"></i>
+                    <img src="images/default_avatar.png" alt="User Avatar">
                     <span class="user-name d-none d-lg-inline"><?= htmlspecialchars($name); ?></span>
                 </a>
                 <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="userDropdown">
@@ -320,14 +323,13 @@ $stats['pending_requests'] = fetchCount($conn, "SELECT COUNT(*) as count FROM ac
                 </a>
             </li>
 
-            <!-- ACCORDION MENU -->
             <li class="nav-item">
                 <a class="nav-link <?php if ($is_event_page) echo 'active'; ?>" data-bs-toggle="collapse" href="#eventsCollapse" role="button" aria-expanded="<?php echo $is_event_page ? 'true' : 'false'; ?>" aria-controls="eventsCollapse">
                     <i class="fas fa-calendar-alt me-2"></i> <span>Manage Events</span> <i class="fas fa-chevron-down ms-auto sidebar-chevron"></i>
                 </a>
                 <div class="collapse <?php if ($is_event_page) echo 'show'; ?>" id="eventsCollapse">
                     <ul class="sub-menu">
-                        <li class="nav-item"> 
+                        <li class="nav-item">
                             <a class="nav-link <?php if ($current_page == 'Manage_Games.php') echo 'active'; ?>" href="Manage_Games.php">
                                 <span>Games (L1)</span>
                             </a>
@@ -345,45 +347,10 @@ $stats['pending_requests'] = fetchCount($conn, "SELECT COUNT(*) as count FROM ac
                     </ul>
                 </div>
             </li>
-            <!-- END ACCORDION MENU -->
-
-           <li class="nav-item">
-                <a class="nav-link <?php if ($is_management_page) echo 'active'; ?>" data-bs-toggle="collapse" href="#teamsCollapse" role="button" aria-expanded="<?php echo $is_management_page ? 'true' : 'false'; ?>" aria-controls="teamsCollapse">
-                    <i class="fas fa-users me-2"></i> <span>Manage Teams</span> <i class="fas fa-chevron-down ms-auto sidebar-chevron"></i>
+            <li class="nav-item">
+                <a class="nav-link <?php if ($current_page == 'Manage_Team.php') echo 'active'; ?>" href="Manage_Team.php">
+                    <i class="fas fa-users me-2"></i> <span>Manage Teams</span>
                 </a>
-                
-                <div class="collapse <?php if ($is_management_page) echo 'show'; ?>" id="teamsCollapse">
-                    <ul class="sub-menu">
-                        
-                        <li class="text-muted" style="padding: 10px 25px 5px 60px; margin-top: 5px; font-size: 0.75rem; font-weight: 600; color: rgba(255, 255, 255, 0.4); text-transform: uppercase; letter-spacing: 1px;">
-                            Management
-                        </li>
-                        <li class="nav-item">
-                            <a class="nav-link <?php if ($current_page == 'teams.php') echo 'active'; ?>" href="sd/teams.php">
-                                <span>Manage Teams</span>
-                            </a>
-                        </li>
-                        <li class="nav-item">
-                            <a class="nav-link <?php if ($current_page == 'events.php') echo 'active'; ?>" href="sd/events.php">
-                                <span>Manage Events (L1-L3)</span>
-                            </a>
-                        </li>
-                        
-                        <li class="text-muted" style="padding: 10px 25px 5px 60px; margin-top: 10px; font-size: 0.75rem; font-weight: 600; color: rgba(255, 255, 255, 0.4); text-transform: uppercase; letter-spacing: 1px;">
-                            Tallying
-                        </li>
-                        <li class="nav-item">
-                            <a class="nav-link <?php if ($current_page == 'results.php') echo 'active'; ?>" href="sd/results.php">
-                                <span>Approve Results</span>
-                            </a>
-                        </li>
-                        <li class="nav-item">
-                            <a class="nav-link <?php if ($current_page == 'reports.php') echo 'active'; ?>" href="sd/reports.php">
-                                <span>Medal Reports</span>
-                            </a>
-                        </li>
-                    </ul>
-                </div>
             </li>
             <li class="nav-item">
                 <a class="nav-link <?php if ($current_page == 'Manage_Users.php') echo 'active'; ?>" href="Manage_Users.php">
@@ -417,150 +384,122 @@ $stats['pending_requests'] = fetchCount($conn, "SELECT COUNT(*) as count FROM ac
     <div class="sidebar-overlay" id="sidebarOverlay"></div>
 
     <div class="main-content">
-        <div class="hero-section">
-            <div class="d-flex justify-content-between align-items-center">
-                <div>
-                    <div class="welcome-badge">
-                        <i class="fas fa-shield-alt me-2"></i>Admin Access
+        <div class="container-fluid">
+            
+            <h1 class="section-title mb-4">Manage Games (Level 1)</h1>
+
+            <?php if ($message): ?>
+            <div class="alert alert-<?php echo $message_type; ?> alert-dismissible fade show" role="alert">
+                <?= htmlspecialchars($message) ?>
+                <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+            </div>
+            <?php endif; ?>
+
+            <div class="row">
+                <div class="col-md-7">
+                    <div class="card h-100">
+                        <div class="card-header">
+                            <h5 class="mb-0">All Games (e.g., Athletics, Ball Games)</h5>
+                        </div>
+                        <div class="card-body">
+                            <table class="table table-hover">
+                                <thead class="table-light">
+                                    <tr>
+                                        <th>Game Name</th>
+                                        <th>Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <?php foreach ($games as $game): ?>
+                                    <tr>
+                                        <td><?= htmlspecialchars($game['game_name']) ?></td>
+                                        <td>
+                                            <button class="btn btn-sm btn-outline-primary edit-btn"
+                                                data-bs-toggle="modal" data-bs-target="#editGameModal"
+                                                data-id="<?= $game['game_id'] ?>"
+                                                data-name="<?= htmlspecialchars($game['game_name']) ?>">
+                                                <i class="fas fa-edit"></i>
+                                            </button>
+                                            <button class="btn btn-sm btn-outline-danger delete-btn"
+                                                data-bs-toggle="modal" data-bs-target="#deleteGameModal"
+                                                data-id="<?= $game['game_id'] ?>"
+                                                data-name="<?= htmlspecialchars($game['game_name']) ?>">
+                                                <i class="fas fa-trash"></i>
+                                            </button>
+                                        </td>
+                                    </tr>
+                                    <?php endforeach; ?>
+                                </tbody>
+                            </table>
+                        </div>
                     </div>
-                    <h1 class="hero-title">Welcome Back, <?= htmlspecialchars($name); ?>!</h1>
-                    <p class="hero-subtitle">Your central hub for tournament oversight and management.</p>
                 </div>
-                <div class="d-none d-md-block text-end">
-                    <a href="admin_profile.php" class="hero-settings-link" title="Account Settings">
-                        <i class="fas fa-users-cog fa-4x"></i>
-                    </a>
+                <div class="col-md-5">
+                    <div class="card h-100">
+                        <div class="card-header">
+                            <h5 class="mb-0">Add New Game</h5>
+                        </div>
+                        <div class="card-body">
+                            <form action="Manage_Games.php" method="POST">
+                                <div class="mb-3">
+                                    <label for="game_name" class="form-label">Game Name</label>
+                                    <input type="text" class="form-control" id="game_name" name="game_name" required>
+                                </div>
+                                <button type="submit" name="add_game" class="btn btn-primary">Save Game</button>
+                            </form>
+                        </div>
+                    </div>
                 </div>
             </div>
         </div>
-
-        <div class="container-fluid p-0">
-            
-            <h2 class="section-title mb-4">Live Tournament Snapshot</h2>
-            <div class="row g-4 mb-5">
-                
-                <div class="col-lg-3 col-md-6">
-                    <a href="Manage_Categories.php" class="clickable-card-link">
-                        <div class="stat-card stat-events">
-                            <div class="d-flex align-items: center">
-                                <div class="stat-icon-wrapper">
-                                    <i class="fas fa-calendar-check"></i>
-                                </div>
-                                <div>
-                                    <div class="stat-count text-primary"><?= $stats['total_events'] ?></div>
-                                    <small class="text-muted">Total Events (L3)</small>
-                                </div>
-                            </div>
-                        </div>
-                    </a>
-                </div>
-
-                <!-- 
-                /***************************************************
-                 * FIX 2: Stat card link updated to 'sd/teams.php'
-                 ***************************************************/
-                -->
-                <div class="col-lg-3 col-md-6">
-                    <a href="sd/teams.php" class="clickable-card-link">
-                        <div class="stat-card stat-teams">
-                            <div class="d-flex align-items-center">
-                                <div class="stat-icon-wrapper">
-                                    <i class="fas fa-users"></i>
-                                </div>
-                                <div>
-                                    <div class="stat-count text-danger"><?= $stats['total_teams'] ?></div>
-                                    <small class="text-muted">Participating Teams</small>
-                                </div>
-                            </div>
-                        </div>
-                    </a>
-                </div>
-
-                <div class="col-lg-3 col-md-6">
-                    <a href="Manage_Users.php" class="clickable-card-link">
-                        <div class="stat-card stat-users">
-                            <div class="d-flex align-items-center">
-                                <div class="stat-icon-wrapper">
-                                    <i class="fas fa-users-cog"></i>
-                                </div>
-                                <div>
-                                    <div class="stat-count text-success"><?= $stats['total_users'] ?></div>
-                                    <small class="text-muted">Total Users</small>
-                                </div>
-                            </div>
-                        </div>
-                    </a>
-                </div>
-
-                <div class="col-lg-3 col-md-6">
-                    <a href="Manage_Requests.php" class="clickable-card-link">
-                        <div class="stat-card stat-requests">
-                            <div class="d-flex align-items: center">
-                                <div class="stat-icon-wrapper">
-                                    <i class="fas fa-user-plus"></i>
-                                </div>
-                                <div>
-                                    <div class="stat-count text-warning"><?= $stats['pending_requests'] ?></div>
-                                    <small class="text-muted">Pending Requests</small>
-                                </div>
-                            </div>
-                        </div>
-                    </a>
-                </div>
-            </div>
-            
-            <h2 class="section-title mb-4">Quick Actions & Navigation</h2>
-            <div class="row g-4 mb-5">
-                
-                <!-- 
-                /***************************************************
-                 * FIX 3: Quick action link updated to 'sd/teams.php'
-                 ***************************************************/
-                -->
-                <div class="col-lg-3 col-md-6 col-sm-6">
-                    <div class="quick-action-card">
-                        <a href="sd/teams.php">
-                            <i class="fas fa-users quick-icon icon-teams-quick"></i>
-                            <h5 class="fw-bold mb-1 text-dark">Teams</h5>
-                            <small class="text-muted">Roster & Details</small>
-                        </a>
-                    </div>
-                </div>
-                
-                <div class="col-lg-3 col-md-6 col-sm-6">
-                    <div class="quick-action-card">
-                        <a href="Manage_Users.php">
-                            <i class="fas fa-users-cog quick-icon icon-users-quick"></i>
-                            <h5 class="fw-bold mb-1 text-dark">Users</h5>
-                            <small class="text-muted">Create & Manage</small>
-                        </a>
-                    </div>
-                </div>
-                
-                <div class="col-lg-3 col-md-6 col-sm-6">
-                    <div class="quick-action-card">
-                        <a href="Manage_Requests.php">
-                            <i class="fas fa-user-plus quick-icon icon-requests-quick"></i>
-                            <h5 class="fw-bold mb-1 text-dark">Requests</h5>
-                            <small class="text-muted">Approve & Deny</small>
-                        </a>
-                    </div>
-                </div>
-                
-                <div class="col-lg-3 col-md-6 col-sm-6">
-                    <div class="quick-action-card">
-                        <a href="Manage_Viewreports.php">
-                            <i class="fas fa-chart-line quick-icon icon-reports-quick"></i>
-                            <h5 class="fw-bold mb-1 text-dark">Reports</h5>
-                            <small class="text-muted">Insights & Analytics</small>
-                        </a>
-                    </div>
-                </div>
-            </div>
-            
-            </div>
     </div>
 
+    <div class="modal fade" id="editGameModal" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Edit Game</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <form action="Manage_Games.php" method="POST">
+                    <input type="hidden" name="edit_game_id" id="edit_game_id">
+                    <div class="modal-body">
+                        <div class="mb-3">
+                            <label for="edit_game_name" class="form-label">Game Name</label>
+                            <input type="text" class="form-control" id="edit_game_name" name="edit_game_name" required>
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                        <button type="submit" name="edit_game" class="btn btn-primary">Update Game</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <div class="modal fade" id="deleteGameModal" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Delete Game</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <form action="Manage_Games.php" method="POST">
+                    <input type="hidden" name="delete_game_id" id="delete_game_id">
+                    <div class="modal-body">
+                        <p>Are you sure you want to delete this game: <strong id="delete_game_name"></strong>?</p>
+                        <p class="text-danger">This will delete all associated events and categories.</p>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                        <button type="submit" name="delete_game" class="btn btn-danger">Delete</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+    
     <footer class="bg-dark text-white py-4">
         <div class="text-center">
             <small>&copy; <?php echo date("Y"); ?> PIT SPORTS TALLYING. All rights reserved.</small><br>
@@ -569,6 +508,7 @@ $stats['pending_requests'] = fetchCount($conn, "SELECT COUNT(*) as count FROM ac
     </footer>
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    
     <script>
         document.addEventListener('DOMContentLoaded', function() {
             
@@ -633,9 +573,28 @@ $stats['pending_requests'] = fetchCount($conn, "SELECT COUNT(*) as count FROM ac
                     }
                 }, 250);
             });
+            
+            // --- Page-specific JS for this page ---
+            const editGameModal = document.getElementById('editGameModal');
+            if(editGameModal) {
+                editGameModal.addEventListener('show.bs.modal', function (event) {
+                    const button = event.relatedTarget;
+                    document.getElementById('edit_game_id').value = button.getAttribute('data-id');
+                    document.getElementById('edit_game_name').value = button.getAttribute('data-name');
+                });
+            }
+            
+            const deleteGameModal = document.getElementById('deleteGameModal');
+            if(deleteGameModal) {
+                deleteGameModal.addEventListener('show.bs.modal', function (event) {
+                    const button = event.relatedTarget;
+                    document.getElementById('delete_game_id').value = button.getAttribute('data-id');
+                    document.getElementById('delete_game_name').textContent = button.getAttribute('data-name');
+                });
+            }
+            // --- End of page-specific JS ---
 
         });
     </script>
 </body>
 </html>
-

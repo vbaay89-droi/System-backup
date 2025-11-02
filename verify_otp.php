@@ -1,51 +1,54 @@
 <?php
 session_start();
 
+// Check if pending login session exists
 if (!isset($_SESSION['pending_user_id'], $_SESSION['pending_username'], $_SESSION['pending_user_role'])) {
     header("Location: login.php");
     exit();
 }
 
+// Handle OTP submission
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $userOtp = $_POST['otp'] ?? '';
 
     if (isset($_SESSION['otp'], $_SESSION['otp_expiry'])) {
+        // OTP expiration check
         if (time() > $_SESSION['otp_expiry']) {
             $error_message = "OTP expired. Please login again.";
             session_destroy();
         } elseif ($userOtp == $_SESSION['otp']) {
-            // ✅ Success: Log user in
+            // ✅ OTP correct: log the user in
             $_SESSION['logged_in'] = true;
 
-            // 🔑 CRITICAL: Promote the ID and Role from pending to active session
-            $_SESSION['user_id'] = $_SESSION['pending_user_id']; 
+            // Promote pending session to active session
+            $_SESSION['user_id'] = $_SESSION['pending_user_id'];
             $_SESSION['username'] = $_SESSION['pending_username'];
-            
-            // --- START OF NEW REDIRECT LOGIC ---
+            $_SESSION['role'] = $_SESSION['pending_user_role']; // This must match your dashboard check
 
-            // 1. Get the role before we unset the pending session
-            $role = $_SESSION['pending_user_role'];
-            $_SESSION['user_role'] = $role; // Set the final, permanent role
-
-            // 2. Clear all temporary data
+            // Clear temporary OTP data
             unset(
-                $_SESSION['otp'], 
-                $_SESSION['otp_expiry'], 
+                $_SESSION['otp'],
+                $_SESSION['otp_expiry'],
                 $_SESSION['pending_user_id'],
-                $_SESSION['pending_username'], 
+                $_SESSION['pending_username'],
                 $_SESSION['pending_user_role']
             );
 
-            // 3. Redirect based on the role
-            if ($role === 'Event Manager') {
-                header("Location: event_manager_dashboard.php");
-            } elseif ($role === 'Administrator') {
-                header("Location: admin_dashboard.php");
-            } elseif ($role === 'Sports Director') {
-                header("Location: sports_director_dashboard.php");
-            } else {
-                // A safe fallback, just in case
-                header("Location: index.php");
+            // Redirect based on role
+            // This line checks the correct variable
+                switch ($_SESSION['role']) {
+                case 'Event Manager':
+                    header("Location: event_manager_dashboard.php");
+                    break;
+                case 'Administrator':
+                    header("Location: admin_dashboard.php");
+                    break;
+                case 'Sports Director':
+                    header("Location: sd/sports_director_dashboard.php");
+                    break;
+                default:
+                    header("Location: index.php");
+                    break;
             }
             exit();
         } else {
@@ -56,11 +59,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     }
 }
 
-
-$_SESSION['otp_expiry'] = time() + (5 * 60); // 5 minutes from now
-
-
+// Set OTP expiry only if it doesn't already exist
+if (!isset($_SESSION['otp_expiry'])) {
+    $_SESSION['otp_expiry'] = time() + (5 * 60); // 5 minutes
+}
 ?>
+
 
 
 

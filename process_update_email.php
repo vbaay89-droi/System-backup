@@ -3,7 +3,6 @@ session_start();
 require_once 'db_connect.php'; // Include your database connection
 
 // --- LOAD PHPMailer ---
-// Make sure this path is correct relative to this file
 require __DIR__ . '/PHPMailer-master/src/Exception.php';
 require __DIR__ . '/PHPMailer-master/src/PHPMailer.php';
 require __DIR__ . '/PHPMailer-master/src/SMTP.php';
@@ -13,11 +12,33 @@ use PHPMailer\PHPMailer\Exception;
 // ------------------------
 
 
-// Check if user is logged in
-if (!isset($_SESSION['user_id'])) {
+// Check if user is logged in and has a role
+if (!isset($_SESSION['user_id']) || !isset($_SESSION['role'])) {
     header('Location: login.php');
     exit();
 }
+
+// --- Determine settings page based on user role ---
+// This ensures users are redirected to their correct settings page
+$settings_page = 'login.php'; // Default fallback
+switch ($_SESSION['role']) {
+    case 'Administrator':
+        $settings_page = 'admin_settings.php';
+        break;
+    case 'Event Manager':
+        $settings_page = 'event_manager_settings.php'; // Assuming this is the name
+        break;
+    case 'Sports Director':
+        $settings_page = 'sd/sports_director_settings.php'; // Assuming this path based on your dashboard
+        break;
+    default:
+        // If role is unknown, log out for safety
+        session_destroy();
+        header('Location: login.php');
+        exit();
+}
+// --------------------------------------------------
+
 
 // Check if the form was submitted
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
@@ -29,13 +50,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     // 1. Validate input
     if (empty($new_email) || empty($current_password)) {
         $_SESSION['email_error_msg'] = "Please fill in all fields.";
-        header('Location: admin_settings.php');
+        header('Location: ' . $settings_page);
         exit();
     }
 
     if (!filter_var($new_email, FILTER_VALIDATE_EMAIL)) {
         $_SESSION['email_error_msg'] = "Invalid email format.";
-        header('Location: admin_settings.php');
+        header('Location: ' . $settings_page);
         exit();
     }
 
@@ -56,7 +77,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $stmt->execute();
             if ($stmt->rowCount() > 0) {
                 $_SESSION['email_error_msg'] = "That email address is already in use by another account.";
-                header('Location: admin_settings.php');
+                header('Location: ' . $settings_page);
                 exit();
             }
 
@@ -65,13 +86,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $token_expiry = time() + 3600; // Token is valid for 1 hour
 
             // 5. Store the token, new email, and expiry in the session
-            // We'll retrieve this in the new verification file
             $_SESSION['email_change_token'] = $token;
             $_SESSION['email_change_new_email'] = $new_email;
             $_SESSION['email_change_expiry'] = $token_expiry;
 
             // 6. Send the verification email
-            // --- IMPORTANT: Update this URL to your domain ---
+            // --- IMPORTANT: Update this URL to your domain/path ---
+            // Using http://localhost/LOGIN_CAPSTONE/ based on your original file
             $verification_link = "http://localhost/LOGIN_CAPSTONE/verify_new_email.php?token=" . $token;
             // --------------------------------------------------
 
@@ -118,7 +139,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $_SESSION['email_error_msg'] = "Invalid request method.";
 }
 
-// Always redirect back to the settings page
-header('Location: admin_settings.php');
+// Always redirect back to the user's correct settings page
+header('Location: ' . $settings_page);
 exit();
 ?>

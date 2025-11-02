@@ -1,6 +1,5 @@
 <?php
 // Load PHPMailer classes
-// Load PHPMailer classes
 require __DIR__ . '/PHPMailer-master/src/Exception.php';
 require __DIR__ . '/PHPMailer-master/src/PHPMailer.php';
 require __DIR__ . '/PHPMailer-master/src/SMTP.php';
@@ -17,21 +16,21 @@ try {
     $mail->Host       = 'smtp.gmail.com';    // Gmail SMTP server
     $mail->SMTPAuth   = true;
     $mail->Username   = 'vbaay89@gmail.com';  // Your Gmail address
-    $mail->Password   = 'password123';     // Your Gmail App Password
+    $mail->Password   = 'vthz porq dnhj frdc';     // Your Gmail App Password (Corrected)
     $mail->SMTPSecure = PHPMailer::ENCRYPTION_STARTTLS;
     $mail->Port       = 587;
 
     // Recipients
-    $mail->setFrom('your_email@gmail.com', 'Your System');
-    $mail->addAddress('recipient_email@gmail.com');  // The email to receive the test message
+    $mail->setFrom('vbaay89@gmail.com', 'PIT Sports Tallying Test');
+    $mail->addAddress('vbaay89@gmail.com');  // Send to yourself for testing
 
     // Content
     $mail->isHTML(true);
     $mail->Subject = 'PHPMailer Test';
-    $mail->Body    = 'This is a <b>test email</b> sent from PHPMailer.';
+    $mail->Body    = 'This is a <b>test email</b> sent from PHPMailer. If you received this, your settings are correct.';
 
     $mail->send();
-    echo "✅ Test email sent successfully!";
+    echo "✅ Test email sent successfully to vbaay89@gmail.com!";
 } catch (Exception $e) {
     echo "❌ Email could not be sent. Error: {$mail->ErrorInfo}";
 }

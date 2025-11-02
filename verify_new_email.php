@@ -1,75 +1,75 @@
 <?php
-session_start();
-require_once 'db_connect.php'; // Include your database connection
+// This script does NOT use sessions. It is stateless.
+require_once 'db_connect.php'; // Your MySQLi connection
 
-// Check if user is logged in and token is in the URL
-if (!isset($_SESSION['user_id']) || !isset($_GET['token'])) {
-    $_SESSION['email_error_msg'] = "Invalid verification link or you are not logged in.";
-    header('Location: admin_settings.php');
+$status_redirect_url = 'login.php'; // Page to show messages
+$token_from_url = $_GET['token'] ?? null;
+$current_time = time();
+
+// 1. Check if token is missing from URL
+if (empty($token_from_url)) {
+    header('Location: ' . $status_redirect_url . '?status=invalid_link');
     exit();
 }
 
-$token_from_url = $_GET['token'];
+// 2. Find the user by the token
+$stmt = $conn->prepare("SELECT id, new_email, token_expiry FROM users WHERE verification_token = ? LIMIT 1");
+$stmt->bind_param("s", $token_from_url);
+$stmt->execute();
+$result = $stmt->get_result();
+$user = $result->fetch_assoc();
+$stmt->close();
 
-// Check if we have the session variables we're expecting
-if (!isset($_SESSION['email_change_token'], $_SESSION['email_change_new_email'], $_SESSION['email_change_expiry'])) {
-    $_SESSION['email_error_msg'] = "Invalid or expired verification session. Please try again.";
-    header('Location: admin_settings.php');
+// 3. Check if token is valid
+if (!$user) {
+    // Token not found in DB or already used
+    header('Location: ' . $status_redirect_url . '?status=invalid_link');
     exit();
 }
 
-// --- Main Verification Logic ---
+// 4. Check if token is expired
+if ($current_time > $user['token_expiry']) {
+    // Token expired. Clear it from DB.
+    $stmt_clear = $conn->prepare("UPDATE users SET new_email = NULL, verification_token = NULL, token_expiry = NULL WHERE id = ?");
+    $stmt_clear->bind_param("i", $user['id']);
+    $stmt_clear->execute();
+    $stmt_clear->close();
+    
+    header('Location: ' . $status_redirect_url . '?status=token_expired');
+    exit();
+}
 
-try {
-    // 1. Check if token is expired
-    if (time() > $_SESSION['email_change_expiry']) {
-        $_SESSION['email_error_msg'] = "Your verification link has expired. Please try again.";
+// --- Token is valid and not expired ---
+
+$new_email = $user['new_email'];
+$user_id = $user['id'];
+
+// 5. (Final check) Make sure new email wasn't taken by *another* user
+$stmt_check = $conn->prepare("SELECT id FROM users WHERE email = ? AND id != ?");
+$stmt_check->bind_param("si", $new_email, $user_id);
+$stmt_check->execute();
+$stmt_check->store_result();
+$redirect_status = '';
+
+if ($stmt_check->num_rows > 0) {
+     // Email was claimed by someone else while waiting
+     $redirect_status = '?status=email_taken';
+} else {
+    // 6. SUCCESS: Update the user's email and clear the token fields
+    $stmt_update = $conn->prepare("UPDATE users SET email = ?, new_email = NULL, verification_token = NULL, token_expiry = NULL WHERE id = ?");
+    $stmt_update->bind_param("si", $new_email, $user_id);
     
-    // 2. Check if token matches
-    } elseif ($token_from_url !== $_SESSION['email_change_token']) {
-        $_SESSION['email_error_msg'] = "Invalid verification token. Please try again.";
-    
-    // 3. All checks passed!
+    if ($stmt_update->execute()) {
+        $redirect_status = '?status=email_success';
     } else {
-        
-        $new_email = $_SESSION['email_change_new_email'];
-        $user_id = $_SESSION['user_id'];
-
-        // (Final check) Make sure new email isn't taken by someone else
-        // This is a safety check in case another user took the email
-        // in the few minutes since the link was sent.
-        $stmt = $conn->prepare("SELECT id FROM users WHERE email = :email AND id != :id");
-        $stmt->bindParam(':email', $new_email);
-        $stmt->bindParam(':id', $user_id, PDO::PARAM_INT);
-        $stmt->execute();
-        
-        if ($stmt->rowCount() > 0) {
-             $_SESSION['email_error_msg'] = "That email address was just registered by another user. Please try a different email.";
-        } else {
-            // SUCCESS: Update the user's email in the database
-            $update_stmt = $conn->prepare("UPDATE users SET email = :new_email WHERE id = :id");
-            $update_stmt->bindParam(':new_email', $new_email);
-            $update_stmt->bindParam(':id', $user_id, PDO::PARAM_INT);
-            
-            if ($update_stmt->execute()) {
-                $_SESSION['email_success_msg'] = "Success! Your email address has been updated to " . htmlspecialchars($new_email) . ".";
-            } else {
-                $_SESSION['email_error_msg'] = "An error occurred while updating your email. Please try again.";
-            }
-        }
+        $redirect_status = '?status=db_error';
     }
-
-} catch (PDOException $e) {
-    $_SESSION['email_error_msg'] = "Database error: " . $e->getMessage();
+    $stmt_update->close();
 }
+$stmt_check->close();
 
-// --- Cleanup ---
-// Always clear the temporary session variables after use
-unset($_SESSION['email_change_token']);
-unset($_SESSION['email_change_new_email']);
-unset($_SESSION['email_change_expiry']);
-
-// Redirect back to settings page
-header('Location: admin_settings.php');
+// 7. Redirect back to login page with the final status
+header('Location: ' . $status_redirect_url . $redirect_status);
 exit();
 ?>
+

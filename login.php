@@ -1,6 +1,6 @@
 <?php
 session_start();
-require_once 'config.php';
+require_once 'config.php'; 
 
 // Define current page for active nav-link
 $current_page = basename($_SERVER['PHP_SELF']);
@@ -13,8 +13,42 @@ require __DIR__ . '/PHPMailer-master/src/SMTP.php';
 use PHPMailer\PHPMailer\PHPMailer;
 use PHPMailer\PHPMailer\Exception;
 
+// --- NEW: Handle status messages from email verification ---
+$status_message = '';
+$status_message_type = 'info'; // 'success' or 'danger'
+
+if (isset($_GET['status'])) {
+    switch ($_GET['status']) {
+        case 'email_success':
+            $status_message = "Success! Your email address has been updated. You can now log in.";
+            $status_message_type = 'success';
+            break;
+        case 'token_expired':
+            $status_message = "Your verification link has expired. Please try changing your email again.";
+            $status_message_type = 'danger';
+            break;
+        case 'token_mismatch':
+        case 'invalid_link':
+        case 'no_request_found':
+            $status_message = "Invalid verification link. Please try again.";
+            $status_message_type = 'danger';
+            break;
+        case 'email_taken':
+            $status_message = "That email address is already in use. Please try a different one.";
+            $status_message_type = 'danger';
+            break;
+        case 'db_error':
+            $status_message = "A database error occurred. Please try again.";
+            $status_message_type = 'danger';
+            break;
+    }
+}
+// --------------------------------------------------------
+
+
 // Login logic
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+    // ... (rest of your existing login logic)
     $username = trim($_POST['username'] ?? '');
     $password = $_POST['password'] ?? '';
     $expected_role = trim($_POST['expected_role'] ?? '');
@@ -23,38 +57,40 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $error_message = "Please enter all fields and select a role.";
     } else {
         try {
-            $pdo = new PDO('mysql:host=localhost;dbname=users_db;charset=utf8mb4', 'root', '', [
-                PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION
-            ]);
-
-            $stmt = $pdo->prepare('
-                SELECT u.id, u.username, u.email, u.password, r.role_name 
-                FROM users u
-                JOIN roles r ON u.role_id = r.role_id 
-                WHERE u.username = ? 
+            // Prepare statement without joining roles table
+            $stmt = $conn->prepare('
+                SELECT id, username, email, password, role 
+                FROM users 
+                WHERE username = ? 
                 LIMIT 1
             ');
-            $stmt->execute([$username]);
-            $user = $stmt->fetch(PDO::FETCH_ASSOC);
+
+            $stmt->bind_param("s", $username);
+            $stmt->execute();
+            $result = $stmt->get_result();
+            $user = $result->fetch_assoc();
+            $stmt->close();
 
             if ($user && password_verify($password, $user['password'])) {
-                if ($user['role_name'] !== $expected_role) {
+                if ($user['role'] !== $expected_role) {
                     $error_message = "Access denied. You are not registered as an " . htmlspecialchars($expected_role) . ".";
                 } else {
+                    // OTP generation
                     $otp = random_int(100000, 999999);
                     $_SESSION['otp'] = $otp;
                     $_SESSION['otp_expiry'] = time() + 300;
                     $_SESSION['pending_user_id'] = $user['id'];
                     $_SESSION['pending_username'] = $user['username'];
-                    $_SESSION['pending_user_role'] = $user['role_name']; 
+                    $_SESSION['pending_user_role'] = $user['role'];
 
+                    // Send OTP via PHPMailer
                     $mail = new PHPMailer(true);
                     try {
                         $mail->isSMTP();
                         $mail->Host       = 'smtp.gmail.com';
                         $mail->SMTPAuth   = true;
                         $mail->Username   = 'vbaay89@gmail.com';
-                        $mail->Password   = 'vthz porq dnhj frdc'; 
+                        $mail->Password   = 'vthz porq dnhj frdc';
                         $mail->SMTPSecure = PHPMailer::ENCRYPTION_STARTTLS;
                         $mail->Port       = 587;
 
@@ -69,18 +105,21 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                         header('Location: verify_otp.php');
                         exit();
                     } catch (Exception $e) {
-                        $error_message = "Mailer Error: {$mail->ErrorInfo}";
+                        error_log("Mailer Error: {$mail->ErrorInfo}");
+                        $error_message = "An error occurred while sending the OTP. Please try again later.";
                     }
                 }
             } else {
                 $error_message = "Invalid username or password.";
             }
-        } catch (PDOException $e) {
-            $error_message = "Database connection failed.";
+        } catch (Exception $e) {
+            error_log("Database Error: {$e->getMessage()}");
+            $error_message = "An internal error occurred. Please try again later.";
         }
     }
 }
 ?>
+
 
 <!DOCTYPE html>
 <html lang="en">
@@ -675,6 +714,25 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
               <h2 id="login-view-title">Select Your Role</h2>
             </div>
 
+            <!--
+            /***************************************************
+             * NEW: ADDED STATUS MESSAGE BLOCK HERE
+             ***************************************************/
+            -->
+            <?php if (!empty($status_message)): ?>
+                <div class="alert alert-<?= htmlspecialchars($status_message_type) ?> alert-dismissible fade show" role="alert">
+                    <i class="fas fa-info-circle me-2"></i>
+                    <?= htmlspecialchars($status_message) ?>
+                    <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                </div>
+            <?php endif; ?>
+            <!--
+            /***************************************************
+             * END NEW BLOCK
+             ***************************************************/
+            -->
+
+
             <div id="login-view-content">
 
               <div id="role-select-view" class="login-view" style="opacity: 1; display: block;">
@@ -822,11 +880,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
       });
 
       // Handle PHP error - show login form with error
-      <?php if (isset($error_message)): ?>
+      <?php if (isset($error_message) || !empty($status_message)): ?>
+        // ^-- MODIFIED this condition to also trigger on status messages
         const failedRole = '<?= htmlspecialchars($_POST['expected_role'] ?? 'User') ?>';
         
+        // Only set this if there's no status message, otherwise it's confusing
+        <?php if (isset($error_message)): ?>
         loginViewTitle.textContent = failedRole + ' Login';
         expectedRoleInput.value = failedRole;
+        <?php endif; ?>
 
         roleSelectView.style.display = 'none';
         roleSelectView.style.opacity = '0';
