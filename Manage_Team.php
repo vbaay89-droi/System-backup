@@ -367,29 +367,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     }
 }
 
-// --- Fetch all events/sports from DB (for display in Sports Participation section)
-function get_all_events_from_db($conn) {
-    $sql = "SELECT e.event_name, s.sport_name, s.category 
-            FROM events e 
-            JOIN sports s ON e.sport_id = s.sport_id 
-            ORDER BY s.sport_name, e.event_name";
-    
-    $result = $conn->query($sql);
-    
-    $events = [];
-    if ($result) {
-        while ($row = $result->fetch_assoc()) {
-            $events[] = [
-                'sport' => $row['sport_name'],
-                'event' => $row['event_name'],
-                'category' => $row['category']
-            ];
-        }
-    }
-    
-    return $events;
-}
-$allEvents = get_all_events_from_db($conn);
+
+
 
 // --- Calculate Global Statistics (Medals) ---
 

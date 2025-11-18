@@ -16,6 +16,8 @@ $message_type = '';
 // --- FIX: Logic to keep accordion open ---
 $event_pages = ['Manage_Games.php', 'Manage_Game_Events.php', 'Manage_Categories.php'];
 $is_event_page = in_array($current_page, $event_pages);
+$management_pages = ['teams.php', 'events.php', 'results.php', 'reports.php'];
+$is_management_page = in_array($current_page, $management_pages);
 // --- End Fix ---
 
 // --- ACTION LOGIC ---
@@ -64,18 +66,64 @@ if (isset($_POST['edit_event'])) {
 }
 
 // 3. DELETE EVENT
+// 3. DELETE EVENT (FIXED with Cascade Delete and Transaction)
 if (isset($_POST['delete_event'])) {
     $event_id = (int)$_POST['delete_event_id'];
-    $stmt = $conn->prepare("DELETE FROM game_events WHERE event_id = ?");
-    $stmt->bind_param("i", $event_id);
-     if ($stmt->execute()) {
-        $_SESSION['message'] = "Game Event deleted successfully.";
+
+    $conn->begin_transaction(); // Start transaction
+
+    try {
+        // 1. Find all child categories (L3) linked to this event (L2)
+        $stmt_find_cats = $conn->prepare("SELECT category_id FROM categories WHERE event_id = ?");
+        $stmt_find_cats->bind_param("i", $event_id);
+        $stmt_find_cats->execute();
+        $result_cats = $stmt_find_cats->get_result();
+        
+        $category_ids = [];
+        while ($row = $result_cats->fetch_assoc()) {
+            $category_ids[] = $row['category_id'];
+        }
+        $stmt_find_cats->close();
+
+        // 2. If child categories exist, delete their associated results (from results table)
+        if (!empty($category_ids)) {
+            // Create placeholders for the IN clause (e.g., ?,?,?)
+            $placeholders = implode(',', array_fill(0, count($category_ids), '?'));
+            // Define data types for bind_param (e.g., "iii")
+            $types = str_repeat('i', count($category_ids));
+
+            // Delete from results
+            $stmt_del_results = $conn->prepare("DELETE FROM results WHERE category_id IN ($placeholders)");
+            // Use splat operator (...) to pass array elements as individual arguments
+            $stmt_del_results->bind_param($types, ...$category_ids); 
+            $stmt_del_results->execute();
+            $stmt_del_results->close();
+
+            // 3. Now, delete the child categories (L3) themselves
+            $stmt_del_cats = $conn->prepare("DELETE FROM categories WHERE event_id = ?");
+            $stmt_del_cats->bind_param("i", $event_id);
+            $stmt_del_cats->execute();
+            $stmt_del_cats->close();
+        }
+
+        // 4. Finally, delete the main event (L2)
+        $stmt_del_event = $conn->prepare("DELETE FROM game_events WHERE event_id = ?");
+        $stmt_del_event->bind_param("i", $event_id);
+        $stmt_del_event->execute();
+        $stmt_del_event->close();
+
+        // 5. If all queries succeeded, commit the transaction
+        $conn->commit();
+        $_SESSION['message'] = "Game Event and all its associated categories/results were deleted successfully.";
         $_SESSION['message_type'] = 'success';
-    } else {
-        $_SESSION['message'] = ($conn->errno == 1451) ? "Error: Cannot delete. This event has categories linked to it." : "Error: " . $stmt->error;
+
+    } catch (mysqli_sql_exception $e) {
+        // 6. If any query failed, roll back all changes
+        $conn->rollback();
+        $_SESSION['message'] = "Error deleting event: " . $e->getMessage();
         $_SESSION['message_type'] = 'danger';
     }
-    $stmt->close();
+
     header("Location: Manage_Game_Events.php");
     exit();
 }
@@ -311,6 +359,22 @@ if (isset($_SESSION['message'])) {
             .user-dropdown .dropdown-toggle .user-name { display: none; }
             .user-dropdown .dropdown-toggle img { margin-right: 0; }
         }
+
+        .user-dropdown .dropdown-toggle:hover {
+            background-color: rgba(255, 255, 255, 0.1);
+        }
+
+        /* This is the new class for your Font Awesome icon */
+        .navbar-profile-icon {
+            width: 36px;
+            height: 36px;
+            font-size: 36px;
+            text-align: center;
+            line-height: 1;
+            border-radius: 50%;
+            margin-right: 10px;
+            color: rgba(255, 255, 255, 0.8);
+        }
     </style>
 </head>
 <body>
@@ -329,7 +393,7 @@ if (isset($_SESSION['message'])) {
             </button>
             <div class="dropdown user-dropdown ms-auto me-2 me-lg-0">
                 <a href="#" class="dropdown-toggle" id="userDropdown" data-bs-toggle="dropdown" aria-expanded="false">
-                    <img src="images/default_avatar.png" alt="User Avatar">
+                    <i class="fas fa-user-circle navbar-profile-icon"></i>
                     <span class="user-name d-none d-lg-inline"><?= htmlspecialchars($name); ?></span>
                 </a>
                 <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="userDropdown">
@@ -354,13 +418,14 @@ if (isset($_SESSION['message'])) {
                 </a>
             </li>
 
+            <!-- ACCORDION MENU -->
             <li class="nav-item">
                 <a class="nav-link <?php if ($is_event_page) echo 'active'; ?>" data-bs-toggle="collapse" href="#eventsCollapse" role="button" aria-expanded="<?php echo $is_event_page ? 'true' : 'false'; ?>" aria-controls="eventsCollapse">
                     <i class="fas fa-calendar-alt me-2"></i> <span>Manage Events</span> <i class="fas fa-chevron-down ms-auto sidebar-chevron"></i>
                 </a>
                 <div class="collapse <?php if ($is_event_page) echo 'show'; ?>" id="eventsCollapse">
                     <ul class="sub-menu">
-                        <li class="nav-item">
+                        <li class="nav-item"> 
                             <a class="nav-link <?php if ($current_page == 'Manage_Games.php') echo 'active'; ?>" href="Manage_Games.php">
                                 <span>Games (L1)</span>
                             </a>
@@ -378,10 +443,45 @@ if (isset($_SESSION['message'])) {
                     </ul>
                 </div>
             </li>
-            <li class="nav-item">
-                <a class="nav-link <?php if ($current_page == 'Manage_Team.php') echo 'active'; ?>" href="Manage_Team.php">
-                    <i class="fas fa-users me-2"></i> <span>Manage Teams</span>
+            <!-- END ACCORDION MENU --> 
+
+           <li class="nav-item">
+                <a class="nav-link <?php if ($is_management_page) echo 'active'; ?>" data-bs-toggle="collapse" href="#teamsCollapse" role="button" aria-expanded="<?php echo $is_management_page ? 'true' : 'false'; ?>" aria-controls="teamsCollapse">
+                    <i class="fas fa-users me-2"></i> <span>Manage Teams</span> <i class="fas fa-chevron-down ms-auto sidebar-chevron"></i>
                 </a>
+                
+                <div class="collapse <?php if ($is_management_page) echo 'show'; ?>" id="teamsCollapse">
+                    <ul class="sub-menu">
+                        
+                        <li class="text-muted" style="padding: 10px 25px 5px 60px; margin-top: 5px; font-size: 0.75rem; font-weight: 600; color: rgba(255, 255, 255, 0.4); text-transform: uppercase; letter-spacing: 1px;">
+                            Management
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link <?php if ($current_page == 'teams.php') echo 'active'; ?>" href="sd/teams.php">
+                                <span>Manage Teams</span>
+                            </a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link <?php if ($current_page == 'events.php') echo 'active'; ?>" href="sd/events.php">
+                                <span>Manage Events (L1-L3)</span>
+                            </a>
+                        </li>
+                        
+                        <li class="text-muted" style="padding: 10px 25px 5px 60px; margin-top: 10px; font-size: 0.75rem; font-weight: 600; color: rgba(255, 255, 255, 0.4); text-transform: uppercase; letter-spacing: 1px;">
+                            Tallying
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link <?php if ($current_page == 'results.php') echo 'active'; ?>" href="sd/results.php">
+                                <span>Approve Results</span>
+                            </a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link <?php if ($current_page == 'reports.php') echo 'active'; ?>" href="sd/reports.php">
+                                <span>Medal Reports</span>
+                            </a>
+                        </li>
+                    </ul>
+                </div>
             </li>
             <li class="nav-item">
                 <a class="nav-link <?php if ($current_page == 'Manage_Users.php') echo 'active'; ?>" href="Manage_Users.php">

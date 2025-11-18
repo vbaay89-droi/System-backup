@@ -16,6 +16,8 @@ $message_type = '';
 // --- FIX: Logic to keep accordion open ---
 $event_pages = ['Manage_Games.php', 'Manage_Game_Events.php', 'Manage_Categories.php'];
 $is_event_page = in_array($current_page, $event_pages);
+$management_pages = ['teams.php', 'events.php', 'results.php', 'reports.php'];
+$is_management_page = in_array($current_page, $management_pages);
 // --- End Fix ---
 
 // --- ACTION LOGIC ---
@@ -280,6 +282,23 @@ if (isset($_SESSION['message'])) {
             .user-dropdown .dropdown-toggle .user-name { display: none; }
             .user-dropdown .dropdown-toggle img { margin-right: 0; }
         }
+        .user-dropdown .dropdown-toggle:hover {
+            background-color: rgba(255, 255, 255, 0.1);
+        }
+
+        /* This is the new class for your Font Awesome icon */
+        .navbar-profile-icon {
+            width: 36px;
+            height: 36px;
+            font-size: 36px;
+            text-align: center;
+            line-height: 1;
+            border-radius: 50%;
+            margin-right: 10px;
+            color: rgba(255, 255, 255, 0.8);
+        }
+
+
     </style>
 </head>
 <body>
@@ -298,14 +317,14 @@ if (isset($_SESSION['message'])) {
             </button>
             <div class="dropdown user-dropdown ms-auto me-2 me-lg-0">
                 <a href="#" class="dropdown-toggle" id="userDropdown" data-bs-toggle="dropdown" aria-expanded="false">
-                    <img src="images/default_avatar.png" alt="User Avatar">
+                    <i class="fas fa-user-circle navbar-profile-icon"></i>
                     <span class="user-name d-none d-lg-inline"><?= htmlspecialchars($name); ?></span>
                 </a>
                 <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="userDropdown">
                     <li><a class="dropdown-item" href="admin_profile.php"><i class="fas fa-user-circle"></i> Profile</a></li>
                     <li><a class="dropdown-item" href="Tournament_Manager_page.php" target="_blank"><i class="fas fa-globe"></i> View Public Site</a></li>
                     <li><hr class="dropdown-divider"></li>
-                    <li><a class="dropdown-item text-danger" href="logout.php"><i class="fas fa-sign-out-alt"></i> Logout</a></li>
+                    <li><a class="dropdown-item text-danger" href="login.php"><i class="fas fa-sign-out-alt"></i> Logout</a></li>
                 </ul>
             </div>
         </div>
@@ -323,13 +342,14 @@ if (isset($_SESSION['message'])) {
                 </a>
             </li>
 
+            <!-- ACCORDION MENU -->
             <li class="nav-item">
                 <a class="nav-link <?php if ($is_event_page) echo 'active'; ?>" data-bs-toggle="collapse" href="#eventsCollapse" role="button" aria-expanded="<?php echo $is_event_page ? 'true' : 'false'; ?>" aria-controls="eventsCollapse">
                     <i class="fas fa-calendar-alt me-2"></i> <span>Manage Events</span> <i class="fas fa-chevron-down ms-auto sidebar-chevron"></i>
                 </a>
                 <div class="collapse <?php if ($is_event_page) echo 'show'; ?>" id="eventsCollapse">
                     <ul class="sub-menu">
-                        <li class="nav-item">
+                        <li class="nav-item"> 
                             <a class="nav-link <?php if ($current_page == 'Manage_Games.php') echo 'active'; ?>" href="Manage_Games.php">
                                 <span>Games (L1)</span>
                             </a>
@@ -347,10 +367,45 @@ if (isset($_SESSION['message'])) {
                     </ul>
                 </div>
             </li>
-            <li class="nav-item">
-                <a class="nav-link <?php if ($current_page == 'Manage_Team.php') echo 'active'; ?>" href="Manage_Team.php">
-                    <i class="fas fa-users me-2"></i> <span>Manage Teams</span>
+            <!-- END ACCORDION MENU --> 
+
+           <li class="nav-item">
+                <a class="nav-link <?php if ($is_management_page) echo 'active'; ?>" data-bs-toggle="collapse" href="#teamsCollapse" role="button" aria-expanded="<?php echo $is_management_page ? 'true' : 'false'; ?>" aria-controls="teamsCollapse">
+                    <i class="fas fa-users me-2"></i> <span>Manage Teams</span> <i class="fas fa-chevron-down ms-auto sidebar-chevron"></i>
                 </a>
+                
+                <div class="collapse <?php if ($is_management_page) echo 'show'; ?>" id="teamsCollapse">
+                    <ul class="sub-menu">
+                        
+                        <li class="text-muted" style="padding: 10px 25px 5px 60px; margin-top: 5px; font-size: 0.75rem; font-weight: 600; color: rgba(255, 255, 255, 0.4); text-transform: uppercase; letter-spacing: 1px;">
+                            Management
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link <?php if ($current_page == 'teams.php') echo 'active'; ?>" href="sd/teams.php">
+                                <span>Manage Teams</span>
+                            </a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link <?php if ($current_page == 'events.php') echo 'active'; ?>" href="sd/events.php">
+                                <span>Manage Events (L1-L3)</span>
+                            </a>
+                        </li>
+                        
+                        <li class="text-muted" style="padding: 10px 25px 5px 60px; margin-top: 10px; font-size: 0.75rem; font-weight: 600; color: rgba(255, 255, 255, 0.4); text-transform: uppercase; letter-spacing: 1px;">
+                            Tallying
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link <?php if ($current_page == 'results.php') echo 'active'; ?>" href="sd/results.php">
+                                <span>Approve Results</span>
+                            </a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link <?php if ($current_page == 'reports.php') echo 'active'; ?>" href="sd/reports.php">
+                                <span>Medal Reports</span>
+                            </a>
+                        </li>
+                    </ul>
+                </div>
             </li>
             <li class="nav-item">
                 <a class="nav-link <?php if ($current_page == 'Manage_Users.php') echo 'active'; ?>" href="Manage_Users.php">
@@ -374,7 +429,7 @@ if (isset($_SESSION['message'])) {
             </li>
             
             <li class="nav-item mt-3">
-                <a class="nav-link text-danger" href="logout.php">
+                <a class="nav-link text-danger" href="login.php">
                     <i class="fas fa-sign-out-alt me-2"></i> <span>Logout</span>
                 </a>
             </li>

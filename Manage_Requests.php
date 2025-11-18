@@ -2,6 +2,14 @@
 session_start();
 require_once 'db_connect.php'; // DB connection
 
+// --- NEW: Load PHPMailer ---
+require __DIR__ . '/PHPMailer-master/src/Exception.php';
+require __DIR__ . '/PHPMailer-master/src/PHPMailer.php';
+require __DIR__ . '/PHPMailer-master/src/SMTP.php';
+
+use PHPMailer\PHPMailer\PHPMailer;
+use PHPMailer\PHPMailer\Exception;
+
 // Strict Role-Based Access Control
 if (!isset($_SESSION['logged_in']) || $_SESSION['logged_in'] !== true || !isset($_SESSION['role']) || $_SESSION['role'] !== 'Administrator') {
     header('Location: login.php');
@@ -10,64 +18,93 @@ if (!isset($_SESSION['logged_in']) || $_SESSION['logged_in'] !== true || !isset(
 
 $name = isset($_SESSION['username']) ? $_SESSION['username'] : 'Admin';
 $current_page = basename($_SERVER['PHP_SELF']);
+
+// --- Sidebar Active State Logic (Unchanged) ---
+$event_pages = ['Manage_Games.php', 'Manage_Game_Events.php', 'Manage_Categories.php'];
+$is_event_page = in_array($current_page, $event_pages);
+
 $message = '';
 $message_type = '';
 
-// --- ACTION LOGIC (APPROVE / REJECT) ---
+// --- ACTION LOGIC (APPROVE / REJECT / RESET) ---
 
-// 1. APPROVE REQUEST
+// 1. APPROVE REQUEST (REWRITTEN)
 if (isset($_GET['action']) && $_GET['action'] == 'approve' && isset($_GET['id'])) {
-    $request_id = (int)$_GET['id'];
+    $user_id = (int)$_GET['id'];
     
-    // Use a transaction to ensure both operations succeed or fail together
     $conn->begin_transaction();
     
     try {
-        // Step 1: Get the request details
-        $stmt_get = $conn->prepare("SELECT full_name, username, requested_role FROM account_requests WHERE request_id = ? AND status = 'pending'");
-        $stmt_get->bind_param("i", $request_id);
+        // Step 1: Get the user's details (from 'users' table)
+        $stmt_get = $conn->prepare("SELECT full_name, email FROM users WHERE id = ? AND is_approved = 0");
+        $stmt_get->bind_param("i", $user_id);
         $stmt_get->execute();
         $result = $stmt_get->get_result();
         
         if ($result->num_rows == 1) {
-            $request = $result->fetch_assoc();
+            $user = $result->fetch_assoc();
+            $user_email = $user['email'];
+            $user_full_name = $user['full_name'];
             
-            // Set a default password
-            $default_password = 'password123'; // User must be told to change this
-            $hashed_password = password_hash($default_password, PASSWORD_DEFAULT);
-            $status = 'active'; // Or 'pending' if you want them to confirm email, etc.
-            
-            // Step 2: Create the user in the 'users' table
-            $stmt_create = $conn->prepare("INSERT INTO users (full_name, username, password, role, status) VALUES (?, ?, ?, ?, ?)");
-            $stmt_create->bind_param("sssss", $request['full_name'], $request['username'], $hashed_password, $request['requested_role'], $status);
-            $stmt_create->execute();
-            
-            // Step 3: Update the request status
-            $stmt_update = $conn->prepare("UPDATE account_requests SET status = 'approved' WHERE request_id = ?");
-            $stmt_update->bind_param("i", $request_id);
+            // Step 2: Approve the user (set is_approved = 1)
+            $stmt_update = $conn->prepare("UPDATE users SET is_approved = 1 WHERE id = ?");
+            $stmt_update->bind_param("i", $user_id);
             $stmt_update->execute();
             
-            // If all queries succeeded, commit the transaction
-            $conn->commit();
-            $_SESSION['message'] = "Request for '{$request['username']}' approved. User account created.";
-            $_SESSION['message_type'] = 'success';
+            // Step 3: Send the "Account Approved" email
+            $mail = new PHPMailer(true);
+            try {
+                // --- Email Server Settings (Check these!) ---
+                $mail->isSMTP();
+                $mail->Host       = 'smtp.gmail.com';
+                $mail->SMTPAuth   = true;
+                $mail->Username   = 'vbaay89@gmail.com'; // Your email
+                $mail->Password   = 'vthz porq dnhj frdc'; // Your App Password
+                $mail->SMTPSecure = PHPMailer::ENCRYPTION_STARTTLS;
+                $mail->Port       = 587;
+
+                $mail->setFrom('vbaay89@gmail.com', 'PIT Sports Tallying');
+                $mail->addAddress($user_email, $user_full_name); 
+
+                $mail->isHTML(true);
+                $mail->Subject = 'Your Account has been Approved!';
+                $mail->Body    = "
+                    <h2>Congratulations, " . htmlspecialchars($user_full_name) . "!</h2>
+                    <p>Your account for the PIT Sports Tallying system has been approved by an administrator.</p>
+                    <p>You can now log in using your email and the password you created during registration.</p>
+                    <p>
+                        <a href='http://{$_SERVER['HTTP_HOST']}/LOGIN_CAPSTONE/login.php' style='padding: 10px 15px; background-color: #007bff; color: white; text-decoration: none; border-radius: 5px;'>
+                            Login Here
+                        </a>
+                    </p>
+                    <p>Thank you,<br>The PIT Sports Tallying Team</p>
+                ";
+
+                $mail->send();
+                
+                // Commit DB changes *after* email is sent
+                $conn->commit();
+                $_SESSION['message'] = "User '{$user_email}' approved. An email notification has been sent.";
+                $_SESSION['message_type'] = 'success';
+
+            } catch (Exception $e_mail) {
+                // Email failed, but we should still approve the user.
+                // Commit the DB change and show a warning.
+                $conn->commit();
+                error_log("Mailer Error (Approval Email): {$mail->ErrorInfo}");
+                $_SESSION['message'] = "User '{$user_email}' approved, but the notification email could not be sent. Please contact them manually.";
+                $_SESSION['message_type'] = 'warning';
+            }
             
         } else {
             // Request not found or already processed
-            throw new Exception("Request not found or already processed.");
+            throw new Exception("User not found or already approved.");
         }
 
     } catch (Exception $e) {
-        // An error occurred, roll back the transaction
+        // A database error occurred
         $conn->rollback();
-        // Check for duplicate username error (MySQL error code 1062)
-        if ($conn->errno == 1062) {
-             $_SESSION['message'] = "Error: A user with that username already exists.";
-             // Set the request to 'rejected' to prevent it from being processed again
-             $conn->query("UPDATE account_requests SET status = 'rejected' WHERE request_id = $request_id");
-        } else {
-            $_SESSION['message'] = "An error occurred: " . $e->getMessage();
-        }
+        $_SESSION['message'] = "A database error occurred: " . $e->getMessage();
         $_SESSION['message_type'] = 'danger';
     }
     
@@ -75,18 +112,19 @@ if (isset($_GET['action']) && $_GET['action'] == 'approve' && isset($_GET['id'])
     exit();
 }
 
-// 2. REJECT REQUEST
+// 2. REJECT REQUEST (REWRITTEN)
 if (isset($_GET['action']) && $_GET['action'] == 'reject' && isset($_GET['id'])) {
-    $request_id = (int)$_GET['id'];
+    $user_id = (int)$_GET['id'];
     
-    $stmt = $conn->prepare("UPDATE account_requests SET status = 'rejected' WHERE request_id = ? AND status = 'pending'");
-    $stmt->bind_param("i", $request_id);
+    // We DELETE the user record entirely, but only if it's still pending
+    $stmt = $conn->prepare("DELETE FROM users WHERE id = ? AND is_approved = 0");
+    $stmt->bind_param("i", $user_id);
     
     if ($stmt->execute() && $stmt->affected_rows > 0) {
-        $_SESSION['message'] = "Request has been rejected.";
+        $_SESSION['message'] = "Request has been rejected and the user record deleted.";
         $_SESSION['message_type'] = 'success';
     } else {
-        $_SESSION['message'] = "Error: Could not process rejection or request already processed.";
+        $_SESSION['message'] = "Error: Could not process rejection or user was already processed.";
         $_SESSION['message_type'] = 'danger';
     }
     $stmt->close();
@@ -94,17 +132,64 @@ if (isset($_GET['action']) && $_GET['action'] == 'reject' && isset($_GET['id']))
     exit();
 }
 
+// 3. RESET PASSWORD (UPDATED)
+if (isset($_GET['action']) && $_GET['action'] == 'reset' && isset($_GET['id'])) {
+    $user_id = (int)$_GET['id']; // This is now the 'id' from the 'users' table
+    
+    try {
+        // Step 1: Get the email (username) from the 'users' table
+        $stmt_get = $conn->prepare("SELECT email FROM users WHERE id = ?");
+        $stmt_get->bind_param("i", $user_id);
+        $stmt_get->execute();
+        $result = $stmt_get->get_result();
+        
+        if ($result->num_rows == 1) {
+            $user = $result->fetch_assoc();
+            $email = $user['email'];
+            
+            // Step 2: Generate new random password
+            $new_password = bin2hex(random_bytes(8));
+            $hashed_password = password_hash($new_password, PASSWORD_DEFAULT);
+            
+            // Step 3: Update the password in the 'users' table
+            $stmt_update = $conn->prepare("UPDATE users SET password = ? WHERE id = ?");
+            // Bind password hash (string) and id (integer)
+            $stmt_update->bind_param("si", $hashed_password, $user_id);
+            $stmt_update->execute();
+            
+            if ($stmt_update->affected_rows == 1) {
+                $_SESSION['message'] = "Password for '{$email}' reset. Their NEW one-time password is: $new_password";
+                $_SESSION['message_type'] = 'success';
+            } else {
+                throw new Exception("Password was not changed (it might be the same as the old one).");
+            }
+        } else {
+            throw new Exception("Could not find user.");
+        }
+        
+    } catch (Exception $e) {
+        $_SESSION['message'] = "An error occurred: " . $e->getMessage();
+        $_SESSION['message_type'] = 'danger';
+    }
+    
+    header("Location: Manage_Requests.php");
+    exit();
+}
+// --- END ACTION LOGIC ---
 
-// 3. FETCH REQUESTS (READ)
+
+// 4. FETCH DATA (REWRITTEN)
 $pending_requests = [];
 $processed_requests = [];
 
-$result_pending = $conn->query("SELECT * FROM account_requests WHERE status = 'pending' ORDER BY created_at DESC");
+// Get PENDING users (is_approved = 0)
+$result_pending = $conn->query("SELECT id, full_name, email, role, created_at FROM users WHERE is_approved = 0 ORDER BY created_at DESC");
 if ($result_pending) {
     $pending_requests = $result_pending->fetch_all(MYSQLI_ASSOC);
 }
 
-$result_processed = $conn->query("SELECT * FROM account_requests WHERE status != 'pending' ORDER BY created_at DESC LIMIT 20");
+// Get PROCESSED users (is_approved = 1)
+$result_processed = $conn->query("SELECT id, full_name, email, role, created_at FROM users WHERE is_approved = 1 ORDER BY created_at DESC LIMIT 20");
 if ($result_processed) {
     $processed_requests = $result_processed->fetch_all(MYSQLI_ASSOC);
 }
@@ -126,8 +211,9 @@ if (isset($_SESSION['message'])) {
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" rel="stylesheet">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=Poppins:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-    <link href="css/admin_style.css" rel="stylesheet"> <style>
-        /* Copy all necessary styles from admin_dashboard.php */
+    <link href="css/admin_style.css" rel="stylesheet"> 
+    <style>
+        /* Your CSS is UNCHANGED */
         :root {
             --primary-gradient: linear-gradient(135deg, #7451eb 0%, #3498db 100%);
             --sidebar-width: 260px;
@@ -183,7 +269,53 @@ if (isset($_SESSION['message'])) {
         .sidebar-nav .nav-link:hover { color: white; background: rgba(255, 255, 255, 0.05); border-left-color: #1abc9c; }
         .sidebar-nav .nav-link.active { color: white; background: rgba(255, 255, 255, 0.1); border-left-color: #3498db; font-weight: 600; }
         .main-content { flex: 1 0 auto; padding: 30px; margin-top: var(--header-height); margin-left: var(--sidebar-width); transition: margin-left var(--transition); min-height: calc(100vh - var(--header-height)); }
-        footer { flex-shrink: 0; background: #2c3e50 !important; box-shadow: 0 -2px 10px rgba(0,0,0,0.1); margin-left: var(--sidebar-width); transition: margin-left var(--transition); position: relative; z-index: 1041; }
+                footer {
+            flex-shrink: 0;
+            background: #2c3e50 !important;
+            box-shadow: 0 -2px 10px rgba(0,0,0,0.1);
+            padding-left: var(--sidebar-width); /* <-- MODIFIED */
+            transition: padding-left var(--transition); /* <-- MODIFIED */
+            position: relative;
+            z-index: 1041;
+        }
+                .sidebar.minimized ~ footer {
+            padding-left: var(--sidebar-min-width); /* <-- MODIFIED */
+        }
+
+        /* --- UI FIX: Added Toggle Styles --- */
+        .sidebar.toggled {
+            width: var(--sidebar-min-width);
+        }
+        .sidebar.toggled .nav-link span,
+        .sidebar.toggled .sidebar-chevron,
+        .sidebar.toggled .sub-menu {
+            display: none;
+        }
+        .sidebar.toggled .nav-link {
+            justify-content: center;
+        }
+        .sidebar.toggled .nav-link i {
+            margin-right: 0;
+        }
+        .main-content.toggled,
+        footer.toggled {
+            margin-left: var(--sidebar-min-width);
+        }
+        /* Mobile responsive toggle */
+        @media (max-width: 991.98px) {
+            .sidebar {
+                width: 0;
+                left: -50px; /* Hide completely */
+            }
+            .sidebar.mobile-show {
+                width: var(--sidebar-width);
+                left: 0;
+            }
+            .main-content, footer {
+                margin-left: 0;
+            }
+        }
+        /* --- End Fix --- */
     </style>
 </head>
 <body>
@@ -215,77 +347,91 @@ if (isset($_SESSION['message'])) {
         </div>
     </nav>
 
-    <div class="sidebar" id="sidebar">
-        <button id="sidebarToggle" title="Toggle Sidebar">
+    <div class="sidebar" id="sidebar"> <button id="sidebarToggle" title="Toggle Sidebar">
             <i class="fas fa-bars"></i>
         </button>
         
         <ul class="nav flex-column sidebar-nav">
             <li class="nav-item">
-                <a class="nav-link" href="admin_dashboard.php">
+                <a class="nav-link <?php if ($current_page == 'admin_dashboard.php') echo 'active'; ?>" href="admin_dashboard.php">
                     <i class="fas fa-tachometer-alt me-2"></i> <span>Dashboard</span>
                 </a>
+            </li>
+
             <li class="nav-item">
-                <a class="nav-link <?php if ($is_event_page) echo 'active'; ?>" data-bs-toggle="collapse" href="#eventsCollapse" role="button" aria-expanded="<?php echo $is_event_page ? 'true' : 'false'; ?>" aria-controls="eventsCollapse">
-                    <i class="fas fa-calendar-alt me-2"></i> <span>Manage Events</span> <i class="fas fa-chevron-down ms-auto sidebar-chevron"></i>
+                <a class="nav-link <?php if ($is_management_page) echo 'active'; ?>" data-bs-toggle="collapse" href="#teamsCollapse" role="button" aria-expanded="<?php echo $is_management_page ? 'true' : 'false'; ?>" aria-controls="teamsCollapse">
+                    <i class="fas fa-users me-2"></i> <span>Manage Colleges/Events</span> <i class="fas fa-chevron-down ms-auto sidebar-chevron"></i>
                 </a>
-                <div class="collapse <?php if ($is_event_page) echo 'show'; ?>" id="eventsCollapse">
+                
+                <div class="collapse <?php if ($is_management_page) echo 'show'; ?>" id="teamsCollapse">
                     <ul class="sub-menu">
+                        
+                        <li class="text-muted" style="padding: 10px 25px 5px 60px; margin-top: 5px; font-size: 0.75rem; font-weight: 600; color: rgba(255, 255, 255, 0.4); text-transform: uppercase; letter-spacing: 1px;">
+                            Management
+                        </li>
                         <li class="nav-item">
-                            <a class="nav-link <?php if ($current_page == 'Manage_Games.php') echo 'active'; ?>" href="Manage_Games.php">
-                                <span>Games (L1)</span>
+                            <a class="nav-link <?php if ($current_page == 'colleges.php') echo 'active'; ?>" href="sd/colleges.php">
+                                <span>Manage Colleges</span>
                             </a>
                         </li>
                         <li class="nav-item">
-                            <a class="nav-link <?php if ($current_page == 'Manage_Game_Events.php') echo 'active'; ?>" href="Manage_Game_Events.php">
-                                <span>Game Events (L2)</span>
+                            <a class="nav-link <?php if ($current_page == 'events.php') echo 'active'; ?>" href="sd/events.php">
+                                <span>Manage Events (L1-L3)</span>
+                            </a>
+                        </li>
+                        
+                        <li class="nav-item">
+                            <a class="nav-link <?php if ($current_page == 'Manage_Matches.php') echo 'active'; ?>" href="sd/Manage_Matches.php">
+                                <span>Manage Matches</span>
+                            </a>
+                        </li>
+                        
+                        <li class="text-muted" style="padding: 10px 25px 5px 60px; margin-top: 10px; font-size: 0.75rem; font-weight: 600; color: rgba(255, 255, 255, 0.4); text-transform: uppercase; letter-spacing: 1px;">
+                            Tallying
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link <?php if ($current_page == 'results.php') echo 'active'; ?>" href="sd/results.php">
+                                <span>Approve Results</span>
                             </a>
                         </li>
                         <li class="nav-item">
-                            <a class="nav-link <?php if ($current_page == 'Manage_Categories.php') echo 'active'; ?>" href="Manage_Categories.php">
-                                <span>Categories (L3)</span>
+                            <a class="nav-link <?php if ($current_page == 'reports.php') echo 'active'; ?>" href="sd/reports.php">
+                                <span>Medal Reports</span>
                             </a>
                         </li>
                     </ul>
                 </div>
             </li>
-            
-            </li>
             <li class="nav-item">
-                <a class="nav-link" href="Manage_Team.php">
-                    <i class="fas fa-users me-2"></i> <span>Manage Teams</span>
-                </a>
-            </li>
-            <li class="nav-item">
-                <a class="nav-link" href="Manage_Users.php">
+                <a class="nav-link <?php if ($current_page == 'Manage_Users.php') echo 'active'; ?>" href="Manage_Users.php">
                     <i class="fas fa-users-cog me-2"></i> <span>Manage Users</span>
                 </a>
             </li>
             <li class="nav-item">
-                <a class="nav-link" href="Manage_medals.php">
+                <a class="nav-link <?php if ($current_page == 'Manage_medals.php') echo 'active'; ?>" href="Manage_medals.php">
                     <i class="fas fa-medal me-2"></i> <span>Manage Medals</span>
                 </a>
             </li>
             <li class="nav-item">
-                <a class="nav-link" href="Manage_Requests.php">
+                <a class="nav-link <?php if ($current_page == 'Manage_Requests.php') echo 'active'; ?>" href="Manage_Requests.php">
                     <i class="fas fa-user-plus me-2"></i> <span>Account Requests</span>
                 </a>
             </li>
             <li class="nav-item">
-                <a class="nav-link" href="Manage_Viewreports.php">
+                <a class="nav-link <?php if ($current_page == 'Manage_Viewreports.php') echo 'active'; ?>" href="Manage_Viewreports.php">
                     <i class="fas fa-chart-line me-2"></i> <span>View Reports</span>
                 </a>
             </li>
             
-            <li class="nav-item mt-3"><span class="text-muted">Event Settings</span></li>
             <li class="nav-item mt-3">
-                <a class="nav-link text-danger" href="logout.php">
+                <a class="nav-link text-danger" href="login.php">
                     <i class="fas fa-sign-out-alt me-2"></i> <span>Logout</span>
                 </a>
             </li>
         </ul>
     </div>
-    <div class="main-content">
+    
+    <div class="main-content" id="mainContent">
         <div class="container-fluid">
             
             <h1 class="section-title mb-4">Manage Account Requests</h1>
@@ -307,8 +453,8 @@ if (isset($_SESSION['message'])) {
                             <thead class="table-light">
                                 <tr>
                                     <th>Full Name</th>
-                                    <th>Username</th>
-                                    <th>Requested Role</th>
+                                    <th>Email (Username)</th>
+                                    <th>Role</th>
                                     <th>Date Requested</th>
                                     <th>Actions</th>
                                 </tr>
@@ -317,14 +463,14 @@ if (isset($_SESSION['message'])) {
                                 <?php foreach ($pending_requests as $request): ?>
                                 <tr>
                                     <td><?= htmlspecialchars($request['full_name']) ?></td>
-                                    <td><?= htmlspecialchars($request['username']) ?></td>
-                                    <td><span class="badge bg-info text-dark"><?= htmlspecialchars($request['requested_role']) ?></span></td>
+                                    <td><?= htmlspecialchars($request['email']) ?></td>
+                                    <td><span class="badge bg-info text-dark"><?= htmlspecialchars($request['role']) ?></span></td>
                                     <td><?= date('M d, Y h:i A', strtotime($request['created_at'])) ?></td>
                                     <td>
-                                        <a href="Manage_Requests.php?action=approve&id=<?= $request['request_id'] ?>" class="btn btn-sm btn-success btn-action" title="Approve" onclick="return confirm('Are you sure you want to approve this request and create the user account?')">
+                                        <a href="Manage_Requests.php?action=approve&id=<?= $request['id'] ?>" class="btn btn-sm btn-success btn-action" title="Approve" onclick="return confirm('Are you sure you want to approve this user account?')">
                                             <i class="fas fa-check"></i> Approve
                                         </a>
-                                        <a href="Manage_Requests.php?action=reject&id=<?= $request['request_id'] ?>" class="btn btn-sm btn-danger btn-action" title="Reject" onclick="return confirm('Are you sure you want to reject this request?')">
+                                        <a href="Manage_Requests.php?action=reject&id=<?= $request['id'] ?>" class="btn btn-sm btn-danger btn-action" title="Reject" onclick="return confirm('Are you sure you want to REJECT and DELETE this user request?')">
                                             <i class="fas fa-times"></i> Reject
                                         </a>
                                     </td>
@@ -343,7 +489,7 @@ if (isset($_SESSION['message'])) {
 
             <div class="card">
                 <div class="card-header">
-                    <h5 class="mb-0">Processed Requests (Last 20)</h5>
+                    <h5 class="mb-0">Active Users (Last 20 Approved)</h5>
                 </div>
                 <div class="card-body">
                     <div class="table-responsive">
@@ -351,31 +497,34 @@ if (isset($_SESSION['message'])) {
                             <thead class="table-light">
                                 <tr>
                                     <th>Full Name</th>
-                                    <th>Username</th>
-                                    <th>Requested Role</th>
-                                    <th>Date Requested</th>
-                                    <th>Status</th>
+                                    <th>Email (Username)</th>
+                                    <th>Role</th>
+                                    <th>Date Approved</th>
+                                    <th>Actions</th>
                                 </tr>
                             </thead>
                             <tbody>
                                 <?php foreach ($processed_requests as $request): ?>
                                 <tr>
                                     <td><?= htmlspecialchars($request['full_name']) ?></td>
-                                    <td><?= htmlspecialchars($request['username']) ?></td>
-                                    <td><?= htmlspecialchars($request['requested_role']) ?></td>
+                                    <td><?= htmlspecialchars($request['email']) ?></td>
+                                    <td><?= htmlspecialchars($request['role']) ?></td>
                                     <td><?= date('M d, Y', strtotime($request['created_at'])) ?></td>
                                     <td>
-                                        <?php if ($request['status'] == 'approved'): ?>
-                                            <span class="badge bg-success">Approved</span>
-                                        <?php elseif ($request['status'] == 'rejected'): ?>
-                                            <span class="badge bg-danger">Rejected</span>
-                                        <?php endif; ?>
+                                        <span class="badge bg-success">Active</span>
+                                        
+                                        <a href="Manage_Requests.php?action=reset&id=<?= $request['id'] ?>" 
+                                           class="btn btn-sm btn-warning ms-2" 
+                                           title="Reset Password" 
+                                           onclick="return confirm('Are you sure you want to reset the password for this user? A new random password will be generated.')">
+                                            <i class="fas fa-key"></i>
+                                        </a>
                                     </td>
                                 </tr>
                                 <?php endforeach; ?>
                                 <?php if (empty($processed_requests)): ?>
                                 <tr>
-                                    <td colspan="5" class="text-center text-muted">No processed requests found.</td>
+                                    <td colspan="5" class="text-center text-muted">No active users found.</td>
                                 </tr>
                                 <?php endif; ?>
                             </tbody>
@@ -386,15 +535,75 @@ if (isset($_SESSION['message'])) {
 
         </div>
     </div>
-
-    <footer class="bg-dark text-white py-4">
+    <footer class="bg-dark text-white py-4" id="footer">
         </footer>
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    
     <script>
         document.addEventListener('DOMContentLoaded', function() {
-            // Sidebar toggle logic (copied from dashboard)
-            // ... (include all sidebar JS logic here) ...
+            // --- Declarations ---
+            const sidebarToggle = document.getElementById('sidebarToggle');
+            const sidebar = document.getElementById('sidebar');
+            const mainContent = document.getElementById('mainContent');
+            const footer = document.getElementById('footer');
+            const navbar = document.querySelector('.navbar'); // Added navbar selector
+            const mobileMenuToggle = document.getElementById('mobileMenuToggle');
+
+            // --- Desktop/Tablet Toggle ---
+            if (sidebarToggle) {
+                sidebarToggle.addEventListener('click', function() {
+                    sidebar.classList.toggle('toggled');
+                    mainContent.classList.toggle('toggled');
+                    footer.classList.toggle('toggled');
+                });
+            }
+
+            // --- Mobile Toggle ---
+            if (mobileMenuToggle) {
+                mobileMenuToggle.addEventListener('click', function() {
+                    sidebar.classList.toggle('mobile-show');
+                });
+            }
+
+            // --- Mobile Resize Logic (Unchanged) ---
+            let resizeTimer;
+            window.addEventListener('resize', function() {
+                clearTimeout(resizeTimer);
+                resizeTimer = setTimeout(function() {
+                    if (window.innerWidth > 992) {
+                        sidebar.classList.remove('show');
+                        // You were missing sidebarOverlay, I've removed the line
+                    }
+                }, 250);
+            });
+
+            // --- FIX SIDEBAR/FOOTER OVERLAP (Cleaned up) ---
+            if (sidebar && footer && navbar) {
+                
+                function adjustSidebarHeight() {
+                    // This logic should only apply to desktop view
+                    if (window.innerWidth <= 992) {
+                        sidebar.style.height = ''; // Reset to CSS default for mobile
+                        return;
+                    }
+
+                    const navbarHeight = navbar.offsetHeight;
+                    const footerTop = footer.getBoundingClientRect().top;
+                    const viewportHeight = window.innerHeight;
+                    
+                    const maxSidebarHeight = viewportHeight - navbarHeight;
+                    const availableHeight = footerTop - navbarHeight;
+                    const newHeight = Math.max(0, Math.min(maxSidebarHeight, availableHeight));
+                    
+                    sidebar.style.height = `${newHeight}px`;
+                }
+
+                window.addEventListener('scroll', adjustSidebarHeight, { passive: true });
+                window.addEventListener('resize', adjustSidebarHeight);
+                
+                setTimeout(adjustSidebarHeight, 100);
+            }
         });
     </script>
 </body>

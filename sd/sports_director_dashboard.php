@@ -3,36 +3,250 @@ session_start();
 // Use a relative path to your main db_connect.php
 require_once '../db_connect.php'; 
 
-// 1. SECURITY & ACCESS CONTROL (from your Task 1)
+// 1. SECURITY & ACCESS CONTROL
 if (!isset($_SESSION['role']) || $_SESSION['role'] !== 'Sports Director') {
     header('Location: ../login.php'); // Redirect to main login page
     exit();
 }
 
+// Ensure user_id is set
+if (!isset($_SESSION['user_id'])) {
+    die("Session error: User ID is not set. Please log in again.");
+}
+$user_id = $_SESSION['user_id']; // We need this for the logs
 $name = isset($_SESSION['username']) ? $_SESSION['username'] : 'Sports Director';
-$current_page = basename($_SERVER['PHP_SELF']); // This will be 'sports_director_dashboard.php'
+$current_page = basename($_SERVER['PHP_SELF']);
 
-// Helper function for logging actions
-// (We'll use this in the other files)
-function log_activity($conn, $message) {
-    $stmt = $conn->prepare("INSERT INTO system_logs (log_message) VALUES (?)");
-    $stmt->bind_param("s", $message);
+// --- Page Specific PHP ---
+// ### MODIFIED: Fixed Stat Card Queries ###
+$total_events = $conn->query("SELECT COUNT(*) FROM game_events")->fetch_column();
+$total_teams = $conn->query("SELECT COUNT(*) FROM colleges")->fetch_column();
+// This now correctly reads from the 'categories' table
+$pending_results = $conn->query("SELECT COUNT(*) FROM categories WHERE status='Results Submitted'")->fetch_column();
+// This now correctly SUMS the medal counts from the 'categories' table
+$total_gold = $conn->query("SELECT SUM(gold_count) FROM categories WHERE status='Results Approved'")->fetch_column();
+$total_gold = $total_gold ?? 0; // Ensure it's 0 if NULL
+
+
+// --- NEW LOG PROCESSING FUNCTIONS ---
+
+/**
+ * Fetches a user's display name by their ID.
+ * Prioritizes 'full_name', then 'username'.
+ * Uses a static cache.
+ */
+function getUserNameById($conn, $id) {
+    static $user_cache = [];
+    if (isset($user_cache[$id])) {
+        return $user_cache[$id];
+    }
+    
+    // Select 'full_name' AND 'username' to get the best display name
+    $stmt = $conn->prepare("SELECT full_name, username FROM users WHERE id = ?"); 
+    $stmt->bind_param("i", $id);
     $stmt->execute();
-    $stmt->close();
+    $result = $stmt->get_result();
+    
+    if ($row = $result->fetch_assoc()) {
+        $name = "Unknown User (ID: $id)"; // Default fallback
+        
+        if (!empty($row['full_name'])) {
+            $name = $row['full_name'];
+        } 
+        else if (!empty($row['username'])) {
+            $name = $row['username'];
+        } 
+        
+        $user_cache[$id] = $name;
+        return $name;
+    }
+    
+    return "Unknown User (ID: $id)";
 }
 
-// --- Page Specific PHP (from your Task 2) ---
-// Fetch Stat Cards
-$total_events = $conn->query("SELECT COUNT(*) FROM events")->fetch_column();
-$total_teams = $conn->query("SELECT COUNT(*) FROM teams")->fetch_column();
-$pending_results = $conn->query("SELECT COUNT(*) FROM results WHERE status='Pending'")->fetch_column();
-$total_gold = $conn->query("SELECT COUNT(*) FROM results WHERE status='Approved' AND winner_gold_team_id IS NOT NULL")->fetch_column();
 
-// Fetch Recent Activity
+/**
+ * Fetches an event's name by its ID.
+ * Uses a static cache.
+ */
+function getEventNameById($conn, $id) {
+    static $event_cache = [];
+    if (isset($event_cache[$id])) {
+        return $event_cache[$id];
+    }
+
+    $stmt = $conn->prepare("SELECT event_name FROM game_events WHERE event_id = ?"); 
+    $stmt->bind_param("i", $id);
+    $stmt->execute();
+    $result = $stmt->get_result();
+    if ($row = $result->fetch_assoc()) {
+        $event_cache[$id] = $row['event_name'];
+        return $row['event_name'];
+    }
+    return "Unknown Event (ID: $id)";
+}
+
+/**
+ * Formats a raw log entry into a human-readable array.
+ */
+function formatLogEntry($conn, $log, $current_user_id) {
+    // Determine who did the action
+    $actor_name = "<strong>Unknown User</strong>";
+    if ($log['actor_user_id']) {
+         $actor_name = ($log['actor_user_id'] == $current_user_id) ? "<strong>You</strong>" : "<strong>" . htmlspecialchars(getUserNameById($conn, $log['actor_user_id'])) . "</strong>";
+    }
+   
+    // Decode the saved context
+    $context = json_decode($log['log_context'], true) ?? [];
+    
+    $message = "";
+    $icon = "fas fa-info-circle text-muted"; // Default icon
+    $time = date('M d, h:i A', strtotime($log['created_at']));
+
+    // --- THIS IS THE FIX ---
+    switch (trim($log['action_type'])) {
+        
+        // --- GAME (L1) ACTIONS ---
+        case 'CREATED_GAME':
+            $game_name = htmlspecialchars($context['game_name'] ?? 'a new game');
+            $message = "$actor_name created the game <strong>\"$game_name\"</strong>.";
+            $icon = "fas fa-plus-circle text-success";
+            break;
+        case 'UPDATED_GAME':
+            $game_name = htmlspecialchars($context['new_game_name'] ?? 'a game');
+            $message = "$actor_name updated the game <strong>\"$game_name\"</strong>.";
+            $icon = "fas fa-pencil-alt text-info";
+            break;
+        case 'DELETED_GAME':
+            $game_name = htmlspecialchars($context['deleted_game_name'] ?? 'a game');
+            $message = "$actor_name deleted the game <strong>\"$game_name\"</strong>.";
+            $icon = "fas fa-trash-alt text-danger";
+            break;
+
+        // --- EVENT (L2) ACTIONS ---
+        case 'CREATED_EVENT':
+            $event_name = htmlspecialchars($context['event_name'] ?? 'a new event');
+            $game_name = htmlspecialchars($context['parent_game_name'] ?? 'a game');
+            $message = "$actor_name created the event <strong>\"$event_name\"</strong> inside \"$game_name\".";
+            $icon = "fas fa-plus-circle text-success";
+            break;
+        case 'UPDATED_EVENT':
+            $event_name = htmlspecialchars($context['new_event_name'] ?? 'an event');
+            $message = "$actor_name updated the event <strong>\"$event_name\"</strong>.";
+            $icon = "fas fa-pencil-alt text-info";
+            break;
+        case 'DELETED_EVENT':
+            $event_name = htmlspecialchars($context['deleted_event_name'] ?? 'an event');
+            $message = "$actor_name deleted the event <strong>\"$event_name\"</strong>.";
+            $icon = "fas fa-trash-alt text-danger";
+            break;
+
+        // --- CATEGORY (L3) ACTIONS ---
+        case 'CREATED_CATEGORY':
+            $cat_name = htmlspecialchars($context['category_name'] ?? 'a new category');
+            $event_name = htmlspecialchars($context['parent_event_name'] ?? 'an event');
+            $message = "$actor_name created the category <strong>\"$cat_name\"</strong> for \"$event_name\".";
+            $icon = "fas fa-plus-circle text-success";
+            break;
+        case 'UPDATED_CATEGORY':
+            $cat_name = htmlspecialchars($context['new_category_name'] ?? 'a category');
+            $message = "$actor_name updated the category <strong>\"$cat_name\"</strong>.";
+            $icon = "fas fa-pencil-alt text-info";
+            break;
+        case 'DELETED_CATEGORY':
+            $cat_name = htmlspecialchars($context['deleted_category_name'] ?? 'a category');
+            $message = "$actor_name deleted the category <strong>\"$cat_name\"</strong>.";
+            $icon = "fas fa-trash-alt text-danger";
+            break;
+            
+        // ### NEWLY ADDED BLOCK TO FIX YOUR PROBLEM ###
+        // --- COLLEGE ACTIONS ---
+        case 'CREATED_COLLEGE':
+            $college_name = htmlspecialchars($context['college_name'] ?? 'a new college');
+            $message = "$actor_name created the college <strong>\"$college_name\"</strong>.";
+            $icon = "fas fa-university text-success";
+            break;
+        case 'UPDATED_COLLEGE':
+            $college_name = htmlspecialchars($context['college_name'] ?? 'a college');
+            $message = "$actor_name updated the college <strong>\"$college_name\"</strong>.";
+            $icon = "fas fa-pencil-alt text-info";
+            break;
+        case 'DELETED_COLLEGE':
+            $college_name = htmlspecialchars($context['deleted_college_name'] ?? 'a college');
+            $message = "$actor_name deleted the college <strong>\"$college_name\"</strong>.";
+            $icon = "fas fa-trash-alt text-danger";
+            break;
+        // ### END OF NEW BLOCK ###
+
+        // --- MANAGER ASSIGNMENT ACTIONS ---
+        case 'ASSIGNED_MANAGER':
+            $manager_name = htmlspecialchars($context['manager_name'] ?? 'a manager');
+            $event_name = htmlspecialchars($context['event_name'] ?? 'an event');
+            $message = "$actor_name assigned <strong>\"$manager_name\"</strong> to the event \"$event_name\".";
+            $icon = "fas fa-user-plus text-primary";
+            break;
+        case 'UNASSIGNED_MANAGER':
+            $event_name = htmlspecialchars($context['event_name'] ?? 'an event');
+            $message = "$actor_name unassigned the manager from <strong>\"$event_name\"</strong>.";
+            $icon = "fas fa-user-minus text-warning";
+            break;
+
+        // --- RESULT ACTIONS ---
+        case 'APPROVED_RESULT':
+            $event_name = htmlspecialchars($context['event_name'] ?? 'an event');
+            $message = "$actor_name approved the results for <strong>\"$event_name\"</strong>.";
+            $icon = "fas fa-check-double text-success";
+            break;
+        case 'REJECTED_RESULT':
+            $event_name = htmlspecialchars($context['event_name'] ?? 'an event');
+            $message = "$actor_name rejected the results for <strong>\"$event_name\"</strong>.";
+            $icon = "fas fa-times-circle text-warning";
+            break;
+        
+        // ### NEW: Added the Revoke action ###
+        case 'REVOKED_RESULT':
+            $event_name = htmlspecialchars($context['event_name'] ?? 'an event');
+            $message = "$actor_name **revoked** the approval for <strong>\"$event_name\"</strong>.";
+            $icon = "fas fa-undo text-danger";
+            break;
+
+        // --- FALLBACKS ---
+        default:
+            if (!empty($log['log_message']) && empty($log['action_type'])) {
+                 $message = htmlspecialchars($log['log_message']);
+                 $icon = "fas fa-archive text-muted";
+            } 
+            else if (!empty($log['action_type'])) {
+                 $message = "Action: <b>" . htmlspecialchars(trim($log['action_type'])) . "</b> by $actor_name";
+                 $icon = "fas fa-exclamation-triangle text-warning";
+            }
+            else {
+                 $message = "An unknown action was performed.";
+                 $icon = "fas fa-question-circle text-muted";
+            }
+            break;
+    }
+
+    return [
+        'icon' => $icon,
+        'message' => $message,
+        'time' => $time
+    ];
+}
+
+
+// --- Fetch Recent Activity (New Version) ---
 $logs = [];
+$processed_logs = [];
+$current_user_id = $user_id; 
+
 $result_logs = $conn->query("SELECT * FROM system_logs ORDER BY created_at DESC LIMIT 5");
 if ($result_logs) {
     $logs = $result_logs->fetch_all(MYSQLI_ASSOC);
+    foreach ($logs as $log) {
+        // Process each log into a human-readable format
+        $processed_logs[] = formatLogEntry($conn, $log, $current_user_id);
+    }
 }
 ?>
 <!DOCTYPE html>
@@ -219,7 +433,6 @@ if ($result_logs) {
             margin-right: 10px; 
             color: rgba(255,255,255,0.8);
         }
-        /* --- End of Accordion Styles --- */
     </style>
 </head>
 <body>
@@ -241,7 +454,7 @@ if ($result_logs) {
                     <li><a class="dropdown-item" href="../admin_profile.php"><i class="fas fa-user-circle"></i> Profile</a></li>
                     <li><a class="dropdown-item" href="../Tournament_Manager_page.php" target="_blank"><i class="fas fa-globe"></i> View Public Site</a></li>
                     <li><hr class="dropdown-divider"></li>
-                    <li><a class="dropdown-item text-danger" href="../login.php"><i class="fas fa-sign-out-alt"></i> Logout</a></li>
+                    <li><a class="dropdown-item text-danger" href="../logout.php"><i class="fas fa-sign-out-alt"></i> Logout</a></li>
                 </ul>
             </div>
         </div>
@@ -256,8 +469,8 @@ if ($result_logs) {
             </li>
             <li class="nav-item mt-3"><span class="nav-title">Management</span></li>
             <li class="nav-item">
-                <a class="nav-link <?= ($current_page == 'teams.php') ? 'active' : '' ?>" href="teams.php">
-                    <i class="fas fa-users me-2"></i> <span>Manage Teams</span>
+                <a class="nav-link <?= ($current_page == 'colleges.php') ? 'active' : '' ?>" href="colleges.php">
+                    <i class="fas fa-users me-2"></i> <span>Manage Colleges</span>
                 </a>
             </li>
             <li class="nav-item">
@@ -265,6 +478,18 @@ if ($result_logs) {
                     <i class="fas fa-calendar-alt me-2"></i> <span>Manage Events (L1-L3)</span>
                 </a>
             </li>
+            
+            <li class="nav-item">
+                <a class="nav-link <?= ($current_page == 'view_all_matches.php') ? 'active' : '' ?>" href="view_all_matches.php">
+                    <i class="fas fa-trophy me-2"></i> <span>View All Matches</span>
+                </a>
+            </li>
+            <li class="nav-item">
+                <a class="nav-link <?php if ($current_page == 'Manage_Viewreports.php') echo 'active'; ?>" href="../Manage_Viewreports.php">
+                    <i class="fas fa-chart-line me-2"></i> <span>View Reports</span>
+                </a>
+            </li>
+             
             
             <li class="nav-item mt-3"><span class="nav-title">Tallying</span></li>
             <li class="nav-item">
@@ -349,7 +574,7 @@ if ($result_logs) {
                                     <span class="badge bg-warning text-dark"><?= $pending_results ?> Pending</span>
                                 </a>
                                 <a href="events.php" class="list-group-item list-group-item-action">Manage Events & Assignments</a>
-                                <a href="teams.php" class="list-group-item list-group-item-action">Manage Teams</a>
+                                <a href="colleges.php" class="list-group-item list-group-item-action">Manage Colleges</a>
                                 <a href="reports.php" class="list-group-item list-group-item-action">View Medal Standings</a>
                             </div>
                         </div>
@@ -361,13 +586,19 @@ if ($result_logs) {
                         <div class="card-header"><h5 class="mb-0">Recent Activity</h5></div>
                         <div class="card-body">
                             <ul class="list-group list-group-flush">
-                                <?php if (empty($logs)): ?>
+                                <?php if (empty($processed_logs)): ?>
                                     <li class="list-group-item text-muted">No recent activity.</li>
                                 <?php endif; ?>
-                                <?php foreach ($logs as $log): ?>
-                                    <li class="list-group-item">
-                                        <small class="text-muted"><?= date('M d, h:i A', strtotime($log['created_at'])) ?></small><br>
-                                        <?= htmlspecialchars($log['log_message']) ?>
+                                
+                                <?php foreach ($processed_logs as $log_entry): ?>
+                                    <li class="list-group-item d-flex align-items-start py-3">
+                                        <i class="<?= $log_entry['icon'] ?> me-3 mt-1" style="width: 20px; text-align: center; font-size: 1.1rem;"></i>
+                                        
+                                        <div class="flex-grow-1">
+                                            <?= $log_entry['message'] ?> 
+                                            <br>
+                                            <small class="text-muted"><?= $log_entry['time'] ?></small> 
+                                        </div>
                                     </li>
                                 <?php endforeach; ?>
                             </ul>

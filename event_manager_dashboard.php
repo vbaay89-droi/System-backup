@@ -1,683 +1,496 @@
 <?php
 session_start();
+require_once 'config.php'; // Your DB connection
 
-// 1. DATABASE CONNECTION (MySQLi)
-require_once 'config.php';
-
-// 2. SESSION CHECK (Protected Page)
-if (
-    !isset($_SESSION['logged_in']) || 
-    $_SESSION['logged_in'] !== true || 
-    !isset($_SESSION['role']) || 
-    $_SESSION['role'] !== 'Event Manager'
-) {
+// 1. SECURITY & ACCESS CONTROL
+if (!isset($_SESSION['logged_in']) || $_SESSION['logged_in'] !== true || !isset($_SESSION['role']) || $_SESSION['role'] !== 'Event Manager') {
     header('Location: login.php');
     exit();
 }
 
-// 3. GET USER INFO FROM SESSION
-$user_id = $_SESSION['user_id'];
+$user_id = (int)$_SESSION['user_id'];
 $username = isset($_SESSION['username']) ? $_SESSION['username'] : 'Event Manager';
 $current_page = basename($_SERVER['PHP_SELF']);
 
-// 4. FORM HANDLING (MySQLi Syntax)
-$alert_message = '';
-if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-    if (isset($_POST['action'])) {
-        $action = $_POST['action'];
-        
-        try { // This is the 'try' from line 29
-            if ($action === 'save_category') {
-                $category_name = $_POST['category_name'];
-                $status = $_POST['status'];
-                $event_id = $_POST['event_id'];
-                $category_id = $_POST['category_id']; // Empty for "add"
+// --- 2. RECENT ACTIVITY & HELPER FUNCTIONS ---
 
-                if (empty($category_id)) {
-                    $stmt = $conn->prepare("INSERT INTO Categories (event_id, category_name, status) VALUES (?, ?, ?)");
-                    $stmt->bind_param("iss", $event_id, $category_name, $status); 
-                    $stmt->execute(); 
-                    $alert_message = "SUCCESS: Category '{$category_name}' was created!";
-                } else {
-                    $stmt = $conn->prepare("UPDATE Categories SET category_name = ?, status = ? WHERE category_id = ?");
-                    $stmt->bind_param("ssi", $category_name, $status, $category_id); 
-                    $stmt->execute(); 
-                    $alert_message = "SUCCESS: Category '{$category_name}' was updated!";
-                }
-                $stmt->close(); 
-
-            } 
-            
-            elseif ($action === 'submit_results_for_approval') { // Renamed action for clarity
-                $gold = $_POST['gold_winner_id'] ?: null;
-                $silver = $_POST['silver_winner_id'] ?: null;
-                $bronze = $_POST['bronze_winner_id'] ?: null;
-                $category_id = (int)$_POST['category_id'];
-                $manager_user_id = (int)$_SESSION['user_id']; // The EM's ID
-
-                // Use a transaction for safety
-                $conn->begin_transaction();
-                try {
-                    // 1. Insert a record into the 'results' table for the SD to approve
-                    // This is the correct action to perform
-                    $stmt_results = $conn->prepare(
-                        "INSERT INTO results 
-                         (category_id, submitted_by_user_id, status, winner_gold_team_id, winner_silver_team_id, winner_bronze_team_id, last_updated) 
-                         VALUES (?, ?, 'Pending', ?, ?, ?, NOW())
-                         ON DUPLICATE KEY UPDATE -- If they resubmit, update the pending entry
-                         submitted_by_user_id = VALUES(submitted_by_user_id),
-                         status = 'Pending',
-                         winner_gold_team_id = VALUES(winner_gold_team_id),
-                         winner_silver_team_id = VALUES(winner_silver_team_id),
-                         winner_bronze_team_id = VALUES(winner_bronze_team_id),
-                         last_updated = NOW(),
-                         notes = NULL, -- Clear any previous rejection notes
-                         approved_by_user_id = NULL,
-                         approved_at = NULL"
-                    );
-                    $stmt_results->bind_param("iiiii", $category_id, $manager_user_id, $gold, $silver, $bronze);
-                    $stmt_results->execute();
-                    $stmt_results->close();
-
-                    // 2. Update the category status to show it's awaiting approval
-                    $stmt_cat = $conn->prepare("UPDATE Categories SET status = 'Pending Approval' WHERE category_id = ?");
-                    $stmt_cat->bind_param("i", $category_id);
-                    $stmt_cat->execute();
-                    $stmt_cat->close();
-                    
-                    $conn->commit();
-                    $alert_message = "SUCCESS: Results have been submitted for approval!";
-
-                } catch (Exception $e) {
-                    $conn->rollback();
-                    $alert_message = "ERROR: Could not submit results. " . $e->getMessage();
-                    error_log($e->getMessage());
-                }
-            }
-            
-            // --- START OF FIX ---
-            // You were missing the 'catch' block for the 'try' on line 29
-        } catch (Exception $e) { 
-            $alert_message = "ERROR: Could not save data. Database error.";
-            error_log($e->getMessage()); 
-        }
-        // You were missing the closing brace for 'if (isset($_POST['action']))'
+/**
+ * Fetches a user's display name by their ID.
+ * (This is for the activity log)
+ */
+function getUserNameById_EM($conn, $id) {
+    static $user_cache = [];
+    if (isset($user_cache[$id])) {
+        return $user_cache[$id];
     }
-// You were missing the closing brace for 'if ($_SERVER['REQUEST_METHOD'] === 'POST')'
-} 
-// --- END OF FIX ---
-
-
-// 5. FETCH REAL DATA FROM DATABASE (MySQLi Syntax)
-
-// A. Fetch all Teams (for medal dropdowns)
-$teams = [];
-try {
     
-    // --- FIX #1: Changed 'college' to 'dean_name' ---
-    // This query was failing because the 'college' column does not exist.
-    // We are now fetching 'dean_name' which exists in your 'teams' table.
-    $team_stmt = $conn->prepare("SELECT team_id, team_name, dean_name FROM teams ORDER BY team_name");
-    $team_stmt->execute(); 
-    
-    $result = $team_stmt->get_result();
-    $teams = $result->fetch_all(MYSQLI_ASSOC); 
-    $team_stmt->close();
-
-} catch (Exception $e) { 
-    $alert_message = "ERROR: Could not load teams list.";
-    error_log($e->getMessage());
-}
-
-// B. Fetch this Manager's ASSIGNED data
-$managed_data = [];
-try {
-    $sql = "SELECT
-        g.game_name,
-        ge.event_id, ge.event_name,
-        c.category_id, c.category_name, c.status,
-        c.gold_winner_id, c.silver_winner_id, c.bronze_winner_id
-    FROM games g
-    JOIN game_events ge ON g.game_id = ge.game_id
-    LEFT JOIN categories c ON ge.event_id = c.event_id
-    WHERE ge.assigned_user_id = ?
-    ORDER BY g.game_name, ge.event_name, c.category_name";
-
-$stmt = $conn->prepare($sql);
-if (!$stmt) {
-    die("Prepare failed: (" . $conn->errno . ") " . $conn->error);
-}
-
-    
-    $stmt = $conn->prepare($sql);
-    $stmt->bind_param("i", $user_id); 
-    $stmt->execute(); 
-    
+    $stmt = $conn->prepare("SELECT username FROM users WHERE id = ?"); 
+    $stmt->bind_param("i", $id);
+    $stmt->execute();
     $result = $stmt->get_result();
-    $results = $result->fetch_all(MYSQLI_ASSOC);
-    $stmt->close();
-
-    if ($results) {
-        foreach ($results as $row) {
-            $game_name = $row['game_name'];
-            $event_id = $row['event_id'];
-            $event_name = $row['event_name'];
-
-            if (!isset($managed_data[$game_name])) {
-                $managed_data[$game_name] = [];
-            }
-            if (!isset($managed_data[$game_name][$event_id])) {
-                $managed_data[$game_name][$event_id] = [
-                    'event_id' => $event_id,
-                    'event_name' => $event_name,
-                    'categories' => []
-                ];
-            }
-            if ($row['category_id']) {
-                $managed_data[$game_name][$event_id]['categories'][] = [
-                    'category_id' => $row['category_id'],
-                    'category_name' => $row['category_name'],
-                    'status' => $row['status'],
-                    'gold_winner_id' => $row['gold_winner_id'],
-                    'silver_winner_id' => $row['silver_winner_id'],
-                    'bronze_winner_id' => $row['bronze_winner_id']
-                ];
-            }
-        }
+    
+    if ($row = $result->fetch_assoc()) {
+        $user_cache[$id] = $row['username'];
+        return $row['username'];
     }
-
-    foreach ($managed_data as $game_name => $events_by_id) {
-        $managed_data[$game_name] = array_values($events_by_id);
-    }
-
-} catch (Exception $e) { 
-    $alert_message = "ERROR: Could not load your assigned events.";
-    error_log($e->getMessage());
+    
+    return "Unknown User";
 }
 
+/**
+ * Formats a raw log entry into a human-readable array.
+ * (This is a simplified version for the Event Manager)
+ */
+function formatLogEntry_EM($conn, $log, $current_user_id) {
+    // Determine who did the action
+    // In this module, it will always be "You" since we filter by user_id
+    $actor_name = "<strong>You</strong>";
+   
+    // Decode the saved context
+    $context = json_decode($log['log_context'], true) ?? [];
+    
+    $message = "";
+    $icon = "fas fa-info-circle text-muted"; // Default icon
+    $time = date('M d, h:i A', strtotime($log['created_at']));
 
-// --- HELPER FUNCTIONS (Unchanged) ---
-function getTeamName($team_id, $teams) {
-    if ($team_id === null) return 'N/A';
-    foreach ($teams as $team) {
-        if ($team['team_id'] == $team_id) {
-            return htmlspecialchars($team['team_name']);
+    switch (trim($log['action_type'])) {
+        
+        // --- CATEGORY (L3) ACTIONS ---
+        case 'CREATED_CATEGORY':
+            $cat_name = htmlspecialchars($context['category_name'] ?? 'a new category');
+            $status_msg = "";
+            // Add the status if it was logged
+            if (!empty($context['status'])) {
+                $status_msg = " (Status: " . htmlspecialchars($context['status']) . ")";
+            }
+            $message = "$actor_name created the category <strong>\"$cat_name\"</strong>$status_msg.";
+            $icon = "fas fa-plus-circle text-success";
+            break;
+
+        case 'UPDATED_CATEGORY':
+            $cat_name = htmlspecialchars($context['new_category_name'] ?? 'a category');
+            $status_msg = "";
+            // Add the *new* status if it was logged
+            if (!empty($context['new_status'])) {
+                $status_msg = " and set status to <strong>" . htmlspecialchars($context['new_status']) . "</strong>";
+            }
+            $message = "$actor_name updated the category <strong>\"$cat_name\"</strong>$status_msg.";
+            $icon = "fas fa-pencil-alt text-info";
+            break;
+
+        case 'DELETED_CATEGORY':
+            $cat_name = htmlspecialchars($context['deleted_category_name'] ?? 'a category');
+            $message = "$actor_name deleted the category <strong>\"$cat_name\"</strong>.";
+            $icon = "fas fa-trash-alt text-danger";
+            break;
+
+        case 'SUBMITTED_RESULTS': // A likely action from other pages
+            $cat_name = htmlspecialchars($context['category_name'] ?? 'a category');
+            $message = "$actor_name submitted results for <strong>\"$cat_name\"</strong>.";
+            $icon = "fas fa-paper-plane text-primary";
+            break;
+            
+        // ### ADDED: New cases for match logging ###
+        case 'CREATED_MATCH':
+            $cat_name = htmlspecialchars($context['category_name'] ?? 'a category');
+            $message = "$actor_name created a new match in <strong>\"$cat_name\"</strong>.";
+            $icon = "fas fa-plus-circle text-success";
+            break;
+            
+        case 'UPDATED_MATCH':
+            $cat_name = htmlspecialchars($context['category_name'] ?? 'a category');
+            $status_msg = !empty($context['status']) ? " (Status: " . htmlspecialchars($context['status']) . ")" : "";
+            $message = "$actor_name updated a match in <strong>\"$cat_name\"</strong>$status_msg.";
+            $icon = "fas fa-pencil-alt text-info";
+            break;
+            
+        case 'DELETED_MATCH':
+            $cat_name = htmlspecialchars($context['category_name'] ?? 'a category');
+            $message = "$actor_name deleted a match from <strong>\"$cat_name\"</strong>.";
+            $icon = "fas fa-trash-alt text-danger";
+            break;
+        // ### END: New cases ###
+            
+        default:
+            if (!empty($log['action_type'])) {
+                 $message = "$actor_name performed an action: <strong>" . htmlspecialchars(trim($log['action_type'])) . "</strong>";
+                 $icon = "fas fa-info-circle text-muted";
+            } else {
+                 $message = "$actor_name performed an unknown action.";
+                 $icon = "fas fa-question-circle text-muted";
+            }
+            break;
+    }
+
+    return [
+        'icon' => $icon,
+        'message' => $message,
+        'time' => $time
+    ];
+}
+// Fetch this user's logs
+$processed_logs = [];
+$current_user_id = $user_id; 
+
+try {
+    $stmt_logs = $conn->prepare("SELECT * FROM system_logs WHERE actor_user_id = ? ORDER BY created_at DESC LIMIT 5");
+    $stmt_logs->bind_param("i", $current_user_id);
+    $stmt_logs->execute();
+    $result_logs = $stmt_logs->get_result();
+    
+    if ($result_logs) {
+        $logs = $result_logs->fetch_all(MYSQLI_ASSOC);
+        foreach ($logs as $log) {
+            // Process each log into a human-readable format
+            $processed_logs[] = formatLogEntry_EM($conn, $log, $current_user_id);
         }
     }
-    return 'Unknown';
-}
-
-function getCategoryStatusClass($status) {
-    switch (strtolower($status)) {
-        case 'upcoming': return 'bg-info';
-        case 'ongoing': return 'bg-success';
-        case 'completed': return 'bg-secondary';
-        case 'cancelled': return 'bg-danger';
-        case 'postponed': return 'bg-warning text-dark';
-        default: return 'bg-primary';
-    }
+    $stmt_logs->close();
+} catch (Exception $e) {
+    // If system_logs table doesn't exist, just show an empty log
+    $processed_logs = [];
+    error_log("Failed to fetch system logs: " . $e->getMessage());
 }
 ?>
 <!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>Event Manager Dashboard</title>
-    
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Event Manager Dashboard - PIT Tallying</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" rel="stylesheet">
-    <script src="https://code.iconify.design/2/2.2.1/iconify.min.js"></script>
-    <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;700&display=swap" rel="stylesheet">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=Poppins:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-
     <style>
-        :root {
-            --primary-green: #4CAF50;
-            --primary-dark: #2E7D32;
-            --accent-gold: #FFD700;
-            --accent-silver: #C0C0C0;
-            --accent-bronze: #CD7F32;
-            --bg-light: #F8F9FA;
-            --bg-white: #FFFFFF;
-            --text-dark: #1A1A1A;
-            --text-muted: #6C757D;
-            --shadow-sm: 0 2px 8px rgba(0,0,0,0.06);
-            --shadow-md: 0 4px 16px rgba(0,0,0,0.08);
-            --shadow-lg: 0 8px 32px rgba(0,0,0,0.12);
-            --transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        :root { 
+            --sidebar-width: 260px; 
+            --header-height: 82px; 
+            --transition: all 0.3s ease; 
+            --card-shadow: 0 5px 20px rgba(0, 0, 0, 0.08); 
+            --bg-light: #F8F9FA; 
         }
-        body {
-            background: linear-gradient(to bottom,rgba(245, 16, 16, 0.32));
-            margin: 0;
-            padding: 0;
-            min-height: 100vh;
-            font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+        body { background-color: var(--bg-light); margin: 0; padding: 0; min-height: 100vh; font-family: 'Inter', sans-serif; display: flex; flex-direction: column; }
+        .navbar { background: linear-gradient(135deg, #1a1a1a 0%, #2d2d2d 100%) !important; box-shadow: 0 4px 20px rgba(0,0,0,0.15); padding: 1rem 1.5rem; height: var(--header-height); position: fixed; top: 0; left: 0; right: 0; z-index: 1050; }
+        .navbar-brand .brand-heading { font-family: 'Poppins', sans-serif; font-weight: 700; }
+        .user-dropdown .dropdown-toggle { color: white; display: flex; align-items: center; text-decoration: none; padding: 8px 12px; border-radius: 8px; }
+        .user-dropdown .dropdown-toggle img { width: 36px; height: 36px; border-radius: 50%; object-fit: cover; margin-right: 10px; }
+        .sidebar { width: var(--sidebar-width); position: fixed; top: var(--header-height); left: 0; height: calc(100vh - var(--header-height)); background: #2c3e50; color: white; box-shadow: 5px 0 15px rgba(0,0,0,0.2); z-index: 1040; transition: width var(--transition); overflow-y: auto; overflow-x: hidden; }
+        .sidebar-nav { padding: 50px 0 20px 0; }
+        .sidebar-nav .nav-link { color: rgba(255, 255, 255, 0.7); font-size: 1.05rem; font-weight: 500; padding: 15px 25px; transition: var(--transition); border-left: 5px solid transparent; margin: 2px 0; display: flex; align-items: center; text-decoration: none; }
+        .sidebar-nav .nav-link i { width: 30px; text-align: center; flex-shrink: 0; font-size: 0.95em; }
+        .sidebar-nav .nav-link:hover { color: white; background: rgba(255, 255, 255, 0.05); border-left-color: #1abc9c; }
+        .sidebar-nav .nav-link.active { color: white; background: rgba(255, 255, 255, 0.1); border-left-color: #3498db; font-weight: 600; }
+        .main-content { flex: 1 0 auto; padding: 30px; margin-top: var(--header-height); margin-left: var(--sidebar-width); transition: margin-left var(--transition); min-height: calc(100vh - var(--header-height)); }
+                /* Footer */
+        footer {
+            flex-shrink: 0;
+            background: #2c3e50 !important;
+            box-shadow: 0 -2px 10px rgba(0,0,0,0.1);
+            padding-left: var(--sidebar-width); /* <-- MODIFIED */
+            transition: padding-left var(--transition); /* <-- MODIFIED */
+            position: relative;
+            z-index: 1041;
+        }
+                .sidebar.minimized ~ footer {
+            padding-left: var(--sidebar-min-width); /* <-- MODIFIED */
+        }
+        .section-title { font-family: 'Poppins', sans-serif; font-weight: 600; color: #333; }
+        .card { border: none; border-radius: 15px; box-shadow: var(--card-shadow); }
+        .stat-card { background: white; border-radius: 15px; padding: 20px; box-shadow: var(--card-shadow); }
+        .stat-icon-wrapper { width: 60px; height: 60px; border-radius: 50%; display: flex; align-items: center; justify-content: center; color: white; font-size: 1.5rem; margin-right: 15px; flex-shrink: 0; }
+        .stat-count { font-size: 2.5rem; font-weight: 700; line-height: 1; }
+        .stat-events .stat-icon-wrapper { background: linear-gradient(45deg, #3498db, #2980b9); }
+        .stat-categories .stat-icon-wrapper { background: linear-gradient(45deg, #2ecc71, #27ae60); }
+        .stat-pending .stat-icon-wrapper { background: linear-gradient(45deg, #f1c40f, #f39c12); }
+        .stat-medals .stat-icon-wrapper { background: linear-gradient(45deg, #FFD700, #f39c12); }
+        .user-dropdown .dropdown-toggle:hover { background-color: rgba(255, 255, 255, 0.1); }
+        .navbar-profile-icon {
+            width: 36px; height: 36px; font-size: 36px; text-align: center;
+            line-height: 1; border-radius: 50%; margin-right: 10px; color: rgba(255,255,255,0.8);
+        }
+        
+        /* ### NEW: Activity Log Styles ### */
+        .activity-log-item {
             display: flex;
-            flex-direction: column;
+            align-items: start;
+            padding: 0.75rem 0.25rem;
+            border-bottom: 1px solid #eee;
         }
-        .navbar {
-            background: linear-gradient(135deg, #1a1a1a 0%, #2d2d2d 100%) !important;
-            box-shadow: 0 4px 20px rgba(0,0,0,0.15);
-            padding: 1rem 0;
-            backdrop-filter: blur(10px);
+        .activity-log-item:last-child {
+            border-bottom: none;
         }
-        .navbar-brand { transition: var(--transition); }
-        .navbar-brand:hover { transform: translateY(-2px); }
-        .brand-logo { filter: drop-shadow(0 2px 4px rgba(255,255,255,0.1)); }
-        .brand-heading { font-family: 'Poppins', sans-serif; font-weight: 700; letter-spacing: -0.5px; }
-        .nav-link { font-weight: 500; font-size: 0.95rem; padding: 0.5rem 1.25rem !important; margin: 0 0.25rem; border-radius: 8px; transition: var(--transition); position: relative; }
-        .nav-link::after { content: ''; position: absolute; bottom: 0; left: 50%; width: 0; height: 2px; background: var(--primary-green); transition: var(--transition); transform: translateX(-50%); }
-        .nav-link:hover::after, .nav-link.active::after { width: 80%; }
-        .nav-link:hover { background: rgba(255,255,255,0.1); color: var(--primary-green) !important; }
-        .btn-danger, .btn-success { padding: 0.6rem 1.5rem; border-radius: 10px; font-weight: 600; transition: var(--transition); border: none; box-shadow: 0 4px 12px rgba(0,0,0,0.15); }
-        .btn-danger:hover, .btn-success:hover { transform: translateY(-2px); box-shadow: 0 6px 20px rgba(0,0,0,0.2); }
-        .overall-card { background-color: #e9edf6; border: 1px solid #f5dc8f; border-radius: 12px; box-shadow: 0 2px 8px rgba(0,0,0,0.08); padding: 24px; }
-        .interactive-brand:hover .brand-heading, .interactive-brand:hover .brand-subheading { color: #4CAF50 !important; }
-        .accordion-button:not(.collapsed) { background-color: #001f3f; color: white; box-shadow: inset 0 -1px 0 rgba(0,0,0,.125); }
-        .accordion-button:not(.collapsed)::after { filter: brightness(0) invert(1); }
-        .accordion-button { font-weight: 600; font-size: 1.2rem; }
-        .table-hover tbody tr:hover { background-color: #f8f9fa; }
-        .medal-icon { font-size: 1.1em; margin-right: 4px; }
-        .gold-medal { color: gold; text-shadow: 0 0 2px #333; }
-        .silver-medal { color: silver; text-shadow: 0 0 2px #333; }
-        .bronze-medal { color: #cd7f32; text-shadow: 0 0 2px #333; }
-        .table-responsive-lg { display: block; width: 100%; overflow-x: auto; -webkit-overflow-scrolling: touch; }
+        .activity-log-icon {
+            width: 30px;
+            text-align: center;
+            flex-shrink: 0;
+            font-size: 1.1rem;
+            margin-top: 2px;
+        }
+        .activity-log-content {
+            flex-grow: 1;
+            line-height: 1.4;
+        }
+        .activity-log-time {
+            font-size: 0.8rem;
+            color: #6c757d; /* text-muted */
+        }
     </style>
 </head>
 <body>
 
-    <nav class="navbar navbar-expand-lg navbar-dark bg-dark fixed-top">
-        <div class="container-fluid d-flex align-items-center justify-content-between">
-            <a class="navbar-brand d-flex align-items-center interactive-brand" href="Tournament_Manager_page.php" style="cursor: pointer;">
-                <img src="imageslogo.png" alt="Logo" class="me-2 brand-logo" style="height: 50px; width: 48px; object-fit: contain; transition: filter 0.2s;">
+    <nav class="navbar navbar-dark bg-dark">
+        <div class="container-fluid d-flex align-items: center justify-content-between">
+            <a class="navbar-brand d-flex align-items: center" href="event_manager_dashboard.php">
+                <img src="imageslogo.png" alt="Logo" class="me-2" style="height: 50px; width: 48px; object-fit: contain;">
                 <div class="d-flex flex-column lh-sm">
-                    <strong class="text-white brand-heading" style="font-size: 1.25rem; transition: color 0.2s;">PIT SPORTS TALLYING</strong>
-                    <small class="text-light brand-subheading" style="font-size: 0.75rem; transition: color 0.2s;">Official College Tournament System</small>
+                    <strong class="text-white brand-heading" style="font-size: 1.25rem;">PIT SPORTS TALLYING</strong>
+                    <small class="text-light" style="font-size: 0.75rem;">Event Manager Panel</small>
                 </div>
             </a>
-            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav"
-                aria-controls="navbarNav" aria-expanded="false" aria-label="Toggle navigation">
-                <span class="navbar-toggler-icon"></span>
-            </button>
-            <div class="collapse navbar-collapse" id="navbarNav">
-                <ul class="navbar-nav ms-auto align-items-center">
-                    <li class="nav-item">
-                        <a class="nav-link <?= ($current_page == 'event_manager_dashboard.php') ? 'active' : '' ?>" href="event_manager_dashboard.php">Dashboard</a>
-                    </li>
-                    <li class="nav-item">
-                        <a class="nav-link" href="Event.php">View All Events</a>
-                    </li>
-                    <li class="nav-item">
-                        <?php if (isset($_SESSION['user_id'])): ?>
-                            <a href="login.php" class="btn btn-danger ms-3">Logout</a>
-                        <?php else: ?>
-                            <a href="login.php" class="btn btn-success ms-3">Admin Login</a>
-                        <?php endif; ?>
-                    </li>
+            <div class="dropdown user-dropdown ms-auto me-2 me-lg-0">
+                <a href="#" class="dropdown-toggle" id="userDropdown" data-bs-toggle="dropdown" aria-expanded="false">
+                    <i class="fas fa-user-circle navbar-profile-icon"></i>
+                    <span class="user-name d-none d-lg-inline"><?= htmlspecialchars($username); ?></span>
+                </a>
+                <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="userDropdown">
+                    <li><a class="dropdown-item" href="admin_profile.php"><i class="fas fa-user-circle"></i> Profile</a></li>
+                    <li><hr class="dropdown-divider"></li>
+                    <li><a class="dropdown-item text-danger" href="login.php"><i class="fas fa-sign-out-alt"></i> Logout</a></li>
                 </ul>
             </div>
         </div>
     </nav>
 
-    <div class="container mt-5" style="padding-top: 80px;">
-        <div class="overall-card">
-        
-            <div class="d-flex flex-wrap justify-content-between align-items-center mb-4">
-                <div>
-                    <h1 class="fw-bold">
-                        <i class="fas fa-tasks me-2"></i>Event Manager Dashboard
-                    </h1>
-                    <p class="lead text-muted">Welcome, <?php echo htmlspecialchars($username); ?>! Manage your assigned events and categories.</p>
-                </div>
-            </div>
+    <div class="sidebar" id="sidebar">
+        <ul class="nav flex-column sidebar-nav">
+            <li class="nav-item">
+                <a class="nav-link active" href="event_manager_dashboard.php">
+                    <i class="fas fa-tachometer-alt me-2"></i> <span>Dashboard</span>
+                </a>
+            </li>
+            <li class="nav-item">
+                <a class="nav-link" href="my_events.php">
+                    <i class="fas fa-trophy me-2"></i> <span>My Assigned Events</span>
+                </a>
+            </li>
+            <li class="nav-item">
+                <a class="nav-link" href="Event.php" target="_blank">
+                    <i class="fas fa-globe me-2"></i> <span>View Public Events</span>
+                </a>
+            </li>
+            <li class="nav-item mt-auto">
+                <a class="nav-link text-danger" href="login.php">
+                    <i class="fas fa-sign-out-alt me-2"></i> <span>Logout</span>
+                </a>
+            </li>
+        </ul>
+    </div>
+
+    <div class="main-content">
+        <div class="container-fluid">
             
-            <?php if (!empty($alert_message)): ?>
-                <div class="alert <?php echo strpos($alert_message, 'ERROR') === 0 ? 'alert-danger' : 'alert-success'; ?> alert-dismissible fade show" role="alert">
-                    <?php echo $alert_message; ?>
-                    <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
-                </div>
-            <?php endif; ?>
+            <nav aria-label="breadcrumb" class="mb-2">
+                <ol class="breadcrumb">
+                    <li class="breadcrumb-item active" aria-current="page">Dashboard</li>
+                </ol>
+            </nav>
+            <h1 class="section-title mb-4">Event Manager Dashboard</h1>
 
-            <div class="accordion" id="gamesAccordion">
-                
-                <?php if (empty($managed_data)): ?>
-                    <div class="alert alert-info text-center">
-                        You have not been assigned to any events yet. Please contact the Sports Director.
-                    </div>
-                <?php endif; ?>
-
-                <?php foreach ($managed_data as $game_name => $events): ?>
-                    <div class="accordion-item shadow-sm mb-3 border-0 rounded">
-                        <h2 class="accordion-header" id="heading-<?php echo preg_replace('/[^a-z0-9]/i', '', $game_name); ?>">
-                            <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapse-<?php echo preg_replace('/[^a-z0-9]/i', '', $game_name); ?>" aria-expanded="false" aria-controls="collapse-<?php echo preg_replace('/[^a-z0-9]/i', '', $game_name); ?>">
-                                <?php echo htmlspecialchars($game_name); ?>
-                            </button>
-                        </h2>
-                        <div id="collapse-<?php echo preg_replace('/[^a-z0-9]/i', '', $game_name); ?>" class="accordion-collapse collapse" aria-labelledby="heading-<?php echo preg_replace('/[^a-z0-9]/i', '', $game_name); ?>" data-bs-parent="#gamesAccordion">
-                            <div class="accordion-body">
-                                
-                                <?php foreach ($events as $event): ?>
-                                    <div class="card mb-4 shadow-sm border-0">
-                                        <div class="card-header bg-light d-flex flex-wrap justify-content-between align-items-center">
-                                            <h5 class="mb-0 fw-semibold">
-                                                <i class="fas fa-trophy me-2 text-primary"></i>
-                                                <?php echo htmlspecialchars($event['event_name']); ?>
-                                            </h5>
-                                            <button class="btn btn-primary btn-sm" 
-                                                    data-bs-toggle="modal" 
-                                                    data-bs-target="#categoryModal"
-                                                    data-bs-action="add"
-                                                    data-bs-event-id="<?php echo $event['event_id']; ?>"
-                                                    data-bs-event-name="<?php echo htmlspecialchars($event['event_name']); ?>">
-                                                <i class="fas fa-plus me-1"></i> Add Category
-                                            </button>
-                                        </div>
-                                        <div class="card-body p-0">
-                                            <div class="table-responsive-lg">
-                                                <table class="table table-hover align-middle mb-0">
-                                                    <thead class="table-light">
-                                                        <tr>
-                                                            <th scope="col" class="ps-3">Category Name</th>
-                                                            <th scope="col" class="text-center">Status</th>
-                                                            <th scope="col">Current Winners</th>
-                                                            <th scope="col" class="text-end pe-3">Actions</th>
-                                                        </tr>
-                                                    </thead>
-                                                    <tbody>
-                                                        <?php if (empty($event['categories'])): ?>
-                                                            <tr>
-                                                                <td colspan="4" class="text-center text-muted p-4">
-                                                                    No categories created for this event yet.
-                                                                </td>
-                                                            </tr>
-                                                        <?php endif; ?>
-                                                        
-                                                        <?php foreach ($event['categories'] as $category): ?>
-                                                            <tr>
-                                                                <td class="ps-3 fw-medium">
-                                                                    <?php echo htmlspecialchars($category['category_name']); ?>
-                                                                </td>
-                                                                <td class="text-center">
-                                                                    <span class="badge <?php echo getCategoryStatusClass($category['status']); ?>">
-                                                                        <?php echo htmlspecialchars($category['status']); ?>
-                                                                    </span>
-                                                                </td>
-                                                                <td>
-                                                                    <span class="medal-icon gold-medal" title="Gold: <?php echo getTeamName($category['gold_winner_id'], $teams); ?>">
-                                                                        <i class="fas fa-medal"></i>
-                                                                    </span>
-                                                                    <span class="medal-icon silver-medal" title="Silver: <?php echo getTeamName($category['silver_winner_id'], $teams); ?>">
-                                                                        <i class="fas fa-medal"></i>
-                                                                    </span>
-                                                                    <span class="medal-icon bronze-medal" title="Bronze: <?php echo getTeamName($category['bronze_winner_id'], $teams); ?>">
-                                                                        <i class="fas fa-medal"></i>
-                                                                    </span>
-                                                                </td>
-                                                                <td class="text-end pe-3">
-                                                                    <button class="btn btn-success btn-sm me-1"
-                                                                            title="Award Medals"
-                                                                            data-bs-toggle="modal" 
-                                                                            data-bs-target="#awardModal"
-                                                                            data-bs-category-id="<?php echo $category['category_id']; ?>"
-                                                                            data-bs-category-name="<?php echo htmlspecialchars($category['category_name']); ?>"
-                                                                            data-bs-gold-id="<?php echo $category['gold_winner_id']; ?>"
-                                                                            data-bs-silver-id="<?php echo $category['silver_winner_id']; ?>"
-                                                                            data-bs-bronze-id="<?php echo $category['bronze_winner_id']; ?>">
-                                                                        <i class="fas fa-medal"></i>
-                                                                    </button>
-                                                                    <button class="btn btn-warning btn-sm me-1"
-                                                                            title="Edit Category"
-                                                                            data-bs-toggle="modal" 
-                                                                            data-bs-target="#categoryModal"
-                                                                            data-bs-action="edit"
-                                                                            data-bs-event-id="<?php echo $event['event_id']; ?>"
-                                                                            data-bs-event-name="<?php echo htmlspecialchars($event['event_name']); ?>"
-                                                                            data-bs-category-id="<?php echo $category['category_id']; ?>"
-                                                                            data-bs-category-name="<?php echo htmlspecialchars($category['category_name']); ?>"
-                                                                            data-bs-status="<?php echo htmlspecialchars($category['status']); ?>">
-                                                                        <i class="fas fa-edit"></i>
-                                                                    </button>
-                                                                    <button class="btn btn-danger btn-sm"
-                                                                            title="Delete Category"
-                                                                            data-bs-toggle="modal" 
-                                                                            data-bs-target="#deleteModal"
-                                                                            data-bs-category-id="<?php echo $category['category_id']; ?>"
-                                                                            data-bs-category-name="<?php echo htmlspecialchars($category['category_name']); ?>">
-                                                                        <i class="fas fa-trash"></i>
-                                                                    </button>
-                                                                </td>
-                                                            </tr>
-                                                        <?php endforeach; ?>
-                                                    </tbody>
-                                                </table>
-                                            </div>
-                                        </div>
-                                    </div>
-                                <?php endforeach; ?>
-                                
+            <div class="row g-4 mb-4">
+                <div class="col-lg-3 col-md-6">
+                    <div class="stat-card stat-events">
+                        <div class="d-flex align-items: center">
+                            <div class="stat-icon-wrapper"><i class="fas fa-trophy"></i></div>
+                            <div>
+                                <div class="stat-count text-primary" id="stat-assigned-events">...</div>
+                                <small class="text-muted">Assigned Events</small>
                             </div>
                         </div>
                     </div>
-                <?php endforeach; ?>
+                </div>
+                <div class="col-lg-3 col-md-6">
+                    <div class="stat-card stat-categories">
+                        <div class="d-flex align-items: center">
+                            <div class="stat-icon-wrapper"><i class="fas fa-sitemap"></i></div>
+                            <div>
+                                <div class="stat-count text-success" id="stat-total-categories">...</div>
+                                <small class="text-muted">Total Categories</small>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-lg-3 col-md-6">
+                    <div class="stat-card stat-pending">
+                        <div class="d-flex align-items: center">
+                            <div class="stat-icon-wrapper"><i class="fas fa-hourglass-half"></i></div>
+                            <div>
+                                <div class="stat-count text-warning" id="stat-pending-results">...</div>
+                                <small class="text-muted">Pending Results</small>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-lg-3 col-md-6">
+                    <div class="stat-card stat-medals">
+                        <div class="d-flex align-items: center">
+                            <div class="stat-icon-wrapper"><i class="fas fa-medal"></i></div>
+                            <div>
+                                <div class="stat-count text-warning" id="stat-approved-medals">...</div>
+                                <small class="text-muted">Approved Medals (My Events)</small>
+                            </div>
+                        </div>
+                    </div>
+                </div>
             </div>
+            
+            <div class="row g-4 mt-2">
+            
+                <div class="col-lg-6">
+                    <div class="card h-100">
+                        <div class="card-header"><h5 class="mb-0"><i class="fas fa-compass me-2"></i>Quick Navigation</h5></div>
+                        <div class="card-body">
+                            <div class="list-group">
+                                <a href="my_events.php" class="list-group-item list-group-item-action list-group-item-primary d-flex justify-content-between align-items-center">
+                                    <div>
+                                        <i class="fas fa-trophy me-2"></i>
+                                        <strong>Manage My Assigned Events</strong>
+                                        <small class="d-block text-muted">View, add, and edit categories and results.</small>
 
-        </div>
-    </div>
-    
-    <div class="modal fade" id="categoryModal" tabindex="-1" aria-labelledby="categoryModalLabel" aria-hidden="true">
-        <div class="modal-dialog">
-            <div class="modal-content">
-                <form method="POST" action="event_manager_dashboard.php">
-                    <input type="hidden" name="action" value="save_category">
-                    <input type="hidden" name="event_id" id="modal_event_id">
-                    <input type="hidden" name="category_id" id="modal_category_id">
-                    
-                    <div class="modal-header">
-                        <h5 class="modal-title" id="categoryModalLabel">Add Category</h5>
-                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-                    </div>
-                    <div class="modal-body">
-                        <div class="mb-3">
-                            <label class="form-label">Event</label>
-                            <input type="text" class="form-control" id="modal_event_name" disabled>
-                        </div>
-                        <div class="mb-3">
-                            <label for="category_name" class="form-label">Category Name</label>
-                            <input type="text" class="form-control" id="modal_category_name" name="category_name" placeholder="e.g., Men's Singles" required>
-                        </div>
-                        <div class="mb-3">
-                            <label for="status" class="form-label">Status</label>
-                            <select class="form-select" id="modal_category_status" name="status" required>
-                                <option value="Upcoming">Upcoming</option>
-                                <option value="Ongoing">Ongoing</option>
-                                <option value="Completed">Completed</option>
-                                <option value="Cancelled">Cancelled</option>
-                                <option value="Postponed">Postponed</option>
-                            </select>
+                                    </div>
+                                    <i class="fas fa-chevron-right"></i>
+                                </a>
+                                <a href="Event.php" target="_blank" class="list-group-item list-group-item-action">
+                                    <i class="fas fa-globe me-2"></i>
+                                    View Public Tallying Site
+                                </a>
+                                <a href="admin_profile.php" class="list-group-item list-group-item-action">
+                                    <i class="fas fa-user-circle me-2"></i>
+                                    View My Profile
+                                </a>
+                            </div>
                         </div>
                     </div>
-                    <div class="modal-footer">
-                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
-                        <button type="submit" class="btn btn-primary">Save Category</button>
-                    </div>
-                </form>
-            </div>
-        </div>
-    </div>
-    <div class="modal fade" id="awardModal" tabindex="-1" aria-labelledby="awardModalLabel" aria-hidden="true">
-        <div class="modal-dialog">
-            <div class="modal-content">
-                <form method="POST" action="event_manager_dashboard.php">
-                    <input type="hidden" name="action" value="submit_results_for_approval"> <input type="hidden" name="category_id" id="award_category_id">
-                    
-                    <div class="modal-header bg-success text-white">
-                        <h5 class="modal-title" id="awardModalLabel">Award Medals</h5>
-                        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
-                    </div>
-                    <div class="modal-body">
-                        <p>Awarding results for: <strong id="award_category_name"></strong></p>
-                        
-                        <div class="mb-3">
-                            <label for="gold_winner_id" class="form-label">
-                                <i class="fas fa-medal gold-medal me-1"></i> Gold Medal
-                            </label>
-                            <select class="form-select" id="gold_winner_id" name="gold_winner_id">
-                                <option value="">-- Select Winner --</option>
-                                <?php foreach ($teams as $team): ?>
-                                    <option value="<?php echo $team['team_id']; ?>">
-                                        <!-- --- FIX #2: Changed '$team['college']' to '$team['dean_name']' --- -->
-                                        <!-- This was trying to display a column that doesn't exist. -->
-                                        <?php echo htmlspecialchars($team['team_name'] . ' (' . $team['dean_name'] . ')'); ?>
-                                    </option>
+                </div>
+                
+                <div class="col-lg-6">
+                    <div class="card h-100">
+                        <div class="card-header">
+                            <h5 class="mb-0"><i class="fas fa-history me-2"></i>My Recent Activity</h5>
+                        </div>
+                        <div class="card-body" style="padding: 0.5rem 1rem;">
+                            <ul class="list-unstyled mb-0">
+                                <?php if (empty($processed_logs)): ?>
+                                    <li class="activity-log-item text-muted">
+                                        <i class="activity-log-icon fas fa-info-circle"></i>
+                                        <div class="activity-log-content">
+                                            No recent activity to display.
+                                        </div>
+                                    </li>
+                                <?php endif; ?>
+                                
+                                <?php foreach ($processed_logs as $log_entry): ?>
+                                    <li class="activity-log-item">
+                                        <i class="activity-log-icon <?= $log_entry['icon'] ?>"></i>
+                                        <div class="activity-log-content">
+                                            <?= $log_entry['message'] ?> 
+                                            <div class="activity-log-time"><?= $log_entry['time'] ?></div>
+                                        </div>
+                                    </li>
                                 <?php endforeach; ?>
-                            </select>
+                            </ul>
                         </div>
-                        
-                        <div class="mb-3">
-                            <label for="silver_winner_id" class="form-label">
-                                <i class="fas fa-medal silver-medal me-1"></i> Silver Medal
-                            </label>
-                            <select class="form-select" id="silver_winner_id" name="silver_winner_id">
-                                <option value="">-- Select Winner --</option>
-                                <?php foreach ($teams as $team): ?>
-                                    <option value="<?php echo $team['team_id']; ?>">
-                                        <!-- --- FIX #2: Changed '$team['college']' to '$team['dean_name']' --- -->
-                                        <?php echo htmlspecialchars($team['team_name'] . ' (' . $team['dean_name'] . ')'); ?>
-                                    </option>
-                                <?php endforeach; ?>
-                            </select>
-                        </div>
-                        
-                        <div class="mb-3">
-                            <label for="bronze_winner_id" class="form-label">
-                                <i class="fas fa-medal bronze-medal me-1"></i> Bronze Medal
-                            </label>
-                            <select class="form-select" id="bronze_winner_id" name="bronze_winner_id">
-                                <option value="">-- Select Winner --</option>
-                                <?php foreach ($teams as $team): ?>
-                                    <option value="<?php echo $team['team_id']; ?>">
-                                        <!-- --- FIX #2: Changed '$team['college']' to '$team['dean_name']' --- -->
-                                        <?php echo htmlspecialchars($team['team_name'] . ' (' . $team['dean_name'] . ')'); ?>
-                                    </option>
-                                <?php endforeach; ?>
-                            </select>
-                        </div>
-                        
                     </div>
-                    <div class="modal-footer">
-                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
-                        <button type="submit" class="btn btn-success">Submit for Approval</button> 
-                    </div>
-                </form>
-            </div>
-        </div>
-    </div>
-    <div class="modal fade" id="deleteModal" tabindex="-1" aria-labelledby="deleteModalLabel" aria-hidden="true">
-        <div class="modal-dialog">
-            <div class="modal-content">
-                <form method="POST" action="event_manager_dashboard.php">
-                    <input type="hidden" name="action" value="delete_category">
-                    <input type="hidden" name="category_id" id="delete_category_id">
-                    
-                    <div class="modal-header bg-danger text-white">
-                        <h5 class="modal-title" id="deleteModalLabel">Confirm Deletion</h5>
-                        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
-                    </div>
-                    <div class="modal-body">
-                        <p>Are you sure you want to delete the category: <strong id="delete_category_name"></strong>?</p>
-                        <p class="text-danger"><i class="fas fa-exclamation-triangle me-1"></i> This action cannot be undone and will remove all associated data.</p>
-                    </div>
-                    <div class="modal-footer">
-                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-                        <button type="submit" class="btn btn-danger">Yes, Delete Category</button>
-                    </div>
-                </form>
+                
+                </div>
             </div>
         </div>
     </div>
     
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
-    <script src="https://code.iconify.design/2/2.2.1/iconify.min.js"></script>
+    <footer class="bg-dark text-white py-4">
+        <div class="text-center">
+            <small>&copy; <?php echo date("Y"); ?> PIT SPORTS TALLYING. All rights reserved.</small>
+        </div>
+    </footer>
     
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
     <script>
         document.addEventListener('DOMContentLoaded', function () {
             
-            // --- 1. Handle Add/Edit Category Modal ---
-            const categoryModal = document.getElementById('categoryModal');
-            categoryModal.addEventListener('show.bs.modal', function (event) {
-                const button = event.relatedTarget;
-                const action = button.getAttribute('data-bs-action');
-                const eventId = button.getAttribute('data-bs-event-id');
-                const eventName = button.getAttribute('data-bs-event-name');
-                
-                const modalTitle = categoryModal.querySelector('.modal-title');
-                const eventIdInput = categoryModal.querySelector('#modal_event_id');
-                const eventNameInput = categoryModal.querySelector('#modal_event_name');
-                const categoryIdInput = categoryModal.querySelector('#modal_category_id');
-                const categoryNameInput = categoryModal.querySelector('#modal_category_name');
-                const categoryStatusSelect = categoryModal.querySelector('#modal_category_status');
-                
-                eventIdInput.value = eventId;
-                eventNameInput.value = eventName;
+            // --- AJAX STATS LOADER ---
+            function loadDashboardStats() {
+                // This assumes your API file is accessible from this path
+                fetch('event_manager_api.php?action=get_dashboard_stats')
+                    .then(response => {
+                        if (!response.ok) {
+                            throw new Error('Network response was not ok');
+                        }
+                        return response.json();
+                    })
+                    .then(data => {
+                        if (data.success) {
+                            document.getElementById('stat-assigned-events').textContent = data.stats.assigned_events;
+                            document.getElementById('stat-total-categories').textContent = data.stats.total_categories;
+                            document.getElementById('stat-pending-results').textContent = data.stats.pending_results;
+                            document.getElementById('stat-approved-medals').textContent = data.stats.approved_medals;
+                        } else {
+                            console.error('Failed to load stats:', data.message);
+                        }
+                    })
+                    .catch(error => {
+                        console.error('Error fetching stats:', error);
+                    });
+            }
+            loadDashboardStats();
 
-                if (action === 'edit') {
-                    const categoryId = button.getAttribute('data-bs-category-id');
-                    const categoryName = button.getAttribute('data-bs-category-name');
-                    const status = button.getAttribute('data-bs-status');
+            let resizeTimer;
+            window.addEventListener('resize', function() {
+                clearTimeout(resizeTimer);
+                resizeTimer = setTimeout(function() {
+                    if (window.innerWidth > 992) {
+                        sidebar.classList.remove('show');
+                        sidebarOverlay.classList.remove('show');
+                    }
+                }, 250);
+            });
+
+            // --- ### NEW: FIX SIDEBAR/FOOTER OVERLAP ### ---
+            const footer = document.querySelector('footer');
+            const navbar = document.querySelector('.navbar');
+
+            if (sidebar && footer && navbar) {
+                function adjustSidebarHeight() {
+                    // This logic should only apply to desktop view
+                    if (window.innerWidth <= 992) {
+                        sidebar.style.height = ''; // Reset to CSS default for mobile
+                        return;
+                    }
+
+                    const navbarHeight = navbar.offsetHeight;
+                    const footerTop = footer.getBoundingClientRect().top;
+                    const viewportHeight = window.innerHeight;
                     
-                    modalTitle.textContent = 'Edit Category';
-                    categoryIdInput.value = categoryId;
-                    categoryNameInput.value = categoryName;
-                    categoryStatusSelect.value = status;
+                    // 1. Calculate the max possible height (navbar top to viewport bottom)
+                    const maxSidebarHeight = viewportHeight - navbarHeight;
+
+                    // 2. Calculate the available height (navbar top to footer top)
+                    const availableHeight = footerTop - navbarHeight;
+
+                    // 3. Choose the smaller of the two heights, but never less than 0
+                    const newHeight = Math.max(0, Math.min(maxSidebarHeight, availableHeight));
                     
-                } else {
-                    modalTitle.textContent = 'Add Category to ' + eventName;
-                    categoryIdInput.value = '';
-                    categoryNameInput.value = '';
-                    categoryStatusSelect.value = 'Upcoming';
+                    // 4. Apply the new height as an inline style
+                    sidebar.style.height = `${newHeight}px`;
                 }
-            });
 
-            // --- 2. Handle Award Medals Modal ---
-            const awardModal = document.getElementById('awardModal');
-            awardModal.addEventListener('show.bs.modal', function (event) {
-                const button = event.relatedTarget;
+                // Add listeners for scroll and resize events
+                window.addEventListener('scroll', adjustSidebarHeight, { passive: true });
+                window.addEventListener('resize', adjustSidebarHeight);
                 
-                const categoryId = button.getAttribute('data-bs-category-id');
-                const categoryName = button.getAttribute('data-bs-category-name');
-                const goldId = button.getAttribute('data-bs-gold-id');
-                const silverId = button.getAttribute('data-bs-silver-id');
-                const bronzeId = button.getAttribute('data-bs-bronze-id');
-                
-                awardModal.querySelector('#award_category_id').value = categoryId;
-                awardModal.querySelector('#award_category_name').textContent = categoryName;
-                awardModal.querySelector('#gold_winner_id').value = goldId || '';
-                awardModal.querySelector('#silver_winner_id').value = silverId || '';
-                awardModal.querySelector('#bronze_winner_id').value = bronzeId || '';
-            });
-            
-            // --- 3. Handle Delete Modal ---
-            const deleteModal = document.getElementById('deleteModal');
-            deleteModal.addEventListener('show.bs.modal', function (event) {
-                const button = event.relatedTarget;
-                
-                const categoryId = button.getAttribute('data-bs-category-id');
-                const categoryName = button.getAttribute('data-bs-category-name');
-                
-                deleteModal.querySelector('#delete_category_id').value = categoryId;
-                deleteModal.querySelector('#delete_category_name').textContent = categoryName;
-            });
-
-            // Auto-open the first accordion item
-            const accordions = document.querySelectorAll('.accordion-item');
-            if (accordions.length === 1) {
-                 new bootstrap.Collapse(accordions[0].querySelector('.accordion-collapse'), {
-                     toggle: true
-                 });
+                // Initial call to set the correct height on page load
+                // Small delay to ensure all elements are rendered
+                setTimeout(adjustSidebarHeight, 100);
             }
         });
     </script>
 </body>
 </html>
-

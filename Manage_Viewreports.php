@@ -1,11 +1,207 @@
 <?php
 session_start();
-
 error_reporting(E_ALL);
 ini_set('display_errors', 1);
 
+// 1. SECURITY & ACCESS CONTROL
+// Use the same security check as your other admin pages
+if (!isset($_SESSION['role']) || ($_SESSION['role'] !== 'Sports Director' && $_SESSION['role'] !== 'Administrator')) {
+    header('Location: login.php'); // Redirect to main login page
+    exit();
+}
+
+$name = isset($_SESSION['username']) ? $_SESSION['username'] : 'Admin';
 $current_page = basename($_SERVER['PHP_SELF']);
-require_once 'config.php';
+require_once 'config.php'; // Main DB Connection
+
+// --- Logic for Sidebar Accordions (from results.php) ---
+$event_pages = ['Manage_Games.php', 'Manage_Game_Events.php', 'Manage_Categories.php'];
+$is_event_page = in_array($current_page, $event_pages);
+$management_pages = ['colleges.php', 'events.php', 'results.php', 'reports.php', 'Manage_Viewreports.php']; // Added this page
+$is_management_page = in_array($current_page, $management_pages);
+
+
+// --- 1. DATA FETCHING ---
+
+// -- Get Sort Order --
+$valid_sorts = [
+    'gold' => 'gold DESC, silver DESC, bronze DESC',
+    'silver' => 'silver DESC, gold DESC, bronze DESC',
+    'bronze' => 'bronze DESC, gold DESC, silver DESC',
+    'total' => 'total DESC, gold DESC, silver DESC, bronze DESC'
+];
+$sort_key = isset($_GET['sort']) && array_key_exists($_GET['sort'], $valid_sorts) ? $_GET['sort'] : 'total';
+$order_by_sql = $valid_sorts[$sort_key];
+
+// --- Query 1: Overall Medal Standings (Adapted from home.php) ---
+// This query is correct and uses the medal counts from the categories table.
+$medal_tally = [];
+$sql_medals = "SELECT 
+                    C.college_name, C.logo_url, C.college_code,
+                    SUM(CASE WHEN Cat.gold_winner_college_id = C.college_id THEN Cat.gold_count ELSE 0 END) AS gold,
+                    SUM(CASE WHEN Cat.silver_winner_college_id = C.college_id THEN Cat.silver_count ELSE 0 END) AS silver,
+                    SUM(CASE WHEN Cat.bronze_winner_college_id = C.college_id THEN Cat.bronze_count ELSE 0 END) AS bronze,
+                    (SUM(CASE WHEN Cat.gold_winner_college_id = C.college_id THEN Cat.gold_count ELSE 0 END) +
+                     SUM(CASE WHEN Cat.silver_winner_college_id = C.college_id THEN Cat.silver_count ELSE 0 END) +
+                     SUM(CASE WHEN Cat.bronze_winner_college_id = C.college_id THEN Cat.bronze_count ELSE 0 END)) AS total
+                FROM colleges C
+                LEFT JOIN categories Cat ON (
+                    C.college_id = Cat.gold_winner_college_id OR 
+                    C.college_id = Cat.silver_winner_college_id OR 
+                    C.college_id = Cat.bronze_winner_college_id
+                ) AND Cat.status = 'Results Approved'
+                GROUP BY C.college_id, C.college_name, C.logo_url, C.college_code
+                ORDER BY $order_by_sql, C.college_name ASC";
+
+$stmt_medals = $conn->prepare($sql_medals);
+if ($stmt_medals) {
+    $stmt_medals->execute();
+    $result = $stmt_medals->get_result();
+    if ($result) {
+        $medal_tally = $result->fetch_all(MYSQLI_ASSOC);
+    }
+    $stmt_medals->close();
+} else {
+    error_log("Error preparing medal tally statement: " . $conn->error);
+}
+
+// --- Query 2: Match Results Report (MODIFIED) ---
+// Uses logic from view_all_matches.php (CASE statement)
+// Filters for 'Results Approved' as requested ("complete" status)
+$match_results = [];
+$sql_matches = "SELECT 
+                    CONCAT(t1.college_name, ' vs ', t2.college_name) AS matchup,
+                    CONCAT(m.score1, ' - ', m.score2) AS scores,
+                    w.college_name AS winner_name,
+                    
+                    -- This is the logic from view_all_matches.php
+                    CASE 
+                        WHEN c.status = 'Results Rejected' THEN 'Results Rejected'
+                        ELSE m.status 
+                    END AS status,
+
+                    DATE_FORMAT(m.match_date, '%Y-%m-%d') AS date_formatted,
+                    DATE_FORMAT(m.match_time, '%h:%i %p') AS time_formatted,
+                    m.venue,
+                    ge.event_name, 
+                    c.category_name,
+                    g.game_name
+                FROM matches m
+                LEFT JOIN categories c ON m.category_id = c.category_id
+                LEFT JOIN game_events ge ON c.event_id = ge.event_id
+                LEFT JOIN games g ON ge.game_id = g.game_id
+                LEFT JOIN colleges t1 ON m.team1_id = t1.college_id
+                LEFT JOIN colleges t2 ON m.team2_id = t2.college_id
+                LEFT JOIN colleges w ON m.winner_team_id = w.college_id
+                
+                -- This is the filter requested by the user
+                -- We filter on the *final* status from the CASE statement.
+                -- We interpret 'complete' status as 'Results Approved'.
+                HAVING status = 'Completed'
+                
+                ORDER BY m.match_date DESC, m.match_time DESC
+                LIMIT 50";
+
+$result_matches = $conn->query($sql_matches);
+if ($result_matches) {
+    $match_results = $result_matches->fetch_all(MYSQLI_ASSOC);
+} else {
+    error_log("Error fetching match results: " . $conn->error);
+}
+
+// --- Query 3: Event Results Report (NEW - Based on results.php) ---
+// This query is now built for your requested table structure.
+$event_results = [];
+$sql_events = "SELECT 
+                    g.game_name,
+                    ge.event_name, 
+                    c.category_name,
+                    DATE_FORMAT(c.event_date, '%Y-%m-%d') AS event_date_formatted,
+                    gold_col.college_name AS gold_winner,
+                    silver_col.college_name AS silver_winner,
+                    bronze_col.college_name AS bronze_winner
+                FROM categories c
+                LEFT JOIN game_events ge ON c.event_id = ge.event_id
+                LEFT JOIN games g ON ge.game_id = g.game_id
+                LEFT JOIN colleges gold_col ON c.gold_winner_college_id = gold_col.college_id
+                LEFT JOIN colleges silver_col ON c.silver_winner_college_id = silver_col.college_id
+                LEFT JOIN colleges bronze_col ON c.bronze_winner_college_id = bronze_col.college_id
+                WHERE c.status = 'Results Approved'
+                ORDER BY g.game_name, ge.event_name, c.category_name";
+
+$result_events = $conn->query($sql_events);
+if ($result_events) {
+    $event_results = $result_events->fetch_all(MYSQLI_ASSOC);
+} else {
+    error_log("Error fetching event results: " . $conn->error);
+}
+
+// --- Query 4: Game Distribution (for Pie Chart) ---
+// Updated to group by Game, as seen in results.php
+$sport_distribution = [];
+$sql_sports_pie = "SELECT 
+                        g.game_name, 
+                        COUNT(c.category_id) AS event_count
+                    FROM categories c
+                    JOIN game_events ge ON c.event_id = ge.event_id
+                    JOIN games g ON ge.game_id = g.game_id
+                    WHERE c.status = 'Results Approved'
+                    GROUP BY g.game_name
+                    HAVING event_count > 0
+                    ORDER BY g.game_name";
+
+$result_sports_pie = $conn->query($sql_sports_pie);
+if ($result_sports_pie) {
+    $sport_distribution = $result_sports_pie->fetch_all(MYSQLI_ASSOC);
+} else {
+    error_log("Error fetching sport distribution: " . $conn->error);
+}
+
+
+// --- 2. CHART DATA PREPARATION ---
+$chart_labels = json_encode(array_column($medal_tally, 'college_code'));
+$chart_gold = json_encode(array_column($medal_tally, 'gold'));
+$chart_silver = json_encode(array_column($medal_tally, 'silver'));
+$chart_bronze = json_encode(array_column($medal_tally, 'bronze'));
+
+$pie_labels = json_encode(array_column($sport_distribution, 'game_name'));
+$pie_data = json_encode(array_column($sport_distribution, 'event_count'));
+
+$conn->close();
+
+// --- Helper Function for Ranks ---
+function getRankHtml(int $rank): string {
+    switch ($rank) {
+        case 1:
+            return '<img src="trophy1.svg" alt="Champion Trophy" class="medal-image-icon" style="width: 30px; height: 30px;">';
+        case 2:
+            return '<img src="secondplace.svg" alt="1st Runner-up" class="medal-image-icon" style="width: 30px; height: 30px;">';
+        case 3:
+            return '<img src="thirdplace.svg" alt="2nd Runner-up" class="medal-image-icon" style="width: 30px; height: 30px;">';
+        default:
+            return '<span class="rank-circle">' . $rank . '</span>';
+    }
+}
+
+// --- NEW Helper Function (from view_all_matches.php) ---
+function getStatusBadge($status) {
+    switch ($status) {
+        case 'Upcoming':
+            return '<span class="badge bg-info">Upcoming</span>';
+        case 'Ongoing':
+            return '<span class="badge bg-success">Ongoing</span>';
+        case 'Results Submitted':
+            return '<span class="badge bg-warning text-dark">Results Submitted</span>';
+        case 'Results Approved':
+            return '<span class="badge bg-primary">Results Approved</span>';
+        case 'Results Rejected':
+            return '<span class="badge bg-danger">Results Rejected</span>';
+        case 'Cancelled':
+            return '<span class="badge bg-secondary">Cancelled</span>';
+        default:
+            return '<span class="badge bg-secondary">' . htmlspecialchars($status) . '</span>';
+    }
+}
 ?>
 
 <!DOCTYPE html>
@@ -13,968 +209,586 @@ require_once 'config.php';
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>View Reports - PIT SPORTS TALLYING</title>
+    <title>View Reports - Admin Dashboard</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" rel="stylesheet">
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=Poppins:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 
     <style>
-        /* Added from Tournament_Manager_page.php */
-        :root {
-        --primary-green: #4CAF50;
-        --primary-dark: #2E7D32;
-        --accent-gold: #FFD700;
-        --accent-silver: #C0C0C0;
-        --accent-bronze: #CD7F32;
-        --bg-light: #F8F9FA;
-        --bg-white: #FFFFFF;
-        --text-dark: #1A1A1A;
-        --text-muted: #6C757D;
-        --shadow-sm: 0 2px 8px rgba(0,0,0,0.06);
-        --shadow-md: 0 4px 16px rgba(0,0,0,0.08);
-        --shadow-lg: 0 8px 32px rgba(0,0,0,0.12);
-        --transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-    }
-
-    body {
-        background: linear-gradient(to bottom,rgba(245, 16, 16, 0.32));
-        margin: 0;
-        padding: 0;
-        min-height: 100vh;
-        font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; /* Updated font */
-        display: flex;
-        flex-direction: column;
-    }
-
-        /* Navbar Enhancement - Copied from Tournament_Manager_page.php */
-    .navbar {
-        background: linear-gradient(135deg, #1a1a1a 0%, #2d2d2d 100%) !important;
-        box-shadow: 0 4px 20px rgba(0,0,0,0.15);
-        padding: 1rem 0;
-        backdrop-filter: blur(10px);
-    }
-
-    .navbar-brand {
-        transition: var(--transition);
-    }
-
-    .navbar-brand:hover {
-        transform: translateY(-2px);
-    }
-
-    .brand-logo {
-        filter: drop-shadow(0 2px 4px rgba(255,255,255,0.1));
-    }
-
-    .brand-heading {
-        font-family: 'Poppins', sans-serif;
-        font-weight: 700;
-        letter-spacing: -0.5px;
-    }
-
-    .nav-link {
-        font-weight: 500;
-        font-size: 0.95rem;
-        padding: 0.5rem 1.25rem !important;
-        margin: 0 0.25rem;
-        border-radius: 8px;
-        transition: var(--transition);
-        position: relative;
-    }
-
-    .nav-link::after {
-        content: '';
-        position: absolute;
-        bottom: 0;
-        left: 50%;
-        width: 0;
-        height: 2px;
-        background: var(--primary-green);
-        transition: var(--transition);
-        transform: translateX(-50%);
-    }
-
-    .nav-link:hover::after,
-    .nav-link.active::after {
-        width: 80%;
-    }
-
-    .nav-link:hover {
-        background: rgba(255,255,255,0.1);
-        color: var(--primary-green) !important;
-    }
-    
-    /* Note: The interactive-brand CSS from the old Event.php is removed */
-
-    .btn-danger, .btn-success {
-        padding: 0.6rem 1.5rem;
-        border-radius: 10px;
-        font-weight: 600;
-        transition: var(--transition);
-        border: none;
-        box-shadow: 0 4px 12px rgba(0,0,0,0.15);
-    }
-
-    .btn-danger:hover, .btn-success:hover {
-        transform: translateY(-2px);
-        box-shadow: 0 6px 20px rgba(0,0,0,0.2);
-    }
-    /* End Navbar Enhancement */
+        /* Admin Panel Styles (from results.php) */
+        :root { 
+            --sidebar-width: 260px; 
+            --header-height: 82px; 
+            --transition: all 0.3s ease; 
+            --card-shadow: 0 5px 20px rgba(0, 0, 0, 0.08); 
+            --bg-light: #F8F9FA; 
+            --primary-green: #4CAF50;
+            --primary-dark: #2E7D32;
+            --accent-gold: #FFD700;
+            --accent-silver: #C0C0C0;
+            --accent-bronze: #CD7F32;
+            --text-dark: #1A1A1A;
+            --text-muted: #6C757D;
+        }
+        body { background-color: var(--bg-light); margin: 0; padding: 0; min-height: 100vh; font-family: 'Inter', sans-serif; display: flex; flex-direction: column; }
+        .navbar { background: linear-gradient(135deg, #1a1a1a 0%, #2d2d2d 100%) !important; box-shadow: 0 4px 20px rgba(0,0,0,0.15); padding: 1rem 1.5rem; height: var(--header-height); position: fixed; top: 0; left: 0; right: 0; z-index: 1050; }
+        .user-dropdown .dropdown-toggle { color: white; display: flex; align-items: center; text-decoration: none; padding: 8px 12px; border-radius: 8px; }
+        .user-dropdown .dropdown-toggle img { width: 36px; height: 36px; border-radius: 50%; object-fit: cover; margin-right: 10px; }
+        .sidebar { width: var(--sidebar-width); position: fixed; top: var(--header-height); left: 0; height: calc(100vh - var(--header-height)); background: #2c3e50; color: white; box-shadow: 5px 0 15px rgba(0,0,0,0.2); z-index: 1040; transition: width var(--transition); overflow-y: auto; overflow-x: hidden; }
+        .sidebar-nav { padding: 20px 0; }
+        .sidebar-nav .nav-link { color: rgba(255, 255, 255, 0.7); font-size: 1.05rem; font-weight: 500; padding: 12px 25px; transition: var(--transition); border-left: 5px solid transparent; margin: 2px 0; display: flex; align-items: center; text-decoration: none; }
+        .sidebar-nav .nav-link i { width: 30px; text-align: center; flex-shrink: 0; font-size: 0.95em; }
+        .sidebar-nav .nav-link:hover { color: white; background: rgba(255, 255, 255, 0.05); border-left-color: #1abc9c; }
+        .sidebar-nav .nav-link.active { color: white; background: rgba(255, 255, 255, 0.1); border-left-color: #3498db; font-weight: 600; }
+        .sidebar-nav .nav-title { padding: 10px 25px; font-size: 0.75rem; font-weight: 600; color: rgba(255, 255, 255, 0.4); text-transform: uppercase; letter-spacing: 1px; }
+        .main-content { flex: 1 0 auto; padding: 30px; margin-top: var(--header-height); margin-left: var(--sidebar-width); transition: margin-left var(--transition); min-height: calc(100vh - var(--header-height)); }
+        footer {
+            flex-shrink: 0;
+            background: #2c3e50 !important;
+            box-shadow: 0 -2px 10px rgba(0,0,0,0.1);
+            padding-left: var(--sidebar-width);
+            transition: padding-left var(--transition);
+            position: relative;
+            z-index: 1041;
+            padding-top: 1rem;
+            padding-bottom: 1rem;
+        }
+        .section-title { font-family: 'Poppins', sans-serif; font-weight: 600; color: #333; }
+        .navbar-profile-icon { width: 36px; height: 36px; font-size: 36px; text-align: center; line-height: 1; border-radius: 50%; margin-right: 10px; color: rgba(255,255,255,0.8); }
+        .user-dropdown .dropdown-toggle { color: white; display: flex; align-items: center; text-decoration: none; padding: 8px 12px; border-radius: 8px; transition: var(--transition); }
+        .user-dropdown .dropdown-toggle:hover { background-color: rgba(255, 255, 255, 0.1); }
+        .user-dropdown .dropdown-toggle .user-name { font-weight: 600; font-size: 0.95rem; }
         
-        .interactive-brand:hover .brand-heading,
-        .interactive-brand:hover .brand-subheading {
-            color: rgba(0, 102, 255, 0.43) !important;
+        /* Sub-menu styles from results.php */
+        .sidebar-nav .sub-menu {
+            padding-left: 30px; /* Indent */
+            max-height: 0;
+            overflow: hidden;
+            transition: max-height 0.3s ease-out;
+            list-style: none;
+            background: rgba(0,0,0,0.1);
         }
-
-        .main-content {
-            flex-grow: 1;
-            max-width: 1280px; 
-            margin: 0 auto;
-            padding: 20px;
-            width: 100%;
-        }
-
-        .header-card {
-            background-color: #ffffff;
-            border-radius: 8px;
-            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
-            padding: 20px 25px;
-            margin-bottom: 25px;
-            transition: all 0.3s ease;
-        }
-
-        .header-card h2 {
-            font-size: 1.8rem;
-            font-weight: 700;
-            color: #333;
-            display: flex;
-            align-items: center;
-            gap: 0.75rem;
-            margin-bottom: 0.5rem;
-        }
-
-        .header-card p {
-            color: #6c757d;
+        .sidebar-nav .sub-menu a {
+            padding-top: 10px;
+            padding-bottom: 10px;
             font-size: 0.95rem;
-            margin-top: 0.25rem;
+            padding-left: 35px; /* Further indent */
+        }
+        .sidebar-nav .sub-menu a:hover {
+            background: rgba(255,255,255,0.1);
+        }
+        .sidebar-nav .collapse.show .sub-menu {
+            max-height: 500px; /* Show the submenu */
+        }
+        .sidebar-nav .sidebar-chevron {
+            transition: transform 0.3s ease;
+            font-size: 0.7em;
+        }
+        .sidebar-nav a[aria-expanded="true"] .sidebar-chevron {
+            transform: rotate(180deg);
         }
 
+        /* Report Card Styles */
         .report-card {
-            background-color: #ffffff;
-            border-radius: 8px;
-            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
-            padding: 20px;
-            margin-bottom: 20px;
-            scroll-margin-top: 90px; 
-            transition: all 0.3s;
+            background-color: #FFFFFF;
+            border: 1px solid #dee2e6;
+            border-top: none; /* Removed to connect with tabs */
+            border-radius: 0 0 16px 16px; /* Adjusted radius */
+            box-shadow: var(--card-shadow);
+            padding: 2rem;
+            margin-bottom: 2rem;
+            scroll-margin-top: 100px; 
         }
-
         .section-header {
             display: flex;
             align-items: center;
             justify-content: space-between;
-            font-size: 1.1rem;
+            font-size: 1.5rem;
+            font-weight: 700;
+            font-family: 'Poppins', sans-serif;
+            color: var(--text-dark);
+            padding-bottom: 1rem;
+            border-bottom: 2px solid #eee;
+            margin-bottom: 1.5rem;
+        }
+        .section-header .title-group { display: flex; align-items: center; gap: 0.75rem; }
+        .section-description { font-size: 0.9rem; color: var(--text-muted); margin-bottom: 1.5rem; }
+        .report-table { width: 100%; border-collapse: collapse; font-size: 0.9rem; border-radius: 8px; overflow: hidden; border: 1px solid #dee2e6; }
+        .report-table th, .report-table td { padding: 1rem; text-align: left; border-bottom: 1px solid #dee2e6; }
+        .report-table th { font-weight: 600; color: var(--text-dark); font-size: 0.85rem; background-color: var(--bg-light); text-transform: uppercase; letter-spacing: 0.5px; }
+        .report-table tbody tr:nth-child(even) { background-color: var(--bg-light); }
+        .report-table tbody tr:hover { background-color: #e9ecef; }
+        .chart-wrapper { background: #FFFFFF; border-radius: 8px; padding: 2rem; box-shadow: var(--card-shadow); }
+        .chart-title { font-size: 1.2rem; font-weight: 600; font-family: 'Poppins', sans-serif; color: var(--text-dark); margin-bottom: 1.5rem; text-align: center; }
+        .chart-canvas { max-height: 350px; width: 100% !important; }
+        .rank-circle { display: inline-flex; align-items: center; justify-content: center; width: 30px; height: 30px; border-radius: 50%; background-color: var(--primary-green); color: white; font-weight: 600; font-size: 0.9rem; }
+        .medal-icon-header { font-size: 1.1rem; }
+        .gold-icon { color: var(--accent-gold); }
+        .silver-icon { color: var(--accent-silver); }
+        .bronze-icon { color: var(--accent-bronze); }
+        
+        /* New Tab Styles */
+        .nav-tabs {
+            border-bottom: 1px solid #dee2e6;
+        }
+        .nav-tabs .nav-link {
+            border: 1px solid transparent;
+            border-top-left-radius: 8px;
+            border-top-right-radius: 8px;
+            color: var(--text-muted);
             font-weight: 600;
-            color: #333;
-            padding-bottom: 10px;
-            border-bottom: 1px solid #eee;
-            margin-bottom: 20px;
+            padding: 0.75rem 1.25rem;
         }
-
-        .section-header .title-group {
-            display: flex;
-            align-items: center;
+        .nav-tabs .nav-link.active {
+            color: var(--primary-dark);
+            background-color: #FFFFFF;
+            border-color: #dee2e6 #dee2e6 #FFFFFF;
+            border-bottom: 1px solid #FFFFFF;
+            position: relative;
+            top: 1px;
         }
-
-        .section-header span {
-            margin-right: 8px;
-            font-size: 1.3rem;
+        .tab-content .report-card {
+            border-top-left-radius: 0; /* Connects to active tab */
         }
-
-        .refresh-badge {
-            font-size: 0.75rem;
-            padding: 4px 8px;
-            background-color: #28a745;
-            color: white;
-            border-radius: 4px;
-            animation: pulse 2s infinite;
-        }
-
-        @keyframes pulse {
-            0%, 100% { opacity: 1; }
-            50% { opacity: 0.6; }
-        }
-
-        .section-description {
-            font-size: 0.75rem;
-            color: #6c757d;
-            margin-bottom: 1rem;
-        }
-
-        .global-actions-bar {
-            display: flex;
-            justify-content: flex-start;
-            gap: 0.75rem;
-            flex-wrap: wrap;
-            margin-bottom: 20px;
-        }
-
-        .filter-controls-sidebar {
-            padding-top: 10px;
-            border-top: 1px solid #eee;
-            margin-top: 10px;
-        }
-        
-        .filter-label {
-            font-size: 0.875rem;
-            font-weight: 500;
-            color: #495057;
-            display: block;
-            margin-bottom: 0.25rem;
-        }
-        
-        .filter-select {
-            padding: 6px 10px;
-            border: 1px solid #ccc;
-            border-radius: 4px;
-            font-size: 0.9rem;
-            background-color: #fff;
-            width: 100%;
-        }
-
-        .action-button {
-            padding: 6px 12px;
-            border-radius: 4px;
-            font-size: 0.85rem;
-            font-weight: 500;
-            display: flex;
-            align-items: center;
-            gap: 4px;
-            border: 1px solid #ccc; 
-            background-color: #f7f7f7;
-            transition: background-color 0.2s;
-            cursor: pointer;
-            color: #495057;
-            text-decoration: none;
-        }
-        
-        .action-button:hover { 
-            background-color: #ededed; 
-            color: #495057;
-        }
-
-        .pdf-icon { color: #dc3545; }
-        .excel-icon { color: #28a745; }
-        .print-icon { color: #007bff; }
-
-        .report-table {
-            width: 100%;
-            border-collapse: collapse;
-            font-size: 0.9rem;
-            border: 1px solid #ddd; 
-            border-radius: 4px;
-            overflow: hidden;
-        }
-        
-        .report-table th, 
-        .report-table td {
-            padding: 12px 10px;
-            text-align: left;
-            border-bottom: 1px solid #e0e0e0; 
-        }
-        
-        .report-table th {
-            font-weight: 600;
-            color: #555;
-            font-size: 0.85rem;
-            background-color: #f8f8f8;
-        }
-
-        .report-table tbody tr:hover {
-            background-color: #f8f9fa;
-        }
-
-        .loading-spinner {
-            text-align: center;
-            padding: 40px;
-            color: #6c757d;
-        }
-
-        .loading-spinner i {
-            font-size: 2rem;
-            animation: spin 1s linear infinite;
-        }
-
-        @keyframes spin {
-            0% { transform: rotate(0deg); }
-            100% { transform: rotate(360deg); }
-        }
-
-        .chart-container {
-            display: flex;
-            gap: 20px;
-            margin-top: 10px;
-            flex-wrap: wrap;
-        }
-
-        .chart-wrapper {
-            flex: 1;
-            min-width: 100%;
-            background: #f8f9fa;
-            border-radius: 8px;
-            padding: 20px;
-            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
-        }
-
-        .chart-title {
-            font-size: 1rem;
-            font-weight: 600;
-            color: #333;
-            margin-bottom: 15px;
-            text-align: center;
-        }
-
-        .chart-canvas {
-            max-height: 300px;
-        }
-
-        .sticky-sidebar-col {
-            margin-bottom: 20px;
-        }
-        
-        @media (min-width: 992px) {
-            .sticky-sidebar-col {
-                position: sticky;
-                top: 80px;
-                align-self: flex-start;
-                z-index: 100;
-                margin-bottom: 0;
-            }
-        }
-
-        .quick-jump-nav-card {
-            background-color: #ffffff;
-            border-radius: 8px;
-            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
-            padding: 20px;
-            margin-bottom: 20px;
-        }
-
-        .quick-jump-link {
-            display: flex;
-            align-items: center;
-            padding: 8px 10px;
-            margin-bottom: 4px;
-            border-radius: 4px;
-            color: #495057;
-            text-decoration: none;
-            transition: background-color 0.2s, border-left 0.2s, color 0.2s;
-            border-left: 4px solid transparent;
-            font-size: 0.95rem;
-        }
-
-        .quick-jump-link:hover {
-            background-color: #f0f0f0;
-            color: #007bff;
-        }
-
-        .quick-jump-link.active-link {
-            background-color: #fbe5e5;
-            border-left: 4px solid #dc3545;
-            font-weight: 500;
-            color: #dc3545;
-        }
-
-        .quick-jump-link .fa-icon {
-            margin-right: 10px;
-            font-size: 1.1rem;
-            width: 20px;
-            text-align: center;
-        }
-
-        .rank-circle {
-            display: inline-flex;
-            align-items: center;
-            justify-content: center;
-            width: 30px;
-            height: 30px;
-            border-radius: 50%;
-            background-color: #007bff;
-            color: white;
-            font-weight: 600;
-            font-size: 0.85rem;
-        }
-
-        .medal-icon-header {
-            font-size: 1.1rem;
-        }
-
-        @media (max-width: 768px) {
-            body { 
-                padding-top: 100px;
-            }
-
-            .global-actions-bar {
-                justify-content: center;
-            }
-            
-            .chart-container {
-                flex-direction: column;
-            }
-
-            .chart-wrapper {
-                min-width: 100%;
-            }
-        }
-
-        
-
-        .medal-image-icon {
-            /* Style for the custom images */
-            width: 30px;
-            height: 30px;
-            object-fit: contain; /* Ensures image fits without cropping */
-            display: inline-block;
-            
-        }
-
-        /* Target all table data cells and headers within the medal summary table */
-#medalSummaryTable th, 
-#medalSummaryTable td {
-    /* Set top/bottom padding to 0 to eliminate vertical space between rows.
-       The horizontal padding (16px) is kept for space around the text. */
-    padding: 0 16px; 
-    
-    /* Ensure no margin is incorrectly pushing the cells apart */
-    margin: 0;
-}
-
-/* Adjust the table header for necessary spacing (visual balance) */
-/* You may want to keep a little padding on the header row (<th>) for separation from the title. */
-#medalSummaryTable th {
-    /* Keeping some padding on the header looks cleaner and separates it from the title */
-    padding: 10px 16px; 
-}
-
-        
     </style>
 </head>
 <body>
 
-    <nav class="navbar navbar-expand-lg navbar-dark bg-dark fixed-top">
-    <div class="container-fluid d-flex align-items-center justify-content-between">
-        <a class="navbar-brand d-flex align-items-center interactive-brand" href="Tournament_Manager_page.php" style="cursor: pointer;">
-            <img src="imageslogo.png" alt="Logo" class="me-2 brand-logo" style="height: 50px; width: 48px; object-fit: contain; transition: filter 0.2s;">
-            <div class="d-flex flex-column lh-sm">
-                <strong class="text-white brand-heading" style="font-size: 1.25rem; transition: color 0.2s;">PIT SPORTS TALLYING</strong>
-                <small class="text-light brand-subheading" style="font-size: 0.75rem; transition: color 0.2s;">Official College Tournament System</small>
+    <nav class="navbar navbar-dark bg-dark">
+        <div class="container-fluid d-flex align-items: center justify-content-between">
+            <a class="navbar-brand d-flex align-items: center" href="admin_dashboard.php">
+                <img src="imageslogo.png" alt="Logo" class="me-2" style="height: 50px; width: 48px; object-fit: contain;">
+                <div class="d-flex flex-column lh-sm">
+                    <strong class="text-white" style="font-size: 1.25rem;">PIT SPORTS TALLYING</strong>
+                    <small class="text-light" style="font-size: 0.75rem;">Admin Panel</small>
+                </div>
+            </a>
+            <div class="dropdown user-dropdown ms-auto me-2 me-lg-0">
+                <a href="#" class="dropdown-toggle" id="userDropdown" data-bs-toggle="dropdown" aria-expanded="false">
+                    <i class="fas fa-user-circle navbar-profile-icon"></i>
+                    <span class="user-name d-none d-lg-inline"><?= htmlspecialchars($name); ?></span>
+                </a>
+                <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="userDropdown">
+                    <li><a class="dropdown-item" href="admin_profile.php"><i class="fas fa-user-circle"></i> Profile</a></li>
+                    <li><a class="dropdown-item" href="home.php" target="_blank"><i class="fas fa-globe"></i> View Public Site</a></li>
+                    <li><hr class="dropdown-divider"></li>
+                    <li><a class="dropdown-item text-danger" href="login.php"><i class="fas fa-sign-out-alt"></i> Logout</a></li>
+                </ul>
             </div>
-        </a>
+        </div>
+    </nav>
 
-        <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav"
-            aria-controls="navbarNav" aria-expanded="false" aria-label="Toggle navigation">
-            <span class="navbar-toggler-icon"></span>
-        </button>
-
-        <div class="collapse navbar-collapse" id="navbarNav">
-            <ul class="navbar-nav ms-auto align-items-center">
+    <?php if (isset($_SESSION['role']) && $_SESSION['role'] === 'Administrator'): ?>
+        <div class="sidebar" id="sidebar">
+            <ul class="nav flex-column sidebar-nav">
                 <li class="nav-item">
-                    <a class="nav-link <?= ($current_page == 'Tournament_Manager_page.php') ? 'active' : '' ?>" href="Tournament_Manager_page.php">Home</a>
+                    <a class="nav-link <?php if ($current_page == 'admin_dashboard.php') echo 'active'; ?>" href="admin_dashboard.php">
+                        <i class="fas fa-tachometer-alt me-2"></i> <span>Dashboard</span>
+                    </a>
                 </li>
                 <li class="nav-item">
-                    <a class="nav-link <?= ($current_page == 'Event.php') ? 'active' : '' ?>" href="Event.php">Events</a>
+                    <a class="nav-link <?php if ($is_management_page) echo 'active'; ?>" data-bs-toggle="collapse" href="#teamsCollapse" role="button" aria-expanded="<?php echo $is_management_page ? 'true' : 'false'; ?>">
+                        <i class="fas fa-users me-2"></i> <span>Manage Colleges</span> <i class="fas fa-chevron-down ms-auto sidebar-chevron"></i>
+                    </a>
+                    <div class="collapse <?php if ($is_management_page) echo 'show'; ?>" id="teamsCollapse">
+                        <ul class="sub-menu">
+                            <li class="text-muted" style="padding: 10px 25px 5px 60px;">Management</li>
+                            <li><a class="nav-link <?php if ($current_page == 'colleges.php') echo 'active'; ?>" href="sd/colleges.php"><span>Manage Colleges</span></a></li>
+                            <li><a class="nav-link <?php if ($current_page == 'events.php') echo 'active'; ?>" href="sd/events.php"><span>Manage Events (L1-L3)</span></a></li>
+                            <li class="nav-item">
+                            <a class="nav-link <?php if ($current_page == 'Manage_Matches.php') echo 'active'; ?>" href="sd/Manage_Matches.php">
+                                <span>Manage Matches</span>
+                            </a>
+                        </li>
+                            <li class="text-muted" style="padding: 10px 25px 5px 60px;">Tallying</li>
+                            <li><a class="nav-link <?php if ($current_page == 'results.php') echo 'active'; ?>" href="sd/results.php"><span>Approve Results</span></a></li>
+                            <li><a class="nav-link <?php if ($current_page == 'reports.php') echo 'active'; ?>" href="sd/reports.php"><span>Medal Reports</span></a></li>
+                        </ul>
+                    </div>
                 </li>
                 <li class="nav-item">
-                    <a class="nav-link <?= ($current_page == 'Teams.php') ? 'active' : '' ?>" href="Teams.php">Teams</a>
+                    <a class="nav-link <?php if ($current_page == 'Manage_Users.php') echo 'active'; ?>" href="Manage_Users.php">
+                        <i class="fas fa-users-cog me-2"></i> <span>Manage Users</span>
+                    </a>
                 </li>
                 <li class="nav-item">
-                    <?php if (isset($_SESSION['email'])): ?>
-                        <a href="logout.php" class="btn btn-danger ms-3">Logout</a>
-                    <?php else: ?>
-                        <a href="login.php" class="btn btn-success ms-3">Admin Login</a>
-                    <?php endif; ?>
+                <a class="nav-link <?php if ($current_page == 'Manage_medals.php') echo 'active'; ?>" href="Manage_medals.php">
+                    <i class="fas fa-medal me-2"></i> <span>Manage Medals</span>
+                </a>
+            </li>
+            <li class="nav-item">
+                <a class="nav-link <?php if ($current_page == 'Manage_Requests.php') echo 'active'; ?>" href="Manage_Requests.php">
+                    <i class="fas fa-user-plus me-2"></i> <span>Account Requests</span>
+                </a>
+            </li>
+            <li class="nav-item">
+                <a class="nav-link <?php if ($current_page == 'Manage_Viewreports.php') echo 'active'; ?>" href="Manage_Viewreports.php">
+                    <i class="fas fa-chart-line me-2"></i> <span>View Reports</span>
+                </a>
+            </li>
+                <li class="nav-item mt-3">
+                    <a class="nav-link text-danger" href="login.php">
+                        <i class="fas fa-sign-out-alt me-2"></i> <span>Logout</span>
+                    </a>
                 </li>
             </ul>
         </div>
-    </div>
-</nav>
+    <?php else: // Sports Director Sidebar ?>
+        <div class="sidebar" id="sidebar">
+            <ul class="nav flex-column sidebar-nav">
+                <li class="nav-item">
+                    <a class="nav-link <?php if ($current_page == 'sports_director_dashboard.php') echo 'active'; ?>" 
+                       href="sd/sports_director_dashboard.php">
+                        <i class="fas fa-tachometer-alt me-2"></i> <span>Dashboard</span>
+                    </a>
+                </li>
+                <li class="nav-item mt-3"><span class="nav-title">Management</span></li>
+                <li class="nav-item">
+                    <a class="nav-link <?php if ($current_page == 'colleges.php') echo 'active'; ?>" href="sd/colleges.php">
+                        <i class="fas fa-users me-2"></i> <span>Manage Colleges</span>
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link <?php if ($current_page == 'events.php') echo 'active'; ?>" href="sd/events.php">
+                        <i class="fas fa-calendar-alt me-2"></i> <span>Manage Events (L1-L3)</span>
+                    </a>
+                </li>
+                <!-- === THIS IS THE NEW LINK === -->
+            <li class="nav-item">
+                <a class="nav-link <?= ($current_page == 'view_all_matches.php') ? 'active' : '' ?>" href="sd/view_all_matches.php">
+                    <i class="fas fa-trophy me-2"></i> <span>View All Matches</span>
+                </a>
+            </li>
+            <!-- === END OF NEW LINK === -->
 
+
+                <li class="nav-item">
+                    <a class="nav-link <?php if ($current_page == 'Manage_Viewreports.php') echo 'active'; ?>" href="Manage_Viewreports.php">
+                        <i class="fas fa-chart-line me-2"></i> <span>View Reports</span>
+                    </a>
+                </li>
+                
+                <li class="nav-item mt-3"><span class="nav-title">Tallying</span></li>
+                <li class="nav-item">
+                    <a class="nav-link <?php if ($current_page == 'results.php') echo 'active'; ?>" href="sd/results.php">
+                        <i class="fas fa-check-double me-2"></i> <span>Approve Results</span>
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link <?php if ($current_page == 'reports.php') echo 'active'; ?>" href="sd/reports.php">
+                        <i class="fas fa-chart-line me-2"></i> <span>Medal Reports</span>
+                    </a>
+                </li>
+                 
+                <li class="nav-item mt-auto">
+                    <a class="nav-link text-danger" href="login.php">
+                        <i class="fas fa-sign-out-alt me-2"></i> <span>Logout</span>
+                    </a>
+                </li>
+            </ul>
+        </div>
+    <?php endif; ?> 
+    
     <main class="main-content">
         
-        <div class="header-card">
-            <h2>
-                <span style="color: #dc3545; font-size: 1.5rem;"><i class="fas fa-file-invoice"></i></span> View Reports
-            </h2>
-            <p>Comprehensive tournament reports with real-time medal summaries, event results, and performance analytics.</p>
-        </div>
-
-        <div class="global-actions-bar">
-            <button class="action-button" onclick="window.print()">
-                <span class="print-icon"><i class="fas fa-print"></i></span> Print Report
-            </button>
-            <button class="action-button" onclick="refreshAllData()">
-                <i class="fas fa-sync-alt"></i> Refresh Data
-            </button>
-        </div>
+        <h1 class="section-title mb-4">View Reports</h1>
         
-        <div class="row">
-            
-            <div class="col-lg-3 sticky-sidebar-col">
-                
-                <div class="quick-jump-nav-card">
-                    <h5 class="text-secondary mb-3"><i class="fas fa-link me-2"></i>Quick Jump</h5>
-                    <nav class="nav flex-column" id="quick-jump-nav">
-                        <a class="quick-jump-link active-link" href="#summary" data-target="summary">
-                            <span class="fa-icon gold-icon"><i class="fas fa-medal"></i></span> Overall Medal Summary
-                        </a>
-                        <a class="quick-jump-link" href="#matches" data-target="matches">
-                            <span class="fa-icon silver-icon" style="color: #777;"><i class="fas fa-bullseye"></i></span> Match Results Report
-                        </a>
-                        <a class="quick-jump-link" href="#events" data-target="events">
-                            <span class="fa-icon pdf-icon"><i class="fas fa-list-check"></i></span> Event Results Report
-                        </a>
-                        <a class="quick-jump-link" href="#graphs" data-target="graphs">
-                            <span class="fa-icon excel-icon"><i class="fas fa-chart-bar"></i></span> Graphical Reports
-                        </a>
-                    </nav>
+        <ul class="nav nav-tabs" id="reportTab" role="tablist">
+            <li class="nav-item" role="presentation">
+                <button class="nav-link active" id="summary-tab" data-bs-toggle="tab" data-bs-target="#summary" type="button" role="tab" aria-controls="summary" aria-selected="true">
+                    <i class="fas fa-medal me-2 gold-icon"></i> Overall Medal Summary
+                </button>
+            </li>
+            <li class="nav-item" role="presentation">
+                <button class="nav-link" id="matches-tab" data-bs-toggle="tab" data-bs-target="#matches" type="button" role="tab" aria-controls="matches" aria-selected="false">
+                    <i class="fas fa-bullseye me-2 text-muted"></i> Match Results
+                </button>
+            </li>
+            <li class="nav-item" role="presentation">
+                <button class="nav-link" id="events-tab" data-bs-toggle="tab" data-bs-target="#events" type="button" role="tab" aria-controls="events" aria-selected="false">
+                    <i class="fas fa-list-check me-2 text-primary"></i> Event Results
+                </button>
+            </li>
+            <li class="nav-item" role="presentation">
+                <button class="nav-link" id="graphs-tab" data-bs-toggle="tab" data-bs-target="#graphs" type="button" role="tab" aria-controls="graphs" aria-selected="false">
+                    <i class="fas fa-chart-bar me-2 text-success"></i> Graphical Reports
+                </button>
+            </li>
+        </ul>
 
-                    <div class="filter-controls-sidebar">
-                        <h5 class="text-secondary mb-3"><i class="fas fa-sliders me-2"></i> Report Filters</h5>
-                        
-                        <div class="mb-3">
-                            <label class="filter-label">Sort By:</label>
-                            <select class="filter-select" id="sortFilter">
-                                <option value="total">Total Medals</option>
-                                <option value="gold">Gold Medals</option>
-                                <option value="silver">Silver Medals</option>
-                                <option value="bronze">Bronze Medals</option>
+        <div class="tab-content" id="reportTabContent">
+            
+            <div class="tab-pane fade show active" id="summary" role="tabpanel" aria-labelledby="summary-tab">
+                <div class="report-card">
+                    <div class="section-header">
+                        <div class="title-group">
+                            <span class="fa-icon gold-icon"><i class="fas fa-medal"></i></span> Overall Medal Summary
+                        </div>
+                        <div style="width: 300px;">
+                            <label for="sortFilter" class="form-label fw-bold small mb-1">Sort By:</label>
+                            <select class="form-select form-select-sm" id="sortFilter" onchange="window.location.href = 'Manage_Viewreports.php?sort=' + this.value;">
+                                <option value="total" <?= ($sort_key == 'total') ? 'selected' : '' ?>>Total Medals</option>
+                                <option value="gold" <?= ($sort_key == 'gold') ? 'selected' : '' ?>>Gold Medals</option>
+                                <option value="silver" <?= ($sort_key == 'silver') ? 'selected' : '' ?>>Silver Medals</option>
+                                <option value="bronze" <?= ($sort_key == 'bronze') ? 'selected' : '' ?>>Bronze Medals</option>
                             </select>
                         </div>
                     </div>
-                </div>
-            </div>
-
-            <div class="col-lg-9">
+                    <p class="section-description">Total medals count per college, ranked by your selection. Updates automatically.</p>
                 
-                <!-- Overall Medal Summary -->
-                <div class="report-card report-section" id="summary">
-                <div class="section-header">
-                    <div class="title-group">
-                        <span style="color: #555;">🏅</span> Overall Medal Summary
+                    <div class="table-responsive">
+                        <table class="report-table" id="medalSummaryTable">
+                            <thead>
+                                <tr>
+                                    <th style="width: 10%;">Rank</th>
+                                    <th style="width: 40%;">College/Department</th>
+                                    <th style="width: 12%;"><span class="medal-icon-header gold-icon"><i class="fas fa-medal"></i></span> Gold</th>
+                                    <th style="width: 12%;"><span class="medal-icon-header silver-icon"><i class="fas fa-medal"></i></span> Silver</th>
+                                    <th style="width: 12%;"><span class="medal-icon-header bronze-icon"><i class="fas fa-medal"></i></span> Bronze</th>
+                                    <th style="width: 14%;">Total</th>
+                                </tr>
+                            </thead>
+                            <tbody id="medalSummaryBody">
+                                <?php if (empty($medal_tally)): ?>
+                                    <tr>
+                                        <td colspan="6" class="text-center text-muted py-4">No medal data available yet.</td>
+                                    </tr>
+                                <?php else: ?>
+                                    <?php foreach ($medal_tally as $index => $row): ?>
+                                        <tr>
+                                            <td><?= getRankHtml($index + 1) ?></td>
+                                            <td>
+                                                <strong><?= htmlspecialchars($row['college_code']) ?></strong>
+                                                <br>
+                                                <small class="text-muted"><?= htmlspecialchars($row['college_name']) ?></small>
+                                            </td>
+                                            <td><?= $row['gold'] ?></td>
+                                            <td><?= $row['silver'] ?></td>
+                                            <td><?= $row['bronze'] ?></td>
+                                            <td><strong><?= $row['total'] ?></strong></td>
+                                        </tr>
+                                    <?php endforeach; ?>
+                                <?php endif; ?>
+                            </tbody>
+                        </table>
                     </div>
-                    <span class="refresh-badge" id="medalUpdateBadge">Live</span>
-                </div>
-                <p class="section-description">Total medals count per college, ranked by overall performance. Updates automatically.</p>
-                
-                <div class="table-responsive">
-                    <table class="report-table" id="medalSummaryTable">
-                        <thead>
-                            <tr>
-                                <th style="width: 50px;">Rank</th>
-                                <th style="width: 40%;">College/Department</th>
-                                <th style="width: 15%;"><span class="medal-icon-header gold-icon">🥇</span> Gold</th>
-                                <th style="width: 15%;"><span class="medal-icon-header silver-icon">🥈</span> Silver</th>
-                                <th style="width: 15%;"><span class="medal-icon-header bronze-icon">🥉</span> Bronze</th>
-                                <th style="width: 15%;">Total Medals</th>
-                            </tr>
-                        </thead>
-                        <tbody id="medalSummaryBody">
-                            <tr>
-                                <td colspan="6" class="loading-spinner">
-                                    <i class="fas fa-spinner"></i>
-                                    <p>Loading medal data...</p>
-                                </td>
-                            </tr>
-                        </tbody>
-                    </table>
                 </div>
             </div>
 
-             <!-- Match Results Report -->
-                <div class="report-card report-section" id="matches">
+            <div class="tab-pane fade" id="matches" role="tabpanel" aria-labelledby="matches-tab">
+                 <div class="report-card">
                     <div class="section-header">
                         <div class="title-group">
-                            <span style="color: #555;"><i class="fas fa-futbol"></i></span> Match Results Report
+                            <span class="fa-icon text-muted"><i class="fas fa-futbol"></i></span> Match Results Report
                         </div>
-                        <span class="refresh-badge" id="matchUpdateBadge">Live</span>
                     </div>
-                    <p class="section-description">Detailed, match-by-match results for all completed games.</p>
+                    <p class="section-description">Detailed, match-by-match results for all approved games.</p>
                     
                     <div class="table-responsive">
                         <table class="report-table" id="matchResultsTable">
                             <thead>
                                 <tr>
-                                    <th style="width: 20%;">Event</th>
-                                    <th style="width: 25%;">Matches</th>
-                                    <th style="width: 15%;">Time Finished</th>
-                                    <th style="width: 15%;">Scores</th>
-                                    <th style="width: 25%;">Winner</th>
+                                    <th>Matchup</th>
+                                    <th>Score</th>
+                                    <th>Winner</th>
+                                    <th>Status</th>
+                                    <th>Date & Time</th>
+                                    <th>Venue</th>
                                 </tr>
                             </thead>
                             <tbody id="matchResultsBody">
-                                <tr>
-                                    <td colspan="5" class="loading-spinner">
-                                        <i class="fas fa-spinner"></i>
-                                        <p>Loading match results...</p>
-                                    </td>
-                                </tr>
+                                <?php if (empty($match_results)): ?>
+                                    <tr>
+                                        <td colspan="6" class="text-center text-muted py-4">
+                                            No approved match results available yet.
+                                        </td>
+                                    </tr>
+                                <?php else: ?>
+                                    <?php foreach ($match_results as $match): ?>
+                                        <tr>
+                                            <td>
+    <strong><?= htmlspecialchars($match['matchup'] ?? 'Invalid Matchup') ?></strong>
+    <br>
+    <small class="text-muted"><?= htmlspecialchars($match['event_name'] ?? 'N/A') ?> (<?= htmlspecialchars($match['category_name'] ?? 'N/A') ?>)</small>
+</td>
+                                            <td><strong><?= htmlspecialchars($match['scores'] ?? 'N/A') ?></strong></td>
+                                            <td><strong><?= htmlspecialchars($match['winner_name'] ?? 'N/A') ?></strong></td>
+                                            
+                                            <td><?= getStatusBadge($match['status']) ?></td>
+                                            
+                                            <td>
+                                                <?= htmlspecialchars($match['date_formatted']) ?>
+                                                <br>
+                                                <small class="text-muted"><?= htmlspecialchars($match['time_formatted']) ?></small>
+                                            </td>
+                                            <td><?= htmlspecialchars($match['venue'] ?? 'N/A') ?></td>
+                                        </tr>
+                                    <?php endforeach; ?>
+                                <?php endif; ?>
                             </tbody>
                         </table>
                     </div>
                 </div>
+            </div>
 
-                <!-- Event Results Report -->
-                <div class="report-card report-section" id="events">
+            <div class="tab-pane fade" id="events" role="tabpanel" aria-labelledby="events-tab">
+                <div class="report-card">
                     <div class="section-header">
                         <div class="title-group">
-                            <span style="color: #555;">🥇</span> Event Results Report
+                            <span class="fa-icon text-primary"><i class="fas fa-list-check"></i></span> Event Results Report
                         </div>
-                        <span class="refresh-badge" id="eventUpdateBadge">Live</span>
                     </div>
-                    <p class="section-description">Winners per event with medal placements.</p>
+                    <p class="section-description">Final winners for each game, event, and category.</p>
                     
                     <div class="table-responsive">
                         <table class="report-table" id="eventResultsTable">
-                            <thead>
-                                <tr>
-                                    <th style="width: 20%;">Event Name</th>
-                                    <th style="width: 15%;">Sport</th>
-                                    <th style="width: 15%;">Date</th>
-                                    <th style="width: 18%;"><span class="medal-icon-header gold-icon">🥇</span> Gold</th>
-                                    <th style="width: 16%;"><span class="medal-icon-header silver-icon">🥈</span> Silver</th>
-                                    <th style="width: 16%;"><span class="medal-icon-header bronze-icon">🥉</span> Bronze</th>
-                                </tr>
-                            </thead>
+                        <thead>
+                            <tr>
+                                <th>Game</th>
+                                <th>Event</th>
+                                <th>Categories</th>
+                                <th>Date</th>
+                                <th>🥇 Gold</th>
+                                <th>🥈 Silver</th>
+                                <th>🥉 Bronze</th>
+                            </tr>
+                        </thead>
                             <tbody id="eventResultsBody">
-                                <tr>
-                                    <td colspan="6" class="loading-spinner">
-                                        <i class="fas fa-spinner"></i>
-                                        <p>Loading event results...</p>
-                                    </td>
-                                </tr>
+                                <?php if (empty($event_results)): ?>
+                                    <tr>
+                                        <td colspan="7" class="text-center text-muted py-4">
+                                            No approved event results available yet.
+                                        </td>
+                                    </tr>
+                                <?php else: ?>
+                                    <?php foreach ($event_results as $event): ?>
+                                        <tr>
+                                            <td><strong><?= htmlspecialchars($event['game_name']) ?></strong></td>
+                                            <td><small class="text-muted"><?= htmlspecialchars($event['event_name']) ?></small></td>
+                                            <td><strong><?= htmlspecialchars($event['category_name']) ?></strong></td>
+                                            <td><?= htmlspecialchars($event['event_date_formatted'] ?? 'N/A') ?></td>
+                                            <td><?= htmlspecialchars($event['gold_winner'] ?? 'N/A') ?></td>
+                                            <td><?= htmlspecialchars($event['silver_winner'] ?? 'N/A') ?></td>
+                                            <td><?= htmlspecialchars($event['bronze_winner'] ?? 'N/A') ?></td>
+                                        </tr>
+                                    <?php endforeach; ?>
+                                <?php endif; ?>
                             </tbody>
                         </table>
                     </div>
                 </div>
-                
-               <div class="report-card report-section" id="graphs">
-                <div class="section-header">
-                    <div class="title-group">
-                        <span style="color: #555;">📊</span> Graphical Reports
-                    </div>
-                    <span class="refresh-badge" id="graphUpdateBadge">Live</span>
-                </div>
-                <p class="section-description">Visual representation of medal distribution and performance.</p>
-
-                <div class="row">
-                    
-                    <div class="col-12 mb-4"> 
-                        <div class="chart-wrapper">
-                            <h3 class="chart-title">Medal Counts per College</h3>
-                            <canvas id="medalBarChart" class="chart-canvas"></canvas>
-                        </div>
-                    </div>
-
-                    <div class="col-12">
-                        <div class="chart-wrapper">
-                            <h3 class="chart-title">Medal Distribution per Sport</h3>
-                            <canvas id="sportPieChart" class="chart-canvas"></canvas>
-                        </div>
-                    </div>
-                    
-                </div>
             </div>
             
-        </div>
-    </main>
+            <div class="tab-pane fade" id="graphs" role="tabpanel" aria-labelledby="graphs-tab">
+                <div class="report-card">
+                    <div class="section-header">
+                        <div class="title-group">
+                            <span class="fa-icon text-success"><i class="fas fa-chart-bar"></i></span> Graphical Reports
+                        </div>
+                    </div>
+                    <p class="section-description">Visual representation of medal distribution and performance.</p>
 
-    <footer class="bg-dark text-white py-3 mt-auto">
+                    <div class="row g-4">
+                        <div class="col-12"> 
+                            <div class="chart-wrapper">
+                                <h3 class="chart-title">Medal Counts per College</h3>
+                                <canvas id="medalBarChart" class="chart-canvas"></canvas>
+                            </div>
+                        </div>
+                        <div class="col-12">
+                            <div class="chart-wrapper">
+                                <h3 class="chart-title">Category Distribution per Game</h3>
+                                <canvas id="sportPieChart" class="chart-canvas"></canvas>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        
+        </div> </main>
+
+    <footer class="bg-dark text-white py-4">
         <div class="text-center">
-            <small>&copy; 2025 PIT SPORTS TALLYING. All rights reserved.</small><br>
-            <small>Developed by Tsunayoshi Sawada</small>
+            <small>&copy; <?php echo date("Y"); ?> PIT SPORTS TALLYING. All rights reserved.</small><br>
+            <small class="text-muted">Developed by Tsunayoshi Sawada</small>
         </div>
     </footer>
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2.0.0"></script>
     <script>
-        // Global chart instances
-        let medalBarChart = null;
-        let sportPieChart = null;
-        let autoRefreshInterval = null;
+        // --- MODIFIED JAVASCRIPT ---
+        
+        // Store chart instances
+        let barChartInstance = null;
+        let pieChartInstance = null;
+
+        // --- NEW: Register the datalabels plugin globally ---
+        Chart.register(ChartDataLabels);
 
         document.addEventListener('DOMContentLoaded', () => {
-            // Initialize smooth scrolling and active link tracking
-            initializeNavigation();
             
-            // Load all data initially
-            loadAllData();
+            const graphsTabEl = document.querySelector('#graphs-tab');
             
-            // Set up auto-refresh every 30 seconds
-            autoRefreshInterval = setInterval(loadAllData, 30000);
-            
-            // Set up sort filter
-            document.getElementById('sortFilter').addEventListener('change', loadMedalSummary);
-        });
-
-        // Navigation setup
-        function initializeNavigation() {
-            const sections = document.querySelectorAll('.report-section');
-            const links = document.querySelectorAll('.quick-jump-link');
-            const navContainer = document.getElementById('quick-jump-nav');
-
-            navContainer.addEventListener('click', function(e) {
-                if (e.target.closest('.quick-jump-link')) {
-                    e.preventDefault();
-                    const link = e.target.closest('.quick-jump-link');
-                    const targetId = link.getAttribute('data-target');
-                    const targetElement = document.getElementById(targetId);
-
-                    if (targetElement) {
-                        targetElement.scrollIntoView({
-                            behavior: 'smooth',
-                            block: 'start'
-                        });
+            if (graphsTabEl) {
+                // Add event listener to initialize charts when tab is shown
+                graphsTabEl.addEventListener('shown.bs.tab', event => {
+                    console.log('Graphs tab shown, initializing charts...');
+                    if (!barChartInstance) {
+                        barChartInstance = initializeBarChart();
                     }
-                }
-            });
-
-            const observerOptions = {
-                root: null, 
-                rootMargin: '-50% 0px -40% 0px', 
-                threshold: 0 
-            };
-
-            const observer = new IntersectionObserver((entries) => {
-                entries.forEach(entry => {
-                    const targetId = entry.target.id;
-                    const link = document.querySelector(`.quick-jump-link[data-target="${targetId}"]`);
-                    
-                    if (link && entry.isIntersecting) {
-                        links.forEach(l => l.classList.remove('active-link'));
-                        link.classList.add('active-link');
+                    if (!pieChartInstance) {
+                        pieChartInstance = initializePieChart();
                     }
                 });
-            }, observerOptions);
-
-            sections.forEach(section => observer.observe(section));
-        }
-
-        // Load all data
-        function loadAllData() {
-            loadMedalSummary();
-            loadMatchResults();
-            loadEventResults();
-        }
-
-        // Refresh all data manually
-        function refreshAllData() {
-            showRefreshAnimation();
-            loadAllData();
-        }
-
-        function showRefreshAnimation() {
-            ['medalUpdateBadge', 'matchUpdateBadge', 'eventUpdateBadge', 'graphUpdateBadge'].forEach(id => {
-                const badge = document.getElementById(id);
-                if (badge) {
-                    badge.textContent = 'Updating...';
-                    badge.style.backgroundColor = '#ffc107';
-                    setTimeout(() => {
-                        badge.textContent = 'Live';
-                        badge.style.backgroundColor = '#28a745';
-                    }, 1000);
-                }
-            });
-        }
-
-        // Utility function to escape HTML
-        function escapeHtml(text) {
-            const div = document.createElement('div');
-            div.textContent = text;
-            return div.innerHTML;
-        }
-
-        // === START OF NEW CODE: getRankHtml Utility ===
-        function getRankHtml(rank) {
-            const basePath = 'assets/icons/'; // ADJUST THIS PATH IF NEEDED
-
-            if (rank === 1) {
-                // Gold Medal Image
-                return `<img src="trophy1.svg" alt="Gold Medal" class="medal-image-icon">`; 
-            } else if (rank === 2) {
-                // Silver Medal Image
-                return `<img src="secondplace.svg" alt="Silver Medal" class="medal-image-icon">`;
-            } else if (rank === 3) {
-                // Bronze Medal Image
-                return `<img src="thirdplace.svg" alt="Bronze Medal" class="medal-image-icon">`;
-            } else {
-                // Standard circle for others (Ranks 4+)
-                return `<span class="rank-circle">${rank}</span>`;
             }
-        }
-        // === END OF NEW CODE ===
 
-        // Load Medal Summary
-        async function loadMedalSummary() {
-            const tbody = document.getElementById('medalSummaryBody');
-            const sortBy = document.getElementById('sortFilter').value;
-            
-            try {
-                const response = await fetch('fetch_medal_summary.php');
-                const data = await response.json();
-                
-                if (data.success) {
-                    let standings = data.standings;
-                    
-                    // Sort based on selected filter
-                    standings.sort((a, b) => {
-                        if (sortBy === 'gold') return b.gold - a.gold || b.silver - a.silver || b.bronze - a.bronze;
-                        if (sortBy === 'silver') return b.silver - a.silver || b.gold - a.gold || b.bronze - a.bronze;
-                        if (sortBy === 'bronze') return b.bronze - a.bronze || b.gold - a.gold || b.silver - a.silver;
-                        return b.total - a.total || b.gold - a.gold || b.silver - a.silver;
-                    });
-                    
-                    // Reassign ranks
-                    standings.forEach((s, i) => s.rank = i + 1);
-                    
-                    if (standings.length === 0) {
-                        tbody.innerHTML = '<tr><td colspan="6" class="text-center text-muted py-4">No medal data available yet.</td></tr>';
-                    } else {
-                        // === MODIFIED CODE LINE HERE ===
-                        tbody.innerHTML = standings.map(s => `
-                            <tr>
-                                <td>${getRankHtml(s.rank)}</td>
-                                <td>${escapeHtml(s.college)}</td>
-                                                                <td>${s.gold}</td>
-                                <td>${s.silver}</td>
-                                <td>${s.bronze}</td>
-                                <td><strong>${s.total}</strong></td>
-                            </tr>
-                        `).join('');
-                        // === END OF MODIFIED CODE LINE ===
-                    }
-                    
-                    // Update charts
-                    updateCharts(data.chart_data, data.sport_distribution || []);
-                } else {
-                    tbody.innerHTML = `<tr><td colspan="6" class="text-center text-danger">Error: ${escapeHtml(data.error)}</td></tr>`;
+            // Check if the active tab on load is *already* the graphs tab
+            // (e.g., if loaded via URL hash #graphs)
+            if (document.querySelector('.tab-pane.active#graphs')) {
+                 if (!barChartInstance) {
+                    barChartInstance = initializeBarChart();
                 }
-            } catch (error) {
-                tbody.innerHTML = `<tr><td colspan="6" class="text-center text-danger">Network error: ${escapeHtml(error.message)}</td></tr>`;
-                console.error('Error loading medal summary:', error);
-            }
-        }
-
-        // Load Match Results
-        async function loadMatchResults() {
-            const tbody = document.getElementById('matchResultsBody');
-            
-            try {
-                const response = await fetch('fetch_match_results.php');
-                const data = await response.json();
-                
-                if (data.success) {
-                    const matches = data.matches;
-                    
-                    if (matches.length === 0) {
-                        tbody.innerHTML = '<tr><td colspan="5" class="text-center text-muted py-4">No match results available yet.</td></tr>';
-                    } else {
-                        tbody.innerHTML = matches.map(m => `
-                            <tr>
-                                <td>${escapeHtml(m.event_name)}</td>
-                                <td>${escapeHtml(m.match_description)}</td>
-                                <td>${escapeHtml(m.time_finished)}</td>
-                                <td>${escapeHtml(m.scores)}</td>
-                                <td><strong>${escapeHtml(m.winner)}</strong></td>
-                            </tr>
-                        `).join('');
-                    }
-                } else {
-                    tbody.innerHTML = `<tr><td colspan="5" class="text-center text-danger">Error: ${escapeHtml(data.error)}</td></tr>`;
+                if (!pieChartInstance) {
+                    pieChartInstance = initializePieChart();
                 }
-            } catch (error) {
-                tbody.innerHTML = `<tr><td colspan="5" class="text-center text-danger">Network error: ${escapeHtml(error.message)}</td></tr>`;
-                console.error('Error loading match results:', error);
             }
-        }
+        });
 
-        // Load Event Results
-        async function loadEventResults() {
-            const tbody = document.getElementById('eventResultsBody');
-            
-            try {
-                const response = await fetch('fetch_event_results.php');
-                const data = await response.json();
-                
-                if (data.success) {
-                    const events = data.events;
-                    
-                    if (events.length === 0) {
-                        tbody.innerHTML = '<tr><td colspan="6" class="text-center text-muted py-4">No event results available yet.</td></tr>';
-                    } else {
-                        tbody.innerHTML = events.map(e => `
-                            <tr>
-                                <td>${escapeHtml(e.event_name)}</td>
-                                <td>${escapeHtml(e.sport_name)} (${escapeHtml(e.category)})</td>
-                                <td>${escapeHtml(e.event_date)}</td>
-                                <td>${escapeHtml(e.gold_winner)}</td>
-                                <td>${escapeHtml(e.silver_winner)}</td>
-                                <td>${escapeHtml(e.bronze_winner)}</td>
-                                <td><strong>${escapeHtml(e.bronze_winner)}</strong></td>
-                            </tr>
-                        `).join('');
-                    }
-                    
-                    // Update sport distribution chart
-                    if (data.sport_distribution) {
-                        updateSportPieChart(data.sport_distribution);
-                    }
-                } else {
-                    tbody.innerHTML = `<tr><td colspan="6" class="text-center text-danger">Error: ${escapeHtml(data.error)}</td></tr>`;
-                }
-            } catch (error) {
-                tbody.innerHTML = `<tr><td colspan="6" class="text-center text-danger">Network error: ${escapeHtml(error.message)}</td></tr>`;
-                console.error('Error loading event results:', error);
-            }
-        }
-
-        // Update Charts
-        function updateCharts(chartData, sportDistribution) {
-            updateMedalBarChart(chartData);
-            updateSportPieChart(sportDistribution);
-        }
-
-        // Update Medal Bar Chart
-        function updateMedalBarChart(chartData) {
+        // Initialize Medal Bar Chart
+        function initializeBarChart() {
             const ctx = document.getElementById('medalBarChart');
-            if (!ctx) return;
+            if (!ctx) return null;
             
-            if (medalBarChart) {
-                medalBarChart.destroy();
+            // Safety check: destroy old chart if it exists
+            const existingChart = Chart.getChart(ctx);
+            if (existingChart) {
+                existingChart.destroy();
             }
             
-            medalBarChart = new Chart(ctx, {
+            return new Chart(ctx, {
                 type: 'bar',
                 data: {
-                    labels: chartData.colleges,
+                    labels: <?= $chart_labels; ?>,
                     datasets: [
                         {
                             label: 'Gold',
-                            data: chartData.gold,
+                            data: <?= $chart_gold; ?>,
                             backgroundColor: 'rgba(255, 215, 0, 0.7)',
                             borderColor: 'rgba(255, 215, 0, 1)',
                             borderWidth: 1
                         },
                         {
                             label: 'Silver',
-                            data: chartData.silver,
+                            data: <?= $chart_silver; ?>,
                             backgroundColor: 'rgba(192, 192, 192, 0.7)',
                             borderColor: 'rgba(192, 192, 192, 1)',
                             borderWidth: 1
                         },
                         {
                             label: 'Bronze',
-                            data: chartData.bronze,
+                            data: <?= $chart_bronze; ?>,
                             backgroundColor: 'rgba(205, 127, 50, 0.7)',
                             borderColor: 'rgba(205, 127, 50, 1)',
                             borderWidth: 1
@@ -983,83 +797,118 @@ require_once 'config.php';
                 },
                 options: {
                     responsive: true,
-                    maintainAspectRatio: true,
+                    maintainAspectRatio: false,
                     plugins: {
-                        legend: {
-                            position: 'top',
-                        },
-                        title: {
-                            display: false
+                        legend: { position: 'top' },
+                        // Disable datalabels for the bar chart
+                        datalabels: {
+                            display: false,
                         }
                     },
                     scales: {
                         y: {
                             beginAtZero: true,
+                            ticks: { stepSize: 1 }
+                        },
+                        x: {
+                            stacked: false,
+                            // --- ADD THIS 'ticks' OBJECT ---
                             ticks: {
-                                stepSize: 1
+                                font: {
+                                    weight: 'bold',
+                                    size: 12 // You can also adjust the size if you want
+                                }
                             }
+                            // --- END OF ADDED CODE ---
                         }
                     }
                 }
             });
         }
 
-        // Update Sport Pie Chart
-        function updateSportPieChart(sportDistribution) {
+// --- UPDATED Pie Chart Function ---
+        function initializePieChart() {
             const ctx = document.getElementById('sportPieChart');
-            if (!ctx) return;
+            if (!ctx) return null;
+
+            // Safety check: destroy old chart if it exists
+            const existingChart = Chart.getChart(ctx);
+            if (existingChart) {
+                existingChart.destroy();
+            }
+
+            // 1. Get the raw data from PHP (which are strings)
+            const pieDataRaw = <?= $pie_data; ?>;
             
-            if (sportPieChart) {
-                sportPieChart.destroy();
+            // 2. NEW: Convert all items in the array from strings to numbers
+            const pieData = pieDataRaw.map(Number);
+
+            // 3. This 'reduce' function will now use the new 'pieData' array of
+            //    NUMBERS, and the addition will work correctly.
+            const total = pieData.reduce((acc, val) => acc + val, 0);
+
+            if (pieData.length === 0) {
+                ctx.parentElement.innerHTML = '<p class="text-center text-muted">No game data available for chart.</p>';
+                return null;
             }
             
-            if (!sportDistribution || sportDistribution.length === 0) {
-                return;
-            }
-            
-            const labels = sportDistribution.map(s => s.category);
-            const data = sportDistribution.map(s => s.count);
             const colors = [
-                'rgba(255, 99, 132, 0.7)',
-                'rgba(54, 162, 235, 0.7)',
-                'rgba(255, 206, 86, 0.7)',
-                'rgba(75, 192, 192, 0.7)',
-                'rgba(153, 102, 255, 0.7)',
-                'rgba(255, 159, 64, 0.7)'
+                'rgba(255, 99, 132, 0.7)', 'rgba(54, 162, 235, 0.7)', 'rgba(255, 206, 86, 0.7)',
+                'rgba(75, 192, 192, 0.7)', 'rgba(153, 102, 255, 0.7)', 'rgba(255, 159, 64, 0.7)',
+                'rgba(201, 203, 207, 0.7)', 'rgba(99, 255, 132, 0.7)'
             ];
-            
-            sportPieChart = new Chart(ctx, {
+
+            return new Chart(ctx, {
                 type: 'pie',
                 data: {
-                    labels: labels,
+                    labels: <?= $pie_labels; ?>,
                     datasets: [{
-                        data: data,
-                        backgroundColor: colors.slice(0, labels.length),
-                        borderColor: colors.slice(0, labels.length).map(c => c.replace('0.7', '1')),
+                        data: pieData,
+                        backgroundColor: colors.slice(0, pieData.length),
                         borderWidth: 1
                     }]
                 },
                 options: {
                     responsive: true,
-                    maintainAspectRatio: true,
+                    maintainAspectRatio: false,
                     plugins: {
                         legend: {
                             position: 'bottom',
                         },
-                        title: {
-                            display: false
+                        // --- THIS IS THE UPDATED CONFIGURATION ---
+                        datalabels: {
+                            // 1. Only display when the slice is 'active' (hovered)
+                            display: function(context) {
+                                // context.active is true when hovered
+                                return context.active; 
+                            },
+                            
+                            // 2. This formatter CORRECTLY calculates the percentage
+                            formatter: (value, context) => {
+                                if (total === 0) {
+                                    return '0%';
+                                }
+                                // Calculates the true percentage
+                                const percentage = (value / total * 100).toFixed(1) + '%';
+                                return percentage;
+                            },
+                            
+                            // 3. Style the label (same as before)
+                            color: '#fff', 
+                            font: {
+                                weight: 'bold',
+                                size: 14,
+                            },
+                            backgroundColor: 'rgba(0, 0, 0, 0.7)',
+                            borderRadius: 4,
+                            padding: 6
                         }
                     }
                 }
             });
         }
+        
 
-        // Clean up on page unload
-        window.addEventListener('beforeunload', () => {
-            if (autoRefreshInterval) {
-                clearInterval(autoRefreshInterval);
-            }
-        });
     </script>
 </body>
 </html>

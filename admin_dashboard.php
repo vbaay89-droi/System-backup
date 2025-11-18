@@ -16,14 +16,17 @@ $current_page = basename($_SERVER['PHP_SELF']);
 // --- This logic is for the sidebar accordion ---
 $event_pages = ['Manage_Games.php', 'Manage_Game_Events.php', 'Manage_Categories.php'];
 $is_event_page = in_array($current_page, $event_pages);
-$management_pages = ['teams.php', 'events.php', 'results.php', 'reports.php'];
+
+// ### MODIFIED ### - Added Manage_Matches.php to the management pages
+$management_pages = ['colleges.php', 'events.php', 'Manage_Matches.php', 'results.php', 'reports.php'];
 $is_management_page = in_array($current_page, $management_pages);
 
 
 // 2. --- DYNAMIC STATS & WIDGETS (MySQLi) ---
 $stats = [
-    'total_events' => 0, 'total_teams' => 0,
-    'total_users' => 0, 'pending_requests' => 0
+    'total_events' => 0, 'total_colleges' => 0, 
+    'total_users' => 0, 'pending_requests' => 0,
+    'total_matches' => 0, 'ongoing_matches' => 0 // ### NEW ###
 ];
 
 // Helper function for fetching a single count
@@ -37,9 +40,51 @@ function fetchCount($conn, $query) {
 
 // Fetch live data for stat cards
 $stats['total_events'] = fetchCount($conn, "SELECT COUNT(*) as count FROM categories"); // L3 categories
-$stats['total_teams'] = fetchCount($conn, "SELECT COUNT(*) as count FROM teams");
-$stats['total_users'] = fetchCount($conn, "SELECT COUNT(*) as count FROM users");
-$stats['pending_requests'] = fetchCount($conn, "SELECT COUNT(*) as count FROM account_requests WHERE status = 'pending'");
+$stats['total_colleges'] = fetchCount($conn, "SELECT COUNT(*) as count FROM colleges"); //
+$stats['total_users'] = fetchCount($conn, "SELECT COUNT(*) as count FROM users"); //
+$stats['pending_requests'] = fetchCount($conn, "SELECT COUNT(*) as count FROM account_requests WHERE status = 'pending'"); //
+
+// ### NEW ### - Fetch Match Statistics
+$stats['total_matches'] = fetchCount($conn, "SELECT COUNT(*) as count FROM matches");
+$stats['ongoing_matches'] = fetchCount($conn, "SELECT COUNT(*) as count FROM matches WHERE status = 'Ongoing'");
+
+
+// 3. --- ### NEW ### FETCH RECENT MATCH ACTIVITY ---
+$recent_matches = [];
+// This query fetches the last 5 matches and joins with categories (L3) and colleges
+$sql_matches = "SELECT m.match_id, m.status, m.match_date, m.match_time,
+                    c.category_name as event_name,
+                    t1.college_name as team1_name,
+                    t2.college_name as team2_name
+                FROM matches m
+                JOIN categories c ON m.category_id = c.category_id
+                LEFT JOIN colleges t1 ON m.team1_id = t1.college_id
+                LEFT JOIN colleges t2 ON m.team2_id = t2.college_id
+                ORDER BY m.match_date DESC, m.match_time DESC
+                LIMIT 5";
+
+$result_matches = $conn->query($sql_matches);
+if ($result_matches) {
+    while ($row = $result_matches->fetch_assoc()) {
+        $recent_matches[] = $row;
+    }
+}
+
+// ### NEW ### - Helper function for status badges
+function getStatusBadge($status) {
+    switch (strtolower($status)) {
+        case 'upcoming':
+            return '<span class="badge bg-info">Upcoming</span>';
+        case 'ongoing':
+            return '<span class="badge bg-success">Ongoing</span>';
+        case 'completed':
+            return '<span class="badge bg-secondary">Completed</span>';
+        case 'cancelled':
+            return '<span class="badge bg-danger">Cancelled</span>';
+        default:
+            return '<span class="badge bg-light text-dark">' . htmlspecialchars($status) . '</span>';
+    }
+}
 
 ?>
 <!DOCTYPE html>
@@ -48,11 +93,11 @@ $stats['pending_requests'] = fetchCount($conn, "SELECT COUNT(*) as count FROM ac
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Admin Dashboard - PIT SPORTS TALLYING</title>
-    <!-- CSS Links (Bootstrap, FontAwesome, Fonts) -->
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" rel="stylesheet">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=Poppins:wght@400;500;600;700;800&display=swap" rel="stylesheet">
     <style>
+        /* ... (Your existing CSS) ... */
         :root {
             --primary-green: #4CAF50;
             --primary-dark: #2E7D32;
@@ -236,8 +281,20 @@ $stats['pending_requests'] = fetchCount($conn, "SELECT COUNT(*) as count FROM ac
         .icon-requests-quick { color: #f39c12; }
         
         /* Footer */
-        footer { flex-shrink: 0; background: #2c3e50 !important; box-shadow: 0 -2px 10px rgba(0,0,0,0.1); margin-left: var(--sidebar-width); transition: margin-left var(--transition); position: relative; z-index: 1041; }
-        .sidebar.minimized ~ footer { margin-left: var(--sidebar-min-width); }
+        /* Footer */
+footer {
+    flex-shrink: 0;
+    background: #2c3e50 !important;
+    box-shadow: 0 -2px 10px rgba(0,0,0,0.1);
+    padding-left: var(--sidebar-width); /* <-- MODIFIED */
+    transition: padding-left var(--transition); /* <-- MODIFIED */
+    position: relative;
+    z-index: 1041;
+}
+
+        .sidebar.minimized ~ footer {
+    padding-left: var(--sidebar-min-width); /* <-- MODIFIED */
+}
         
         /* Mobile */
         .sidebar-overlay { display: none; position: fixed; top: var(--header-height); left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.5); z-index: 1030; }
@@ -248,9 +305,9 @@ $stats['pending_requests'] = fetchCount($conn, "SELECT COUNT(*) as count FROM ac
             .main-content { margin-left: 0; padding: 20px; }
             .sidebar.minimized ~ .main-content { margin-left: 0; }
             #sidebarToggle { display: none; }
-            footer { margin-left: 0; }
+            footer { padding-left: 0;
             .sidebar.minimized ~ footer { margin-left: 0; }
-        }
+        }}
         @media (max-width: 576px) {
             .main-content { padding: 15px; }
             .hero-title { font-size: 1.5rem; }
@@ -276,13 +333,39 @@ $stats['pending_requests'] = fetchCount($conn, "SELECT COUNT(*) as count FROM ac
             margin-right: 10px; 
             color: rgba(255,255,255,0.8);
         }
+
+        /* ### NEW ### - Style for the recent matches table */
+        .table-responsive {
+            border: 1px solid #dee2e6;
+            border-radius: 10px;
+            box-shadow: var(--card-shadow);
+            background: white;
+        }
+        .table-responsive .table {
+            margin-bottom: 0; /* Remove default bottom margin */
+        }
+        .table-responsive thead th {
+            background-color: #f8f9fa;
+            border-bottom: 2px solid #dee2e6;
+            font-size: 0.9rem;
+            font-weight: 600;
+        }
+        .table-responsive tbody tr:hover {
+            background-color: #f1f3f5;
+        }
+        .table-responsive .badge {
+            font-size: 0.8rem;
+        }
+        /* ### NEW ### - New stat card color */
+        .stat-matches .stat-icon-wrapper { background: linear-gradient(45deg, #5e72e4, #324cdd); }
+        .stat-ongoing .stat-icon-wrapper { background: linear-gradient(45deg, #2dce89, #2dce89); }
+        .icon-matches-quick { color: #5e72e4; }
     </style>
 </head>
 <body>
     
-    <nav class="navbar navbar-dark bg-dark">
-        <div class="container-fluid d-flex align-items: center justify-content-between">
-            <a class="navbar-brand d-flex align-items: center" href="admin_dashboard.php" style="cursor: pointer;">
+    <nav class="navbar navbar-dark bg-dark"> <div class="container-fluid d-flex align-items: center justify-content-between">
+            <a class="navbar-brand d-flex align-items-center" href="admin_dashboard.php" style="cursor: pointer;">
                 <img src="imageslogo.png" alt="Logo" class="me-2 brand-logo" style="height: 50px; width: 48px; object-fit: contain;">
                 <div class="d-flex flex-column lh-sm">
                     <strong class="text-white brand-heading" style="font-size: 1.25rem;">PIT SPORTS TALLYING</strong>
@@ -302,14 +385,13 @@ $stats['pending_requests'] = fetchCount($conn, "SELECT COUNT(*) as count FROM ac
                     <li><a class="dropdown-item" href="admin_profile.php"><i class="fas fa-user-circle"></i> Profile</a></li>
                     <li><a class="dropdown-item" href="Tournament_Manager_page.php" target="_blank"><i class="fas fa-globe"></i> View Public Site</a></li>
                     <li><hr class="dropdown-divider"></li>
-                    <li><a class="dropdown-item text-danger" href="logout.php"><i class="fas fa-sign-out-alt"></i> Logout</a></li>
+                    <li><a class="dropdown-item text-danger" href="login.php"><i class="fas fa-sign-out-alt"></i> Logout</a></li>
                 </ul>
             </div>
         </div>
     </nav>
 
-    <div class="sidebar" id="sidebar">
-        <button id="sidebarToggle" title="Toggle Sidebar">
+    <div class="sidebar" id="sidebar"> <button id="sidebarToggle" title="Toggle Sidebar">
             <i class="fas fa-bars"></i>
         </button>
         
@@ -320,36 +402,9 @@ $stats['pending_requests'] = fetchCount($conn, "SELECT COUNT(*) as count FROM ac
                 </a>
             </li>
 
-            <!-- ACCORDION MENU -->
             <li class="nav-item">
-                <a class="nav-link <?php if ($is_event_page) echo 'active'; ?>" data-bs-toggle="collapse" href="#eventsCollapse" role="button" aria-expanded="<?php echo $is_event_page ? 'true' : 'false'; ?>" aria-controls="eventsCollapse">
-                    <i class="fas fa-calendar-alt me-2"></i> <span>Manage Events</span> <i class="fas fa-chevron-down ms-auto sidebar-chevron"></i>
-                </a>
-                <div class="collapse <?php if ($is_event_page) echo 'show'; ?>" id="eventsCollapse">
-                    <ul class="sub-menu">
-                        <li class="nav-item"> 
-                            <a class="nav-link <?php if ($current_page == 'Manage_Games.php') echo 'active'; ?>" href="Manage_Games.php">
-                                <span>Games (L1)</span>
-                            </a>
-                        </li>
-                        <li class="nav-item">
-                            <a class="nav-link <?php if ($current_page == 'Manage_Game_Events.php') echo 'active'; ?>" href="Manage_Game_Events.php">
-                                <span>Game Events (L2)</span>
-                            </a>
-                        </li>
-                        <li class="nav-item">
-                            <a class="nav-link <?php if ($current_page == 'Manage_Categories.php') echo 'active'; ?>" href="Manage_Categories.php">
-                                <span>Categories (L3)</span>
-                            </a>
-                        </li>
-                    </ul>
-                </div>
-            </li>
-            <!-- END ACCORDION MENU -->
-
-           <li class="nav-item">
                 <a class="nav-link <?php if ($is_management_page) echo 'active'; ?>" data-bs-toggle="collapse" href="#teamsCollapse" role="button" aria-expanded="<?php echo $is_management_page ? 'true' : 'false'; ?>" aria-controls="teamsCollapse">
-                    <i class="fas fa-users me-2"></i> <span>Manage Teams</span> <i class="fas fa-chevron-down ms-auto sidebar-chevron"></i>
+                    <i class="fas fa-users me-2"></i> <span>Manage Colleges/Events</span> <i class="fas fa-chevron-down ms-auto sidebar-chevron"></i>
                 </a>
                 
                 <div class="collapse <?php if ($is_management_page) echo 'show'; ?>" id="teamsCollapse">
@@ -359,13 +414,19 @@ $stats['pending_requests'] = fetchCount($conn, "SELECT COUNT(*) as count FROM ac
                             Management
                         </li>
                         <li class="nav-item">
-                            <a class="nav-link <?php if ($current_page == 'teams.php') echo 'active'; ?>" href="sd/teams.php">
-                                <span>Manage Teams</span>
+                            <a class="nav-link <?php if ($current_page == 'colleges.php') echo 'active'; ?>" href="sd/colleges.php">
+                                <span>Manage Colleges</span>
                             </a>
                         </li>
                         <li class="nav-item">
                             <a class="nav-link <?php if ($current_page == 'events.php') echo 'active'; ?>" href="sd/events.php">
                                 <span>Manage Events (L1-L3)</span>
+                            </a>
+                        </li>
+                        
+                        <li class="nav-item">
+                            <a class="nav-link <?php if ($current_page == 'Manage_Matches.php') echo 'active'; ?>" href="sd/Manage_Matches.php">
+                                <span>Manage Matches</span>
                             </a>
                         </li>
                         
@@ -407,7 +468,7 @@ $stats['pending_requests'] = fetchCount($conn, "SELECT COUNT(*) as count FROM ac
             </li>
             
             <li class="nav-item mt-3">
-                <a class="nav-link text-danger" href="logout.php">
+                <a class="nav-link text-danger" href="login.php">
                     <i class="fas fa-sign-out-alt me-2"></i> <span>Logout</span>
                 </a>
             </li>
@@ -416,9 +477,7 @@ $stats['pending_requests'] = fetchCount($conn, "SELECT COUNT(*) as count FROM ac
     
     <div class="sidebar-overlay" id="sidebarOverlay"></div>
 
-    <div class="main-content">
-        <div class="hero-section">
-            <div class="d-flex justify-content-between align-items-center">
+    <div class="main-content"> <div class="hero-section"> <div class="d-flex justify-content-between align-items-center">
                 <div>
                     <div class="welcome-badge">
                         <i class="fas fa-shield-alt me-2"></i>Admin Access
@@ -437,12 +496,12 @@ $stats['pending_requests'] = fetchCount($conn, "SELECT COUNT(*) as count FROM ac
         <div class="container-fluid p-0">
             
             <h2 class="section-title mb-4">Live Tournament Snapshot</h2>
-            <div class="row g-4 mb-5">
+            
+            <div class="row g-4 mb-4">
                 
-                <div class="col-lg-3 col-md-6">
-                    <a href="Manage_Categories.php" class="clickable-card-link">
+                <div class="col-lg-4 col-md-6"> <a href="Manage_Categories.php" class="clickable-card-link">
                         <div class="stat-card stat-events">
-                            <div class="d-flex align-items: center">
+                            <div class="d-flex align-items-center">
                                 <div class="stat-icon-wrapper">
                                     <i class="fas fa-calendar-check"></i>
                                 </div>
@@ -455,29 +514,22 @@ $stats['pending_requests'] = fetchCount($conn, "SELECT COUNT(*) as count FROM ac
                     </a>
                 </div>
 
-                <!-- 
-                /***************************************************
-                 * FIX 2: Stat card link updated to 'sd/teams.php'
-                 ***************************************************/
-                -->
-                <div class="col-lg-3 col-md-6">
-                    <a href="sd/teams.php" class="clickable-card-link">
+                <div class="col-lg-4 col-md-6"> <a href="sd/colleges.php" class="clickable-card-link">
                         <div class="stat-card stat-teams">
                             <div class="d-flex align-items-center">
                                 <div class="stat-icon-wrapper">
                                     <i class="fas fa-users"></i>
                                 </div>
                                 <div>
-                                    <div class="stat-count text-danger"><?= $stats['total_teams'] ?></div>
-                                    <small class="text-muted">Participating Teams</small>
+                                    <div class="stat-count text-danger"><?= $stats['total_colleges'] ?></div>
+                                    <small class="text-muted">Participating Colleges</small>
                                 </div>
                             </div>
                         </div>
                     </a>
                 </div>
 
-                <div class="col-lg-3 col-md-6">
-                    <a href="Manage_Users.php" class="clickable-card-link">
+                <div class="col-lg-4 col-md-6"> <a href="Manage_Users.php" class="clickable-card-link">
                         <div class="stat-card stat-users">
                             <div class="d-flex align-items-center">
                                 <div class="stat-icon-wrapper">
@@ -491,11 +543,10 @@ $stats['pending_requests'] = fetchCount($conn, "SELECT COUNT(*) as count FROM ac
                         </div>
                     </a>
                 </div>
-
-                <div class="col-lg-3 col-md-6">
-                    <a href="Manage_Requests.php" class="clickable-card-link">
+            </div> <div class="row g-4 mb-5">
+                <div class="col-lg-4 col-md-6"> <a href="Manage_Requests.php" class="clickable-card-link">
                         <div class="stat-card stat-requests">
-                            <div class="d-flex align-items: center">
+                            <div class="d-flex align-items-center">
                                 <div class="stat-icon-wrapper">
                                     <i class="fas fa-user-plus"></i>
                                 </div>
@@ -507,28 +558,64 @@ $stats['pending_requests'] = fetchCount($conn, "SELECT COUNT(*) as count FROM ac
                         </div>
                     </a>
                 </div>
+
+                <div class="col-lg-4 col-md-6">
+                    <a href="sd/Manage_Matches.php" class="clickable-card-link">
+                        <div class="stat-card stat-matches">
+                            <div class="d-flex align-items-center">
+                                <div class="stat-icon-wrapper">
+                                    <i class="fas fa-trophy"></i>
+                                </div>
+                                <div>
+                                    <div class="stat-count text-primary"><?= $stats['total_matches'] ?></div>
+                                    <small class="text-muted">Total Matches</small>
+                                </div>
+                            </div>
+                        </div>
+                    </a>
+                </div>
+
+                <div class="col-lg-4 col-md-6">
+                    <a href="sd/Manage_Matches.php" class="clickable-card-link">
+                        <div class="stat-card stat-ongoing">
+                            <div class="d-flex align-items-center">
+                                <div class="stat-icon-wrapper">
+                                    <i class="fas fa-broadcast-tower"></i>
+                                </div>
+                                <div>
+                                    <div class="stat-count text-success"><?= $stats['ongoing_matches'] ?></div>
+                                    <small class="text-muted">Ongoing Matches</small>
+                                </div>
+                            </div>
+                        </div>
+                    </a>
+                </div>
             </div>
             
             <h2 class="section-title mb-4">Quick Actions & Navigation</h2>
-            <div class="row g-4 mb-5">
+            
+            <div class="row g-4 mb-5 row-cols-1 row-cols-sm-2 row-cols-md-3 row-cols-lg-5">
                 
-                <!-- 
-                /***************************************************
-                 * FIX 3: Quick action link updated to 'sd/teams.php'
-                 ***************************************************/
-                -->
-                <div class="col-lg-3 col-md-6 col-sm-6">
-                    <div class="quick-action-card">
-                        <a href="sd/teams.php">
+                <div class="col"> <div class="quick-action-card">
+                        <a href="sd/colleges.php">
                             <i class="fas fa-users quick-icon icon-teams-quick"></i>
-                            <h5 class="fw-bold mb-1 text-dark">Teams</h5>
+                            <h5 class="fw-bold mb-1 text-dark">Colleges</h5>
                             <small class="text-muted">Roster & Details</small>
                         </a>
                     </div>
                 </div>
                 
-                <div class="col-lg-3 col-md-6 col-sm-6">
+                <div class="col">
                     <div class="quick-action-card">
+                        <a href="sd/Manage_Matches.php">
+                            <i class="fas fa-trophy quick-icon icon-matches-quick"></i>
+                            <h5 class="fw-bold mb-1 text-dark">Matches</h5>
+                            <small class="text-muted">Create & Update</small>
+                        </a>
+                    </div>
+                </div>
+                
+                <div class="col"> <div class="quick-action-card">
                         <a href="Manage_Users.php">
                             <i class="fas fa-users-cog quick-icon icon-users-quick"></i>
                             <h5 class="fw-bold mb-1 text-dark">Users</h5>
@@ -537,8 +624,7 @@ $stats['pending_requests'] = fetchCount($conn, "SELECT COUNT(*) as count FROM ac
                     </div>
                 </div>
                 
-                <div class="col-lg-3 col-md-6 col-sm-6">
-                    <div class="quick-action-card">
+                <div class="col"> <div class="quick-action-card">
                         <a href="Manage_Requests.php">
                             <i class="fas fa-user-plus quick-icon icon-requests-quick"></i>
                             <h5 class="fw-bold mb-1 text-dark">Requests</h5>
@@ -547,8 +633,7 @@ $stats['pending_requests'] = fetchCount($conn, "SELECT COUNT(*) as count FROM ac
                     </div>
                 </div>
                 
-                <div class="col-lg-3 col-md-6 col-sm-6">
-                    <div class="quick-action-card">
+                <div class="col"> <div class="quick-action-card">
                         <a href="Manage_Viewreports.php">
                             <i class="fas fa-chart-line quick-icon icon-reports-quick"></i>
                             <h5 class="fw-bold mb-1 text-dark">Reports</h5>
@@ -558,11 +643,63 @@ $stats['pending_requests'] = fetchCount($conn, "SELECT COUNT(*) as count FROM ac
                 </div>
             </div>
             
+            <h2 class="section-title mb-4">Recent Match Activity</h2>
+            <div class="row">
+                <div class="col-12">
+                    <div class="table-responsive">
+                        <table class="table table-hover align-middle">
+                            <thead>
+                                <tr>
+                                    <th>Event (L3)</th>
+                                    <th>Matchup</th>
+                                    <th class="text-center">Status</th>
+                                    <th>Date & Time</th>
+                                    <th>Action</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <?php if (empty($recent_matches)): ?>
+                                    <tr>
+                                        <td colspan="5" class="text-center text-muted p-4">
+                                            No matches found.
+                                            <a href="sd/Manage_Matches.php" class="btn btn-primary btn-sm ms-3">Create a Match</a>
+                                        </td>
+                                    </tr>
+                                <?php else: ?>
+                                    <?php foreach ($recent_matches as $match): ?>
+                                        <tr>
+                                            <td>
+                                                <strong><?= htmlspecialchars($match['event_name']) ?></strong>
+                                            </td>
+                                            <td>
+                                                <?= htmlspecialchars($match['team1_name']) ?>
+                                                <span class="text-muted mx-1">vs</span>
+                                                <?= htmlspecialchars($match['team2_name']) ?>
+                                            </td>
+                                            <td class="text-center">
+                                                <?= getStatusBadge($match['status']) ?>
+                                            </td>
+                                            <td>
+                                                <?= $match['match_date'] ? htmlspecialchars(date('M d, Y', strtotime($match['match_date']))) : 'TBA' ?>
+                                                <small class="text-muted d-block"><?= $match['match_time'] ? htmlspecialchars(date('g:i A', strtotime($match['match_time']))) : '' ?></small>
+                                            </td>
+                                            <td>
+                                                <a href="sd/Manage_Matches.php?edit_id=<?= $match['match_id'] ?>" class="btn btn-sm btn-outline-primary">
+                                                    Manage
+                                                </a>
+                                            </td>
+                                        </tr>
+                                    <?php endforeach; ?>
+                                <?php endif; ?>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
             </div>
-    </div>
 
-    <footer class="bg-dark text-white py-4">
-        <div class="text-center">
+            </div> </div>
+
+    <footer class="bg-dark text-white py-4"> <div class="text-center">
             <small>&copy; <?php echo date("Y"); ?> PIT SPORTS TALLYING. All rights reserved.</small><br>
             <small class="text-muted">Developed by Tsunayoshi Sawada</small>
         </div>
@@ -634,8 +771,47 @@ $stats['pending_requests'] = fetchCount($conn, "SELECT COUNT(*) as count FROM ac
                 }, 250);
             });
 
+            // --- ### NEW: FIX SIDEBAR/FOOTER OVERLAP ### ---
+            const footer = document.querySelector('footer');
+            const navbar = document.querySelector('.navbar');
+
+            if (sidebar && footer && navbar) {
+                function adjustSidebarHeight() {
+                    // This logic should only apply to desktop view
+                    if (window.innerWidth <= 992) {
+                        sidebar.style.height = ''; // Reset to CSS default for mobile
+                        return;
+                    }
+
+                    const navbarHeight = navbar.offsetHeight;
+                    const footerTop = footer.getBoundingClientRect().top;
+                    const viewportHeight = window.innerHeight;
+                    
+                    // 1. Calculate the max possible height (navbar top to viewport bottom)
+                    const maxSidebarHeight = viewportHeight - navbarHeight;
+
+                    // 2. Calculate the available height (navbar top to footer top)
+                    const availableHeight = footerTop - navbarHeight;
+
+                    // 3. Choose the smaller of the two heights, but never less than 0
+                    const newHeight = Math.max(0, Math.min(maxSidebarHeight, availableHeight));
+                    
+                    // 4. Apply the new height as an inline style
+                    sidebar.style.height = `${newHeight}px`;
+                }
+
+                // Add listeners for scroll and resize events
+                window.addEventListener('scroll', adjustSidebarHeight, { passive: true });
+                window.addEventListener('resize', adjustSidebarHeight);
+                
+                // Initial call to set the correct height on page load
+                // Small delay to ensure all elements are rendered
+                setTimeout(adjustSidebarHeight, 100);
+            }
+            // --- ### END OF FIX ### ---
+
         });
+        
     </script>
 </body>
 </html>
-

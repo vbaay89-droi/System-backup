@@ -1,61 +1,81 @@
 <?php
-// This file outputs only the medal standings data in JSON format for AJAX/Fetch calls.
-// It avoids rendering the entire HTML page.
+// This file provides live data to the home.php page's auto-refresh.
+require_once 'config.php'; // Make sure this path is correct
 
-require_once 'config.php'; // Ensure your DB connection is available
-
-// Fetch medal standings (overall)
+// --- FETCH MEDAL STANDINGS (FIXED LOGIC) ---
 $medal_tally = [];
 
-// In fetch_standings.php
-
-$sql = "SELECT t.team_id,
-                t.team_name,
-                t.college,
-                COALESCE(SUM(CASE WHEN m.medal_type = 'Gold' THEN m.medal_quantity ELSE 0 END), 0) AS gold,
-                COALESCE(SUM(CASE WHEN m.medal_type = 'Silver' THEN m.medal_quantity ELSE 0 END), 0) AS silver,
-                COALESCE(SUM(CASE WHEN m.medal_type = 'Bronze' THEN m.medal_quantity ELSE 0 END), 0) AS bronze
-        FROM teams t
-        LEFT JOIN medals m ON t.team_id = m.team_id
-        GROUP BY t.team_id, t.team_name, t.college
-        ORDER BY gold DESC, silver DESC, bronze DESC, t.team_name ASC";
+// **** FIX: This query is updated to match the new ranking logic (Gold > Silver > Bronze) AND fetch college_code ****
+$sql = "SELECT 
+            C.college_name, C.logo_url,
+            C.college_code, -- --- FIX: Added college_code
+            
+            SUM(CASE WHEN Cat.gold_winner_college_id = C.college_id THEN Cat.gold_count ELSE 0 END) AS gold,
+            SUM(CASE WHEN Cat.silver_winner_college_id = C.college_id THEN Cat.silver_count ELSE 0 END) AS silver,
+            SUM(CASE WHEN Cat.bronze_winner_college_id = C.college_id THEN Cat.bronze_count ELSE 0 END) AS bronze,
+            
+            -- Calculate Total Medals --
+            (SUM(CASE WHEN Cat.gold_winner_college_id = C.college_id THEN Cat.gold_count ELSE 0 END) +
+             SUM(CASE WHEN Cat.silver_winner_college_id = C.college_id THEN Cat.silver_count ELSE 0 END) +
+             SUM(CASE WHEN Cat.bronze_winner_college_id = C.college_id THEN Cat.bronze_count ELSE 0 END)) AS total
+            
+        FROM colleges C
+        LEFT JOIN categories Cat ON (
+            C.college_id = Cat.gold_winner_college_id OR 
+            C.college_id = Cat.silver_winner_college_id OR 
+            C.college_id = Cat.bronze_winner_college_id
+        ) AND Cat.status = 'Results Approved'
+        -- --- FIX: Added college_code to GROUP BY ---
+        GROUP BY C.college_id, C.college_name, C.logo_url, C.college_code
+        -- --- FIX: Updated ORDER BY for the new ranking logic (Gold > Silver > Bronze) ---
+        ORDER BY gold DESC, silver DESC, bronze DESC, C.college_name ASC";
+// **** END OF SQL FIX ****
 
 $stmt = $conn->prepare($sql);
 
-if ($stmt) {
-    $stmt->execute();
-    $result = $stmt->get_result();
+$success = false;
+$error_message = '';
 
-    if ($result) {
-        while ($row = $result->fetch_assoc()) {
-            // Calculate total and ensure numeric types for JSON
-            $row['gold'] = (int)$row['gold'];
-            $row['silver'] = (int)$row['silver'];
-            $row['bronze'] = (int)$row['bronze'];
-            $row['total'] = $row['gold'] + $row['silver'] + $row['bronze'];
-            $medal_tally[] = $row;
+if ($stmt) {
+    if ($stmt->execute()) {
+        $result = $stmt->get_result();
+        if ($result) {
+            $medal_tally = $result->fetch_all(MYSQLI_ASSOC);
+            $success = true;
         }
+        $stmt->close();
+    } else {
+        $error_message = "Error executing statement: " . $stmt->error;
     }
-    $stmt->close();
+} else {
+    $error_message = "Error preparing statement: " . $conn->error;
 }
 
-// Get latest updated_at value from the medals table
+// Get latest 'approved_at' time from the results table
 $lastUpdated = null;
-$sql_last_updated = "SELECT MAX(assigned_at) AS last_updated FROM medals";
+$sql_last_updated = "SELECT MAX(approved_at) AS last_updated FROM results WHERE status = 'Approved'";
 $result_last_updated = $conn->query($sql_last_updated);
 if ($result_last_updated && $row_last_updated = $result_last_updated->fetch_assoc()) {
     $lastUpdated = $row_last_updated['last_updated'];
 }
 
+// Close the main connection
 $conn->close();
 
-// Output JSON data
+// Set the content type to JSON and output the data
 header('Content-Type: application/json');
-echo json_encode([
-    'success' => true,
-    'medal_tally' => $medal_tally,
-    'last_updated' => $lastUpdated
-]);
-
-exit();
+if ($success) {
+    echo json_encode([
+        'success' => true,
+        'medal_tally' => $medal_tally,
+        'last_updated' => $lastUpdated
+    ]);
+} else {
+    echo json_encode([
+        'success' => false,
+        'error' => $error_message,
+        'medal_tally' => [],
+        'last_updated' => null
+    ]);
+}
 ?>

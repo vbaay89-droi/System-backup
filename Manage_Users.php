@@ -221,7 +221,19 @@ if (isset($_SESSION['message'])) {
         .sidebar-nav .nav-link:hover { color: white; background: rgba(255, 255, 255, 0.05); border-left-color: #1abc9c; }
         .sidebar-nav .nav-link.active { color: white; background: rgba(255, 255, 255, 0.1); border-left-color: #3498db; font-weight: 600; }
         .main-content { flex: 1 0 auto; padding: 30px; margin-top: var(--header-height); margin-left: var(--sidebar-width); transition: margin-left var(--transition); min-height: calc(100vh - var(--header-height)); }
-        footer { flex-shrink: 0; background: #2c3e50 !important; box-shadow: 0 -2px 10px rgba(0,0,0,0.1); margin-left: var(--sidebar-width); transition: margin-left var(--transition); position: relative; z-index: 1041; }
+        /* Footer */
+        footer {
+            flex-shrink: 0;
+            background: #2c3e50 !important;
+            box-shadow: 0 -2px 10px rgba(0,0,0,0.1);
+            padding-left: var(--sidebar-width); /* <-- MODIFIED */
+            transition: padding-left var(--transition); /* <-- MODIFIED */
+            position: relative;
+            z-index: 1041;
+        }
+                .sidebar.minimized ~ footer {
+            padding-left: var(--sidebar-min-width); /* <-- MODIFIED */
+        }
         /* ... other styles from dashboard ... */
 
         /* --- NEW: Accordion Sidebar Styles --- */
@@ -314,77 +326,90 @@ if (isset($_SESSION['message'])) {
                     <li><a class="dropdown-item" href="admin_profile.php"><i class="fas fa-user-circle"></i> Profile</a></li>
                     <li><a class="dropdown-item" href="Tournament_Manager_page.php" target="_blank"><i class="fas fa-globe"></i> View Public Site</a></li>
                     <li><hr class="dropdown-divider"></li>
-                    <li><a class="dropdown-item text-danger" href="logout.php"><i class="fas fa-sign-out-alt"></i> Logout</a></li>
+                    <li><a class="dropdown-item text-danger" href="login.php"><i class="fas fa-sign-out-alt"></i> Logout</a></li>
                 </ul>
             </div>
         </div>
     </nav>
 
-    <div class="sidebar" id="sidebar">
-        <button id="sidebarToggle" title="Toggle Sidebar">
+    <div class="sidebar" id="sidebar"> <button id="sidebarToggle" title="Toggle Sidebar">
             <i class="fas fa-bars"></i>
         </button>
         
         <ul class="nav flex-column sidebar-nav">
             <li class="nav-item">
-                <a class="nav-link" href="admin_dashboard.php">
+                <a class="nav-link <?php if ($current_page == 'admin_dashboard.php') echo 'active'; ?>" href="admin_dashboard.php">
                     <i class="fas fa-tachometer-alt me-2"></i> <span>Dashboard</span>
                 </a>
+            </li>
+
             <li class="nav-item">
-                <a class="nav-link <?php if ($is_event_page) echo 'active'; ?>" data-bs-toggle="collapse" href="#eventsCollapse" role="button" aria-expanded="<?php echo $is_event_page ? 'true' : 'false'; ?>" aria-controls="eventsCollapse">
-                    <i class="fas fa-calendar-alt me-2"></i> <span>Manage Events</span> <i class="fas fa-chevron-down ms-auto sidebar-chevron"></i>
+                <a class="nav-link <?php if ($is_management_page) echo 'active'; ?>" data-bs-toggle="collapse" href="#teamsCollapse" role="button" aria-expanded="<?php echo $is_management_page ? 'true' : 'false'; ?>" aria-controls="teamsCollapse">
+                    <i class="fas fa-users me-2"></i> <span>Manage Colleges/Events</span> <i class="fas fa-chevron-down ms-auto sidebar-chevron"></i>
                 </a>
-                <div class="collapse <?php if ($is_event_page) echo 'show'; ?>" id="eventsCollapse">
+                
+                <div class="collapse <?php if ($is_management_page) echo 'show'; ?>" id="teamsCollapse">
                     <ul class="sub-menu">
+                        
+                        <li class="text-muted" style="padding: 10px 25px 5px 60px; margin-top: 5px; font-size: 0.75rem; font-weight: 600; color: rgba(255, 255, 255, 0.4); text-transform: uppercase; letter-spacing: 1px;">
+                            Management
+                        </li>
                         <li class="nav-item">
-                            <a class="nav-link <?php if ($current_page == 'Manage_Games.php') echo 'active'; ?>" href="Manage_Games.php">
-                                <span>Games (L1)</span>
+                            <a class="nav-link <?php if ($current_page == 'colleges.php') echo 'active'; ?>" href="sd/colleges.php">
+                                <span>Manage Colleges</span>
                             </a>
                         </li>
                         <li class="nav-item">
-                            <a class="nav-link <?php if ($current_page == 'Manage_Game_Events.php') echo 'active'; ?>" href="Manage_Game_Events.php">
-                                <span>Game Events (L2)</span>
+                            <a class="nav-link <?php if ($current_page == 'events.php') echo 'active'; ?>" href="sd/events.php">
+                                <span>Manage Events (L1-L3)</span>
+                            </a>
+                        </li>
+                        
+                        <li class="nav-item">
+                            <a class="nav-link <?php if ($current_page == 'Manage_Matches.php') echo 'active'; ?>" href="sd/Manage_Matches.php">
+                                <span>Manage Matches</span>
+                            </a>
+                        </li>
+                        
+                        <li class="text-muted" style="padding: 10px 25px 5px 60px; margin-top: 10px; font-size: 0.75rem; font-weight: 600; color: rgba(255, 255, 255, 0.4); text-transform: uppercase; letter-spacing: 1px;">
+                            Tallying
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link <?php if ($current_page == 'results.php') echo 'active'; ?>" href="sd/results.php">
+                                <span>Approve Results</span>
                             </a>
                         </li>
                         <li class="nav-item">
-                            <a class="nav-link <?php if ($current_page == 'Manage_Categories.php') echo 'active'; ?>" href="Manage_Categories.php">
-                                <span>Categories (L3)</span>
+                            <a class="nav-link <?php if ($current_page == 'reports.php') echo 'active'; ?>" href="sd/reports.php">
+                                <span>Medal Reports</span>
                             </a>
                         </li>
                     </ul>
                 </div>
             </li>
-
-            </li>
             <li class="nav-item">
-                <a class="nav-link" href="Manage_Team.php">
-                    <i class="fas fa-users me-2"></i> <span>Manage Teams</span>
-                </a>
-            </li>
-            <li class="nav-item">
-                <a class="nav-link" href="Manage_Users.php">
+                <a class="nav-link <?php if ($current_page == 'Manage_Users.php') echo 'active'; ?>" href="Manage_Users.php">
                     <i class="fas fa-users-cog me-2"></i> <span>Manage Users</span>
                 </a>
             </li>
             <li class="nav-item">
-                <a class="nav-link" href="Manage_medals.php">
+                <a class="nav-link <?php if ($current_page == 'Manage_medals.php') echo 'active'; ?>" href="Manage_medals.php">
                     <i class="fas fa-medal me-2"></i> <span>Manage Medals</span>
                 </a>
             </li>
             <li class="nav-item">
-                <a class="nav-link" href="Manage_Requests.php">
+                <a class="nav-link <?php if ($current_page == 'Manage_Requests.php') echo 'active'; ?>" href="Manage_Requests.php">
                     <i class="fas fa-user-plus me-2"></i> <span>Account Requests</span>
                 </a>
             </li>
             <li class="nav-item">
-                <a class="nav-link" href="Manage_Viewreports.php">
+                <a class="nav-link <?php if ($current_page == 'Manage_Viewreports.php') echo 'active'; ?>" href="Manage_Viewreports.php">
                     <i class="fas fa-chart-line me-2"></i> <span>View Reports</span>
                 </a>
             </li>
             
-            <li class="nav-item mt-3"><span class="text-muted">Event Settings</span></li>
             <li class="nav-item mt-3">
-                <a class="nav-link text-danger" href="logout.php">
+                <a class="nav-link text-danger" href="login.php">
                     <i class="fas fa-sign-out-alt me-2"></i> <span>Logout</span>
                 </a>
             </li>
@@ -700,6 +725,44 @@ if (isset($_SESSION['message'])) {
                     }
                 }, 250);
             });
+
+            // --- ### NEW: FIX SIDEBAR/FOOTER OVERLAP ### ---
+            const footer = document.querySelector('footer');
+            const navbar = document.querySelector('.navbar');
+
+            if (sidebar && footer && navbar) {
+                function adjustSidebarHeight() {
+                    // This logic should only apply to desktop view
+                    if (window.innerWidth <= 992) {
+                        sidebar.style.height = ''; // Reset to CSS default for mobile
+                        return;
+                    }
+
+                    const navbarHeight = navbar.offsetHeight;
+                    const footerTop = footer.getBoundingClientRect().top;
+                    const viewportHeight = window.innerHeight;
+                    
+                    // 1. Calculate the max possible height (navbar top to viewport bottom)
+                    const maxSidebarHeight = viewportHeight - navbarHeight;
+
+                    // 2. Calculate the available height (navbar top to footer top)
+                    const availableHeight = footerTop - navbarHeight;
+
+                    // 3. Choose the smaller of the two heights, but never less than 0
+                    const newHeight = Math.max(0, Math.min(maxSidebarHeight, availableHeight));
+                    
+                    // 4. Apply the new height as an inline style
+                    sidebar.style.height = `${newHeight}px`;
+                }
+
+                // Add listeners for scroll and resize events
+                window.addEventListener('scroll', adjustSidebarHeight, { passive: true });
+                window.addEventListener('resize', adjustSidebarHeight);
+                
+                // Initial call to set the correct height on page load
+                // Small delay to ensure all elements are rendered
+                setTimeout(adjustSidebarHeight, 100);
+            }
 
             // --- START: MODAL SCRIPT FIX ---
             // This section is corrected to target 'editUserModal' and 'deleteUserModal'

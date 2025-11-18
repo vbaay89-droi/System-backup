@@ -11,6 +11,8 @@ if (!isset($_SESSION['logged_in']) || $_SESSION['logged_in'] !== true || !isset(
 
 // Ensure user_id is in session
 if (!isset($_SESSION['user_id'])) {
+    // Note: Your 'users' table uses 'id', but session might use 'user_id'. 
+    // We'll assume the session key is 'user_id' as per your file.
     die("Error: User ID not found in session. Please log in again.");
 }
 
@@ -28,12 +30,15 @@ if (isset($_SESSION['message'])) {
     unset($_SESSION['message_type']);
 }
 
-// Logic to keep accordion open
+// Logic to keep accordion open (for Admin sidebar)
 $event_pages = ['Manage_Games.php', 'Manage_Game_Events.php', 'Manage_Categories.php'];
 $is_event_page = in_array($current_page, $event_pages);
+$management_pages = ['teams.php', 'events.php', 'results.php', 'reports.php'];
+$is_management_page = in_array($current_page, $management_pages);
+
 
 // --- ACTION LOGIC ---
-
+// ... (All your PHP logic for update_profile, change_password, change_email is correct and unchanged) ...
 // 1. UPDATE PROFILE DETAILS
 if (isset($_POST['update_profile'])) {
     $full_name = $_POST['full_name'];
@@ -190,8 +195,6 @@ if (!$user) {
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" rel="stylesheet">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=Poppins:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-    
-    <!-- Standardized CSS -->
     <style>
         :root {
             --primary-green: #4CAF50;
@@ -379,35 +382,27 @@ if (!$user) {
 </head>
 <body>
     
-    <!-- Standardized Navbar -->
     <nav class="navbar navbar-dark bg-dark">
-        <div class="container-fluid d-flex align-items: center justify-content-between">
-            <!-- Navbar Brand -->
-            <a class="navbar-brand d-flex align-items: center" href="admin_dashboard.php" style="cursor: pointer;">
+        <div class="container-fluid d-flex align-items-center justify-content-between">
+            <a class="navbar-brand d-flex align-items-center" href="<?php
+                if ($_SESSION['role'] === 'Administrator') echo 'admin_dashboard.php';
+                elseif ($_SESSION['role'] === 'Event Manager') echo 'event_manager_dashboard.php';
+                elseif ($_SESSION['role'] === 'Sports Director') echo 'sd/sports_director_dashboard.php';
+                else echo 'login.php';
+            ?>" style="cursor: pointer;">
                 <img src="imageslogo.png" alt="Logo" class="me-2 brand-logo" style="height: 50px; width: 48px; object-fit: contain;">
                 <div class="d-flex flex-column lh-sm">
                     <strong class="text-white brand-heading" style="font-size: 1.25rem;">PIT SPORTS TALLYING</strong>
-                    <small class="text-light brand-subheading" style="font-size: 0.75rem;">Administrator Panel</small>
+                    <small class="text-light brand-subheading" style="font-size: 0.75rem;"><?php echo htmlspecialchars($_SESSION['role']); ?> Panel</small>
                 </div>
             </a>
-            <!-- Mobile Toggle -->
             <button class="navbar-toggler d-lg-none" type="button" id="mobileMenuToggle" aria-label="Toggle navigation">
                 <span class="navbar-toggler-icon"></span>
             </button>
-            <!-- User Dropdown -->
             <div class="dropdown user-dropdown ms-auto me-2 me-lg-0">
                 <a href="#" class="dropdown-toggle" id="userDropdown" data-bs-toggle="dropdown" aria-expanded="false">
                     <i class="fas fa-user-circle" 
-           style="width: 36px; 
-                  height: 36px; 
-                  font-size: 36px; 
-                  text-align: center;
-                  line-height: 1;
-                  border-radius: 50%; 
-                  margin-right: 10px; 
-                  color: rgba(255,255,255,0.8);
-        "></i>
-                    
+                       style="width: 36px; height: 36px; font-size: 36px; text-align: center; line-height: 1; border-radius: 50%; margin-right: 10px; color: rgba(255,255,255,0.8);"></i>
                     <span class="user-name d-none d-lg-inline"><?= htmlspecialchars($name); ?></span>
                 </a>
                 <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="userDropdown">
@@ -420,41 +415,108 @@ if (!$user) {
         </div>
     </nav>
 
-    <!-- Standardized Sidebar (Accordion Version) -->
     <div class="sidebar" id="sidebar">
         <button id="sidebarToggle" title="Toggle Sidebar">
             <i class="fas fa-bars"></i>
         </button>
         
-        <ul class="nav flex-column sidebar-nav">
-            <li class="nav-item">
-                <a class="nav-link <?php if ($current_page == 'admin_dashboard.php') echo 'active'; ?>" href="admin_dashboard.php">
-                    <i class="fas fa-tachometer-alt me-2"></i> <span>Dashboard</span>
-                </a>
-            </li>
-            <!-- Accordion Menu -->
-            <li class="nav-item">
-                <a class="nav-link <?php if ($is_event_page) echo 'active'; ?>" data-bs-toggle="collapse" href="#eventsCollapse" role="button" aria-expanded="<?php echo $is_event_page ? 'true' : 'false'; ?>" aria-controls="eventsCollapse">
-                    <i class="fas fa-calendar-alt me-2"></i> <span>Manage Events</span> <i class="fas fa-chevron-down ms-auto sidebar-chevron"></i>
-                </a>
-                <div class="collapse <?php if ($is_event_page) echo 'show'; ?>" id="eventsCollapse">
-                    <ul class="sub-menu">
-                        <li class="nav-item"><a class="nav-link <?php if ($current_page == 'Manage_Games.php') echo 'active'; ?>" href="Manage_Games.php"><span>Games (L1)</span></a></li>
-                        <li class="nav-item"><a class="nav-link <?php if ($current_page == 'Manage_Game_Events.php') echo 'active'; ?>" href="Manage_Game_Events.php"><span>Game Events (L2)</span></a></li>
-                        <li class="nav-item"><a class="nav-link <?php if ($current_page == 'Manage_Categories.php') echo 'active'; ?>" href="Manage_Categories.php"><span>Categories (L3)</span></a></li>
-                    </ul>
-                </div>
-            </li>
-            <!-- Other Links -->
-            <li class="nav-item"><a class="nav-link <?php if ($current_page == 'Manage_Team.php') echo 'active'; ?>" href="Manage_Team.php"><i class="fas fa-users me-2"></i> <span>Manage Teams</span></a></li>
-            <li class="nav-item"><a class="nav-link <?php if ($current_page == 'Manage_Users.php') echo 'active'; ?>" href="Manage_Users.php"><i class="fas fa-users-cog me-2"></i> <span>Manage Users</span></a></li>
-            <li class="nav-item"><a class="nav-link <?php if ($current_page == 'Manage_medals.php') echo 'active'; ?>" href="Manage_medals.php"><i class="fas fa-medal me-2"></i> <span>Manage Medals</span></a></li>
-            <li class="nav-item"><a class="nav-link <?php if ($current_page == 'Manage_Requests.php') echo 'active'; ?>" href="Manage_Requests.php"><i class="fas fa-user-plus me-2"></i> <span>Account Requests</span></a></li>
-            <li class="nav-item"><a class="nav-link <?php if ($current_page == 'Manage_Viewreports.php') echo 'active'; ?>" href="Manage_Viewreports.php"><i class="fas fa-chart-line me-2"></i> <span>View Reports</span></a></li>
-            <li class="nav-item mt-3"><a class="nav-link text-danger" href="logout.php"><i class="fas fa-sign-out-alt me-2"></i> <span>Logout</span></a></li>
-        </ul>
+        <?php if ($_SESSION['role'] === 'Administrator'): ?>
+            <ul class="nav flex-column sidebar-nav">
+                <li class="nav-item">
+                    <a class="nav-link" href="admin_dashboard.php">
+                        <i class="fas fa-tachometer-alt me-2"></i> <span>Dashboard</span>
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link <?php if ($is_event_page) echo 'active'; ?>" data-bs-toggle="collapse" href="#eventsCollapse" role="button" aria-expanded="<?php echo $is_event_page ? 'true' : 'false'; ?>" aria-controls="eventsCollapse">
+                        <i class="fas fa-calendar-alt me-2"></i> <span>Manage Events</span> <i class="fas fa-chevron-down ms-auto sidebar-chevron"></i>
+                    </a>
+                    <div class="collapse <?php if ($is_event_page) echo 'show'; ?>" id="eventsCollapse">
+                        <ul class="sub-menu">
+                            <li class="nav-item"><a class="nav-link" href="Manage_Games.php"><span>Games (L1)</span></a></li>
+                            <li class="nav-item"><a class="nav-link" href="Manage_Game_Events.php"><span>Game Events (L2)</span></a></li>
+                            <li class="nav-item"><a class="nav-link" href="Manage_Categories.php"><span>Categories (L3)</span></a></li>
+                        </ul>
+                    </div>
+                </li>
+                 <li class="nav-item">
+                    <a class="nav-link <?php if ($is_management_page) echo 'active'; ?>" data-bs-toggle="collapse" href="#teamsCollapse" role="button" aria-expanded="<?php echo $is_management_page ? 'true' : 'false'; ?>" aria-controls="teamsCollapse">
+                        <i class="fas fa-users me-2"></i> <span>Manage Teams</span> <i class="fas fa-chevron-down ms-auto sidebar-chevron"></i>
+                    </a>
+                    <div class="collapse <?php if ($is_management_page) echo 'show'; ?>" id="teamsCollapse">
+                        <ul class="sub-menu">
+                            <li class="text-muted" style="padding: 10px 25px 5px 60px;">Management</li>
+                            <li><a class="nav-link" href="sd/teams.php"><span>Manage Teams</span></a></li>
+                            <li><a class="nav-link" href="sd/events.php"><span>Manage Events (L1-L3)</span></a></li>
+                            <li class="text-muted" style="padding: 10px 25px 5px 60px;">Tallying</li>
+                            <li><a class="nav-link" href="sd/results.php"><span>Approve Results</span></a></li>
+                            <li><a class="nav-link" href="sd/reports.php"><span>Medal Reports</span></a></li>
+                        </ul>
+                    </div>
+                </li>
+                <li class="nav-item"><a class="nav-link" href="Manage_Users.php"><i class="fas fa-users-cog me-2"></i> <span>Manage Users</span></a></li>
+                <li class="nav-item"><a class="nav-link" href="Manage_medals.php"><i class="fas fa-medal me-2"></i> <span>Manage Medals</span></a></li>
+                <li class="nav-item"><a class="nav-link" href="Manage_Requests.php"><i class="fas fa-user-plus me-2"></i> <span>Account Requests</span></a></li>
+                <li class="nav-item"><a class="nav-link" href="Manage_Viewreports.php"><i class="fas fa-chart-line me-2"></i> <span>View Reports</span></a></li>
+                <li class="nav-item mt-3"><a class="nav-link text-danger" href="logout.php"><i class="fas fa-sign-out-alt me-2"></i> <span>Logout</span></a></li>
+            </ul>
+        
+        <?php elseif ($_SESSION['role'] === 'Event Manager'): ?>
+            <ul class="nav flex-column sidebar-nav">
+                <li class="nav-item">
+                    <a class="nav-link" href="event_manager_dashboard.php">
+                        <i class="fas fa-tachometer-alt me-2"></i> <span>Dashboard</span>
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link" href="Event.php" target="_blank">
+                        <i class="fas fa-globe me-2"></i> <span>View Public Events</span>
+                    </a>
+                </li>
+                <li class="nav-item mt-auto">
+                    <a class="nav-link text-danger" href="logout.php">
+                        <i class="fas fa-sign-out-alt me-2"></i> <span>Logout</span>
+                    </a>
+                </li>
+            </ul>
+
+        <?php elseif ($_SESSION['role'] === 'Sports Director'): ?>
+            <ul class="nav flex-column sidebar-nav">
+                <li class="nav-item">
+                    <a class="nav-link" href="sd/sports_director_dashboard.php"> 
+                        <i class="fas fa-tachometer-alt me-2"></i> <span>Dashboard</span>
+                    </a>
+                </li>
+                <li class="nav-item mt-3"><span class="nav-title">Management</span></li>
+                <li class="nav-item">
+                    <a class="nav-link" href="sd/teams.php">
+                        <i class="fas fa-users me-2"></i> <span>Manage Teams</span>
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link" href="sd/events.php">
+                        <i class="fas fa-calendar-alt me-2"></i> <span>Manage Events (L1-L3)</span>
+                    </a>
+                </li>
+                <li class="nav-item mt-3"><span class="nav-title">Tallying</span></li>
+                <li class="nav-item">
+                    <a class="nav-link" href="sd/results.php">
+                        <i class="fas fa-check-double me-2"></i> <span>Approve Results</span>
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link" href="sd/reports.php">
+                        <i class="fas fa-chart-line me-2"></i> <span>Medal Reports</span>
+                    </a>
+                </li>
+                <li class="nav-item mt-auto">
+                    <a class="nav-link text-danger" href="logout.php">
+                        <i class="fas fa-sign-out-alt me-2"></i> <span>Logout</span>
+                    </a>
+                </li>
+            </ul>
+        <?php endif; ?>
     </div>
-    
     <div class="sidebar-overlay" id="sidebarOverlay"></div>
 
     <div class="main-content">
@@ -462,7 +524,6 @@ if (!$user) {
             
             <h1 class="section-title mb-4">My Profile</h1>
 
-            <!-- Message display (no change) -->
             <?php if ($message): ?>
             <div class="alert alert-<?php echo ($message_type == 'danger' ? 'danger' : 'success'); ?> alert-dismissible fade show" role="alert">
                 <?= htmlspecialchars($message) ?>
@@ -471,7 +532,6 @@ if (!$user) {
             <?php endif; ?>
 
             <div class="row g-4">
-                <!-- Profile Information Card (no change) -->
                 <div class="col-lg-7">
                     <div class="card h-100">
                         <div class="card-header"><h5 class="mb-0">Profile Information</h5></div>
@@ -495,9 +555,7 @@ if (!$user) {
                     </div>
                 </div>
 
-                <!-- Password and Email Cards -->
                 <div class="col-lg-5">
-                    <!-- Change Password Card (no change) -->
                     <div class="card mb-4">
                         <div class="card-header"><h5 class="mb-0">Change Password</h5></div>
                         <div class="card-body">
@@ -519,7 +577,6 @@ if (!$user) {
                         </div>
                     </div>
 
-                    <!-- Change Email Card (no change) -->
                     <div class="card">
                         <div class="card-header"><h5 class="mb-0">Change Email</h5></div>
                         <div class="card-body">
@@ -546,7 +603,6 @@ if (!$user) {
         </div>
     </div>
 
-    <!-- Standardized Footer (no change) -->
     <footer class="bg-dark text-white py-4">
         <div class="text-center">
             <small>&copy; <?php echo date("Y"); ?> PIT SPORTS TALLYING. All rights reserved.</small><br>
@@ -556,7 +612,6 @@ if (!$user) {
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
     
-    <!-- Standardized JavaScript (no change) -->
     <script>
         document.addEventListener('DOMContentLoaded', function() {
             
@@ -625,4 +680,3 @@ if (!$user) {
     </script>
 </body>
 </html>
-
