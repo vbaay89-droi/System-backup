@@ -15,10 +15,10 @@ $sql = "
         C.college_id,
         C.college_name,
         C.college_code,
-        C.team_manager,  /* UPDATED COLUMN */
-        C.slogan,        /* UPDATED COLUMN */
+        C.team_manager,
+        C.slogan,
         C.logo_url,
-        /* REMOVED: total_students, dean_photo_url */
+        C.unit_color,  /* <--- [NEW] FETCH UNIT COLOR */
         COALESCE(Medals.GoldCount, 0) AS GoldCount,
         COALESCE(Medals.SilverCount, 0) AS SilverCount,
         COALESCE(Medals.BronzeCount, 0) AS BronzeCount,
@@ -183,12 +183,6 @@ function truncate_text($text, $length = 100, $suffix = '...') {
             font-family: 'Poppins', sans-serif;
             font-size: 2.25rem;
         }
-        .roster-container {
-            background: #fff;
-            border-radius: 16px;
-            padding: 32px;
-            box-shadow: var(--shadow-md);
-        }
         .college-card {
             background-color: var(--bg-light); 
             border-radius: 12px;
@@ -201,6 +195,9 @@ function truncate_text($text, $length = 100, $suffix = '...') {
             border: 1px solid rgba(0,0,0,0.05);
             display: flex;
             flex-direction: column;
+            
+            /* [NEW] CSS VARIABLE FOR COLOR */
+            --team-color: var(--primary-green); /* Default fallback */
         }
         .college-card:hover {
             transform: translateY(-5px);
@@ -208,7 +205,7 @@ function truncate_text($text, $length = 100, $suffix = '...') {
             background-color: #fff;
         }
         
-        /* Card Top Border */
+        /* [UPDATED] Card Top Border using Variable */
         .college-card::before {
             content: '';
             position: absolute;
@@ -216,18 +213,12 @@ function truncate_text($text, $length = 100, $suffix = '...') {
             left: 0;
             right: 0;
             height: 6px; 
-            background-color: #e9ecef; 
+            background-color: var(--team-color); /* USES DYNAMIC COLOR */
             transition: var(--transition);
         }
         .college-card:hover::before { height: 8px; }
         
-        /* Border Colors */
-        .college-card.border-cote::before { background-color: Maroon; }
-        .college-card.border-cte::before { background-color: Skyblue; }
-        .college-card.border-pittc::before { background-color: Blue; }
-        .college-card.border-comed::before { background-color: Green; }
-        .college-card.border-cas::before { background-color: Yellow; }
-        .college-card.border-default::before { background-color: var(--primary-green); } 
+        /* REMOVED OLD .border-cote, .border-cte, etc. styles */
 
         .college-logo {
             width: 100px;
@@ -241,7 +232,8 @@ function truncate_text($text, $length = 100, $suffix = '...') {
             border: 3px solid #e9ecef;
         }
         .college-card:hover .college-logo {
-            border-color: var(--primary-green);
+            /* [UPDATED] Logo border on hover */
+            border-color: var(--team-color);
         }
         .college-badge {
             font-size: 0.75rem;
@@ -264,7 +256,7 @@ function truncate_text($text, $length = 100, $suffix = '...') {
             color: inherit;
         }
         .college-name-link:hover {
-            color: var(--primary-green);
+            color: var(--team-color); /* [UPDATED] Link color */
         }
         .truncate-text {
             display: -webkit-box;
@@ -467,17 +459,8 @@ function truncate_text($text, $length = 100, $suffix = '...') {
                             $logo_path = (!empty($college['logo_url'])) ? $college['logo_url'] : $default_logo;
                             $slogan_short = truncate_text($college['slogan'] ?? 'No slogan available.', 80);
                             
-                            // Border color logic
-                            $college_code = $college['college_code'];
-                            $border_class = '';
-                            switch (strtoupper($college_code)) {
-                                case 'COTE': $border_class = 'border-cote'; break;
-                                case 'CTE': $border_class = 'border-cte'; break;
-                                case 'PIT-TC': $border_class = 'border-pittc'; break; 
-                                case 'COMED': $border_class = 'border-comed'; break;
-                                case 'CAS': $border_class = 'border-cas'; break;
-                                default: $border_class = 'border-default'; break;
-                            }
+                            // [NEW LOGIC] Get Unit Color (Fallback to Gray if missing)
+                            $unit_color = !empty($college['unit_color']) ? $college['unit_color'] : '#cccccc';
                         ?>
                         <div class="col-12 col-md-6 col-lg-4 d-flex college-card-wrapper" 
                              data-name="<?= htmlspecialchars(strtolower($college['college_name'])) ?>"
@@ -485,7 +468,7 @@ function truncate_text($text, $length = 100, $suffix = '...') {
                              data-rank="<?= $index + 1 ?>"
                              data-total-medals="<?= $college['TotalMedals'] ?>">
                              
-                            <div class="college-card d-flex flex-column w-100 <?= $border_class ?>">
+                            <div class="college-card d-flex flex-column w-100" style="--team-color: <?= htmlspecialchars($unit_color) ?>;">
                                 <img src="<?= htmlspecialchars($logo_path) ?>" 
                                      alt="<?= htmlspecialchars($college['college_name']) ?> Logo" 
                                      class="college-logo"
@@ -494,9 +477,9 @@ function truncate_text($text, $length = 100, $suffix = '...') {
                                 <div class="text-center">
                                     <span class="college-badge"><?= htmlspecialchars($college['college_code']) ?></span>
                                     <h5 class="college-name mb-1">
-                                        <a href="sd_manage/team_profile.php?team_id=<?= $college['college_id'] ?>" 
+                                        <a href="#" 
                                            class="college-name-link" 
-                                           title="View Admin Profile (Admins Only)">
+                                           title="<?= htmlspecialchars($college['college_name']) ?>">
                                             <?= htmlspecialchars($college['college_name']) ?>
                                         </a>
                                     </h5>

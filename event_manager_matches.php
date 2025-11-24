@@ -1,7 +1,7 @@
 <?php
 session_start();
-require_once 'config.php'; // Your DB connection
-require_once 'db_connect.php'; // ### ADDED: Include the logger function ###
+require_once 'config.php'; 
+require_once 'db_connect.php'; 
 
 // 1. SECURITY & ACCESS CONTROL
 if (!isset($_SESSION['logged_in']) || $_SESSION['logged_in'] !== true || !isset($_SESSION['role']) || $_SESSION['role'] !== 'Event Manager') {
@@ -15,9 +15,23 @@ $current_page = basename($_SERVER['PHP_SELF']);
 $alert_message = '';
 $alert_type = 'success';
 
+// --- FETCH FULL NAME ---
+$stmt = $conn->prepare("SELECT full_name, username FROM users WHERE id = ?");
+$stmt->bind_param("i", $user_id); 
+$stmt->execute();
+$result = $stmt->get_result();
+$user_data = $result->fetch_assoc(); 
+$stmt->close();
+
+if (!empty($user_data['full_name'])) {
+    $display_name = $user_data['full_name'];
+} else {
+    $display_name = $user_data['username'] ?? $username; 
+}
+
 // 2. GET & VALIDATE CATEGORY ID
 if (!isset($_GET['category_id'])) {
-    header('Location: event_manager_dashboard.php'); // Redirect if no ID
+    header('Location: event_manager_dashboard.php'); 
     exit();
 }
 $category_id = (int)$_GET['category_id'];
@@ -28,8 +42,6 @@ $event_name = '';
 $game_name = '';
 $category_status = ''; 
 
-// ### CHANGE 1: Added winner columns to the query ###
-// ### FIX: Changed c.event_type to c.category_type ###
 $stmt_check = $conn->prepare("
     SELECT 
         c.category_name, c.status, ge.event_name, g.game_name,
@@ -46,7 +58,6 @@ $stmt_check->bind_param("ii", $category_id, $user_id);
 $stmt_check->execute();
 $result_check = $stmt_check->get_result();
 if ($result_check->num_rows == 0) {
-    // Not assigned, or not a 'Match' type event.
     $_SESSION['alert_message'] = "Permission denied or invalid event type.";
     $_SESSION['alert_type'] = "danger";
     header('Location: event_manager_dashboard.php');
@@ -56,9 +67,8 @@ $row = $result_check->fetch_assoc();
 $category_name = $row['category_name'];
 $event_name = $row['event_name'];
 $game_name = $row['game_name'];
-$category_status = $row['status']; // Store the category's status
+$category_status = $row['status']; 
 
-// ### CHANGE 2: Store winner data in variables ###
 $gold_winner_id = $row['gold_winner_college_id'];
 $gold_count = $row['gold_count'];
 $silver_winner_id = $row['silver_winner_college_id'];
@@ -68,17 +78,20 @@ $bronze_count = $row['bronze_count'];
 
 $stmt_check->close();
 
-// ### CHANGE 3: Apply the "Completed" rename logic ###
+// LOGIC: Change "Main Event" to "No Category" for display
+$display_category_name = ($category_name === 'Main Event' || $category_name === 'Main Competition') 
+                         ? '<span class="text-muted fst-italic">(No Category)</span>' 
+                         : htmlspecialchars($category_name);
+
 if (strtolower($category_status) === 'results approved') {
     $category_status = 'Completed';
 }
 
-// ### CHANGE 4: Create a "lock" variable based on status ###
 $status_lower = strtolower($category_status);
 $is_locked = (in_array($status_lower, ['results submitted', 'completed']));
 
 
-// 4. FORM HANDLING (Add/Edit/Delete Match for THIS category)
+// 4. FORM HANDLING (Add/Edit/Delete Match)
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     try {
         if (!isset($_POST['action'])) {
@@ -86,10 +99,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         }
         $action = $_POST['action'];
 
-        // --- Prevent actions if locked ---
+        // Prevent actions if locked
         if ($is_locked && $action !== 'submit_final_winners') {
-             // We allow 'submit_final_winners' to be caught, but we'll block it inside
-             // This is to prevent adding/editing/deleting matches
             if ($action === 'add_match' || $action === 'update_match' || $action === 'delete_match') {
                  throw new Exception("Cannot modify matches, results are already submitted or approved.");
             }
@@ -108,19 +119,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $stmt = $conn->prepare("INSERT INTO matches (category_id, team1_id, team2_id, match_date, match_time, venue, status) VALUES (?, ?, ?, ?, ?, ?, 'Upcoming')");
             $stmt->bind_param("iissss", $category_id, $team1_id, $team2_id, $match_date, $match_time, $venue);
             $stmt->execute();
-            $new_match_id = (int)$conn->insert_id; // ### ADDED: Get new ID ###
+            $new_match_id = (int)$conn->insert_id; 
             $stmt->close();
             $alert_message = "Match created successfully.";
 
-            // ### ADDED: Log this action ###
             try {
                 $context = ['team1_id' => $team1_id, 'team2_id' => $team2_id, 'match_date' => $match_date, 'venue' => $venue, 'category_name' => $category_name];
                 log_activity($conn, $user_id, 'CREATED_MATCH', $new_match_id, 'match', $category_id, 'category', $context);
-            } catch (Exception $log_e) { 
-                error_log("Failed to log CREATED_MATCH: " . $log_e->getMessage()); 
-            }
+            } catch (Exception $log_e) { error_log("Log Error: " . $log_e->getMessage()); }
 
-        // --- UPDATE MATCH & RESULTS ---
+        // --- UPDATE MATCH ---
         } elseif ($action === 'update_match') {
             $match_id = (int)$_POST['match_id'];
             $team1_id = $_POST['team1_id'];
@@ -154,13 +162,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
             $alert_message = "Match updated successfully.";
             
-            // ### ADDED: Log this action ###
             try {
                 $context = ['score1' => $score1, 'score2' => $score2, 'status' => $status, 'winner_team_id' => $winner_team_id, 'category_name' => $category_name];
                 log_activity($conn, $user_id, 'UPDATED_MATCH', $match_id, 'match', $category_id, 'category', $context);
-            } catch (Exception $log_e) { 
-                error_log("Failed to log UPDATED_MATCH: " . $log_e->getMessage()); 
-            }
+            } catch (Exception $log_e) { error_log("Log Error: " . $log_e->getMessage()); }
 
         // --- DELETE MATCH ---
         } elseif ($action === 'delete_match') {
@@ -171,23 +176,18 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $stmt->close();
             $alert_message = "Match deleted successfully.";
             
-            // ### ADDED: Log this action ###
             try {
                 $context = ['category_name' => $category_name];
                 log_activity($conn, $user_id, 'DELETED_MATCH', $match_id, 'match', $category_id, 'category', $context);
-            } catch (Exception $log_e) { 
-                error_log("Failed to log DELETED_MATCH: " . $log_e->getMessage()); 
-            }
+            } catch (Exception $log_e) { error_log("Log Error: " . $log_e->getMessage()); }
         
-        // --- ACTION: SUBMIT FINAL WINNERS ---
+        // --- SUBMIT FINAL WINNERS ---
         } elseif ($action === 'submit_final_winners') {
             
-            // ### CHANGE 5: Block submission if already locked ###
             if ($is_locked) {
                 throw new Exception("Results are already submitted or completed and cannot be modified.");
             }
 
-            // ### NEW: Server-side validation ###
             if (empty($_POST['gold_winner_college_id']) || empty($_POST['silver_winner_college_id']) || empty($_POST['bronze_winner_college_id'])) {
                 throw new Exception("All medal winners (Gold, Silver, and Bronze) must be selected.");
             }
@@ -196,27 +196,21 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $silver_id = (int)$_POST['silver_winner_college_id'];
             $bronze_id = (int)$_POST['bronze_winner_college_id'];
 
-            // Optional: Check for duplicate winners
             $winners = [$gold_id, $silver_id, $bronze_id];
             if (count($winners) !== count(array_unique($winners))) {
                 throw new Exception("The same team cannot be selected for multiple medals.");
             }
-            // ### END: Server-side validation ###
 
             $gold_count = !empty($_POST['gold_count']) ? (int)$_POST['gold_count'] : 0;
             $silver_count = !empty($_POST['silver_count']) ? (int)$_POST['silver_count'] : 0;
             $bronze_count = !empty($_POST['bronze_count']) ? (int)$_POST['bronze_count'] : 0;
             
-            // New status to send to Admin
             $new_status = 'Results Submitted'; 
 
             $stmt = $conn->prepare("UPDATE categories SET
-                gold_winner_college_id = ?,
-                gold_count = ?,
-                silver_winner_college_id = ?,
-                silver_count = ?,
-                bronze_winner_college_id = ?,
-                bronze_count = ?,
+                gold_winner_college_id = ?, gold_count = ?,
+                silver_winner_college_id = ?, silver_count = ?,
+                bronze_winner_college_id = ?, bronze_count = ?,
                 status = ?
                 WHERE category_id = ?
             ");
@@ -226,19 +220,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             );
             
             if ($stmt->execute()) {
-                
-                // ### ADDED: Log this action ###
                 try {
-                    $context = ['category_name' => $category_name, 'gold_id' => $gold_id, 'silver_id' => $silver_id, 'bronze_id' => $bronze_id, 'type' => 'Match'];
+                    $context = ['category_name' => $category_name, 'type' => 'Match'];
                     log_activity($conn, $user_id, 'SUBMITTED_RESULTS', $category_id, 'category', null, null, $context);
-                } catch (Exception $log_e) { 
-                    error_log("Failed to log SUBMITTED_RESULTS (Match): " . $log_e->getMessage()); 
-                }
+                } catch (Exception $log_e) { error_log("Log Error: " . $log_e->getMessage()); }
                 
                 $_SESSION['alert_message'] = "Final winners submitted for approval!";
                 $_SESSION['alert_type'] = "success";
                 
-                // ### FIX: Redirect to my_events.php ###
                 header('Location: my_events.php');
                 exit();
             } else {
@@ -252,7 +241,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 }
 
 
-// 5. FETCH DATA FOR THIS PAGE
+// 5. FETCH DATA FOR DISPLAY
 $colleges = [];
 $college_map = [];
 $result_col = $conn->query("SELECT college_id, college_name FROM colleges ORDER BY college_name");
@@ -289,13 +278,23 @@ if (empty($matches)) {
     $all_matches_completed = false;
 }
 
+// --- UPDATED BADGE COLORS TO MATCH MY_EVENTS.PHP ---
 function getMatchStatusBadge($status) {
     switch (strtolower($status)) {
-        case 'upcoming': return '<span class="badge bg-info">Upcoming</span>';
-        case 'ongoing': return '<span class="badge bg-primary">Ongoing</span>';
-        case 'completed': return '<span class="badge bg-success">Completed</span>';
-        case 'cancelled': return '<span class="badge bg-danger">Cancelled</span>';
-        default: return '<span class="badge bg-light text-dark">' . htmlspecialchars($status) . '</span>';
+        case 'upcoming': 
+            // Matches my_events: Primary (Blue)
+            return '<span class="badge bg-primary text-white rounded-pill px-3 py-2"><i class="fas fa-clock me-1"></i>Upcoming</span>';
+        case 'ongoing': 
+            // Matches my_events: Success (Green)
+            return '<span class="badge bg-success text-white rounded-pill px-3 py-2"><i class="fas fa-play-circle me-1"></i>Ongoing</span>';
+        case 'completed': 
+            // Matches my_events: Info (Cyan/Teal)
+            return '<span class="badge bg-info text-white rounded-pill px-3 py-2"><i class="fas fa-check-circle me-1"></i>Completed</span>';
+        case 'cancelled': 
+            // Matches my_events: Danger (Red)
+            return '<span class="badge bg-danger text-white rounded-pill px-3 py-2"><i class="fas fa-ban me-1"></i>Cancelled</span>';
+        default: 
+            return '<span class="badge bg-light text-dark border rounded-pill px-3 py-2">' . htmlspecialchars($status) . '</span>';
     }
 }
 ?>
@@ -309,6 +308,7 @@ function getMatchStatusBadge($status) {
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" rel="stylesheet">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=Poppins:wght@400;500;600;700;800&display=swap" rel="stylesheet">
     <style>
+        /* --- GLOBAL THEME --- */
         :root { 
             --sidebar-width: 260px; 
             --header-height: 82px; 
@@ -316,67 +316,155 @@ function getMatchStatusBadge($status) {
             --card-shadow: 0 5px 20px rgba(0, 0, 0, 0.08); 
             --bg-light: #F8F9FA; 
         }
-        body { background-color: var(--bg-light); margin: 0; padding: 0; min-height: 100vh; font-family: 'Inter', sans-serif; display: flex; flex-direction: column; }
-        .navbar { background: linear-gradient(135deg, #1a1a1a 0%, #2d2d2d 100%) !important; box-shadow: 0 4px 20px rgba(0,0,0,0.15); padding: 1rem 1.5rem; height: var(--header-height); position: fixed; top: 0; left: 0; right: 0; z-index: 1050; }
+        
+        body { 
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            background-attachment: fixed;
+            margin: 0; padding: 0; min-height: 100vh; 
+            font-family: 'Inter', sans-serif; display: flex; flex-direction: column; 
+        }
+        
+        /* Glassmorphism Background */
+        body::before {
+            content: ''; position: fixed; top: 0; left: 0; right: 0; bottom: 0;
+            background: radial-gradient(circle at 20% 50%, rgba(120, 119, 198, 0.3), transparent 50%),
+                        radial-gradient(circle at 80% 80%, rgba(99, 102, 241, 0.2), transparent 50%);
+            pointer-events: none; z-index: 0;
+        }
+
+        /* --- NAVBAR --- */
+        .navbar { 
+            background: rgba(26, 26, 26, 0.95) !important; 
+            backdrop-filter: blur(10px); 
+            box-shadow: 0 8px 32px rgba(0,0,0,0.2); 
+            padding: 1rem 1.5rem; 
+            height: var(--header-height); 
+            position: fixed; top: 0; left: 0; right: 0; z-index: 1050;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+        }
         .navbar-brand .brand-heading { font-family: 'Poppins', sans-serif; font-weight: 700; }
-        .user-dropdown .dropdown-toggle { color: white; display: flex; align-items: center; text-decoration: none; padding: 8px 12px; border-radius: 8px; }
+        
+        .user-dropdown .dropdown-toggle { 
+            color: white; display: flex; align-items: center; text-decoration: none; 
+            padding: 8px 16px; border-radius: 50px; background: rgba(255, 255, 255, 0.1); 
+            backdrop-filter: blur(10px); transition: all 0.3s ease; border: 1px solid rgba(255, 255, 255, 0.2); 
+        }
+        .user-dropdown .dropdown-toggle:hover {
+            background: rgba(255, 255, 255, 0.2); transform: translateY(-2px);
+        }
         .user-dropdown .dropdown-toggle img { width: 36px; height: 36px; border-radius: 50%; object-fit: cover; margin-right: 10px; }
-        .sidebar { width: var(--sidebar-width); position: fixed; top: var(--header-height); left: 0; height: calc(100vh - var(--header-height)); background: #2c3e50; color: white; box-shadow: 5px 0 15px rgba(0,0,0,0.2); z-index: 1040; transition: width var(--transition); overflow-y: auto; overflow-x: hidden; }
-        .sidebar-nav { padding: 50px 0 20px 0; }
-        .sidebar-nav .nav-link { color: rgba(255, 255, 255, 0.7); font-size: 1.05rem; font-weight: 500; padding: 15px 25px; transition: var(--transition); border-left: 5px solid transparent; margin: 2px 0; display: flex; align-items: center; text-decoration: none; }
-        .sidebar-nav .nav-link i { width: 30px; text-align: center; flex-shrink: 0; font-size: 0.95em; }
-        .sidebar-nav .nav-link:hover { color: white; background: rgba(255, 255, 255, 0.05); border-left-color: #1abc9c; }
-        .sidebar-nav .nav-link.active { color: white; background: rgba(255, 255, 255, 0.1); border-left-color: #3498db; font-weight: 600; }
-        .main-content { flex: 1 0 auto; padding: 30px; margin-top: var(--header-height); margin-left: var(--sidebar-width); transition: margin-left var(--transition); min-height: calc(100vh - var(--header-height)); }
-                /* Footer */
-        footer {
-            flex-shrink: 0;
-            background: #2c3e50 !important;
-            box-shadow: 0 -2px 10px rgba(0,0,0,0.1);
-            padding-left: var(--sidebar-width); /* <-- MODIFIED */
-            transition: padding-left var(--transition); /* <-- MODIFIED */
+        
+        /* --- FIXED SIDEBAR --- */
+        .sidebar { 
+            width: var(--sidebar-width); 
+            position: fixed; top: var(--header-height); left: 0; 
+            height: calc(100vh - var(--header-height)); 
+            background: rgba(44, 62, 80, 0.95); 
+            backdrop-filter: blur(10px); color: white; 
+            box-shadow: 5px 0 30px rgba(0,0,0,0.3); z-index: 1040; 
+            transition: all 0.3s ease; overflow-y: auto;
+        }
+        
+        .sidebar-nav { padding: 20px 0; }
+        .sidebar-nav .nav-link { 
+            color: rgba(255, 255, 255, 0.7); font-size: 1.05rem; font-weight: 500; 
+            padding: 12px 25px; display: flex; align-items: center; text-decoration: none; 
+            border-left: 5px solid transparent; 
+        }
+        .sidebar-nav .nav-link i { width: 30px; text-align: center; font-size: 1em; margin-right: 10px; }
+        .sidebar-nav .nav-link:hover { color: white; background: rgba(255, 255, 255, 0.05); border-left-color: #667eea; }
+        .sidebar-nav .nav-link.active { color: white; background: linear-gradient(90deg, rgba(102, 126, 234, 0.2), transparent); border-left: 4px solid #667eea; }
+
+        /* --- MAIN CONTENT --- */
+        .main-content { 
+            flex: 1 0 auto; 
+            margin-left: var(--sidebar-width); 
+            width: calc(100% - var(--sidebar-width)); 
+            padding: 30px; margin-top: var(--header-height); 
+            transition: margin-left 0.3s ease; position: relative; z-index: 1; 
+        }
+        
+        footer { 
+            flex-shrink: 0; background: rgba(44, 62, 80, 0.95) !important; 
+            backdrop-filter: blur(10px); padding-left: var(--sidebar-width); 
+            transition: padding-left 0.3s ease; position: relative; z-index: 1041; 
+        }
+
+        /* --- PAGE SPECIFIC STYLES --- */
+        .page-header {
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(10px);
+            border-radius: 20px;
+            padding: 2rem;
+            margin-bottom: 2rem;
+            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.1);
+            border: 1px solid rgba(255, 255, 255, 0.3);
             position: relative;
-            z-index: 1041;
+            overflow: hidden;
         }
-                .sidebar.minimized ~ footer {
-            padding-left: var(--sidebar-min-width); /* <-- MODIFIED */
+        .page-header::before {
+            content: ''; position: absolute; top: 0; left: 0; right: 0; height: 5px;
+            background: linear-gradient(90deg, #667eea 0%, #764ba2 100%);
         }
-        .section-title { font-family: 'Poppins', sans-serif; font-weight: 600; color: #333; }
-        .user-dropdown .dropdown-toggle:hover { background-color: rgba(255, 255, 255, 0.1); }
-        .navbar-profile-icon {
-            width: 36px; 
-            height: 36px; 
-            font-size: 36px; 
-            text-align: center;
-            line-height: 1;
-            border-radius: 50%; 
-            margin-right: 10px; 
-            color: rgba(255,255,255,0.8);
+        .page-title {
+            font-family: 'Poppins', sans-serif; font-weight: 700;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text;
+            margin: 0; font-size: 2rem;
         }
         
-        /* Page-specific Styles */
-        .page-card { background: white; border: none; border-radius: 15px; box-shadow: var(--card-shadow); }
-        .page-card-header { background-color: #f8f9fa; border-bottom: 1px solid #dee2e6; padding: 1.25rem 1.5rem; border-top-left-radius: 15px; border-top-right-radius: 15px; }
-        .page-card-header h4 { margin: 0; font-family: 'Poppins', sans-serif; font-weight: 600; }
-        .table-responsive { border-radius: 10px; }
-        .table thead th { background-color: #f8f9fa; }
-        .table-action-btn { width: 35px; height: 35px; display: inline-flex; align-items: center; justify-content: center; border-radius: 8px; }
-        .matchup-cell strong { font-size: 1rem; color: #333; }
-        .matchup-cell small { font-size: 0.8rem; }
-        .score-cell { font-size: 1.1rem; font-weight: 700; }
+        .breadcrumb { background: transparent; padding: 0; margin-bottom: 0; }
+        .breadcrumb-item a { color: #667eea; text-decoration: none; }
+
+        /* Cards */
+        .card { border: none; border-radius: 16px; box-shadow: 0 10px 30px rgba(0,0,0,0.08); overflow: hidden; margin-bottom: 1.5rem; }
+        .card-header { background: linear-gradient(135deg, #ffffff 0%, #f8f9fa 100%); border-bottom: 1px solid #e9ecef; padding: 1.25rem 1.5rem; }
         
-        .matchup-cell .winner {
-            font-weight: 700;
-            color: #198754; 
+        /* Table */
+        .results-table-container {
+            background: #ffffff; border-radius: 0 0 12px 12px; 
+            overflow-x: auto; position: relative; scrollbar-width: none; 
         }
-        .matchup-cell .loser {
-            color: #6c757d; 
-            opacity: 0.8;
-            text-decoration: line-through;
+        .results-table-container::-webkit-scrollbar { display: none; }
+        
+        .results-table thead th {
+            background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+            color: #2c3e50; font-weight: 700; font-size: 0.9rem; 
+            text-transform: uppercase; padding: 1.2rem; border-bottom: 2px solid #dee2e6;
+            white-space: nowrap;
         }
-        .winner-initialism {
-            font-weight: 700;
-            color: #198754;
+        .results-table tbody td { 
+            padding: 1.2rem; vertical-align: middle; border-bottom: 1px solid #f1f3f5; font-size: 0.95rem;
+        }
+        .results-table tbody tr:hover { background-color: #f8f9fa; transform: scale(1.001); }
+
+        /* Sticky Action Column */
+        .sticky-col { position: sticky; right: 0; z-index: 2; background-color: #fff; box-shadow: -5px 0 10px rgba(0,0,0,0.05); }
+        .results-table thead th.sticky-col { background: #e9ecef; z-index: 5; }
+        .results-table tbody tr:hover .sticky-col { background-color: #f8f9fa; }
+        
+        /* Action Buttons */
+        .action-stack { display: flex; flex-direction: column; gap: 5px; justify-content: center; }
+        .action-btn { 
+            width: 38px; height: 38px; padding: 0; display: inline-flex; 
+            align-items: center; justify-content: center; border-radius: 8px; 
+            transition: all 0.2s ease; font-size: 0.9rem; border: none; 
+        }
+        .action-btn:hover { transform: translateY(-2px); box-shadow: 0 4px 8px rgba(0,0,0,0.15); }
+        .action-btn.btn-primary { background: linear-gradient(135deg, #3498db 0%, #2980b9 100%); color: white; }
+        .action-btn.btn-danger { background: linear-gradient(135deg, #e74c3c 0%, #c0392b 100%); color: white; }
+
+        /* Match Styles */
+        .matchup-cell { font-size: 1.05rem; color: #333; }
+        .score-cell { font-size: 1.2rem; font-weight: 800; color: #2c3e50; }
+        .winner-badge { font-weight: 700; color: #27ae60; background: #eafaf1; padding: 4px 8px; border-radius: 6px; font-size: 0.85rem; }
+        
+        .form-control, .form-select { border-radius: 10px; padding: 0.6rem 1rem; border: 1px solid #dee2e6; }
+        .form-control:focus, .form-select:focus { border-color: #667eea; box-shadow: 0 0 0 0.2rem rgba(102, 126, 234, 0.25); }
+
+        @media (max-width: 992px) {
+            .sidebar { width: 0; } 
+            .main-content, footer { margin-left: 0; width: 100%; }
         }
     </style>
 </head>
@@ -394,12 +482,12 @@ function getMatchStatusBadge($status) {
             <div class="dropdown user-dropdown ms-auto me-2 me-lg-0">
                 <a href="#" class="dropdown-toggle" id="userDropdown" data-bs-toggle="dropdown" aria-expanded="false">
                     <i class="fas fa-user-circle navbar-profile-icon"></i>
-                    <span class="user-name d-none d-lg-inline"><?= htmlspecialchars($username); ?></span>
+                    <span class="user-name d-none d-lg-inline"><?= htmlspecialchars($display_name); ?></span>
                 </a>
                 <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="userDropdown">
-                    <li><a class="dropdown-item" href="admin_profile.php"><i class="fas fa-user-circle"></i> Profile</a></li>
+                    <li><a class="dropdown-item" href="admin_profile.php"><i class="fas fa-user-circle me-2"></i> Profile</a></li>
                     <li><hr class="dropdown-divider"></li>
-                    <li><a class="dropdown-item text-danger" href="login.php"><i class="fas fa-sign-out-alt"></i> Logout</a></li>
+                    <li><a class="dropdown-item text-danger" href="login.php"><i class="fas fa-sign-out-alt me-2"></i> Logout</a></li>
                 </ul>
             </div>
         </div>
@@ -412,7 +500,7 @@ function getMatchStatusBadge($status) {
                 </a>
             </li>
             <li class="nav-item">
-                <a class="nav-link active" href="">
+                <a class="nav-link active" href="javascript:void(0);">
                     <i class="fas fa-trophy me-2"></i> <span>Manage Matches</span>
                 </a>
             </li>
@@ -427,121 +515,143 @@ function getMatchStatusBadge($status) {
     <div class="main-content">
         <div class="container-fluid">
             
-            <nav aria-label="breadcrumb" class="mb-2">
-                <ol class="breadcrumb">
-                    <li class="breadcrumb-item"><a href="event_manager_dashboard.php">Dashboard</a></li>
-                    <li class="breadcrumb-item"><a href="my_events.php">My Assigned Events</a></li>
-                    <li class="breadcrumb-item active" aria-current="page">Manage Matches</li>
-                </ol>
-            </nav>
-            <h1 class="section-title mb-1"><?php echo htmlspecialchars($category_name); ?></h1>
-            <p class="text-muted fs-5"><?php echo htmlspecialchars($game_name . " / " . $event_name); ?></p>
+            <div class="page-header">
+                <nav aria-label="breadcrumb" class="mb-3">
+                    <ol class="breadcrumb">
+                        <li class="breadcrumb-item"><a href="event_manager_dashboard.php">Dashboard</a></li>
+                        <li class="breadcrumb-item"><a href="my_events.php">My Assigned Events</a></li>
+                        <li class="breadcrumb-item active" aria-current="page">Manage Matches</li>
+                    </ol>
+                </nav>
+                <div class="d-flex flex-column">
+                    <h1 class="page-title"><?php echo $display_category_name; ?></h1>
+                    <p class="text-muted mb-0 mt-2 fs-5">
+                        <i class="fas fa-gamepad me-2"></i><?php echo htmlspecialchars($game_name . " / " . $event_name); ?>
+                    </p>
+                </div>
+            </div>
             
             <?php if (!empty($alert_message)): ?>
-                <div class="alert alert-<?php echo $alert_type; ?> alert-dismissible fade show" role="alert">
+                <div class="alert alert-<?php echo $alert_type; ?> alert-dismissible fade show shadow-sm mb-4" role="alert">
+                    <i class="fas fa-<?php echo $alert_type === 'success' ? 'check-circle' : 'exclamation-circle'; ?> me-2"></i>
                     <?php echo htmlspecialchars($alert_message); ?>
                     <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
                 </div>
             <?php endif; ?>
 
-            <div class="page-card">
-                <div class="page-card-header d-flex flex-wrap justify-content-between align-items-center">
-                    <h4 class="mb-2 mb-md-0">All Matches</h4>
+            <div class="card">
+                <div class="card-header d-flex flex-wrap justify-content-between align-items-center">
+                    <h5 class="mb-2 mb-md-0 text-dark fw-bold"><i class="fas fa-list me-2 text-primary"></i>Match List</h5>
                     <div>
                         <?php 
-                        // ### CHANGE 6: Updated button logic ###
-                        
-                        // SCENARIO 1: Results are SUBMITTED
                         if ($status_lower == 'results submitted') {
-                            echo '<button class="btn btn-warning me-2" disabled><i class="fas fa-paper-plane me-2"></i>Winners Submitted</button>';
+                            echo '<button class="btn btn-warning btn-sm me-2 rounded-pill fw-bold text-white shadow-sm" disabled><i class="fas fa-paper-plane me-2"></i>Winners Submitted</button>';
                         }
-                        // SCENARIO 2: Results are COMPLETED
                         elseif ($status_lower == 'completed') {
-                            echo '<button class="btn btn-success me-2" data-bs-toggle="modal" data-bs-target="#finalizeWinnersModal">
+                            echo '<button class="btn btn-success btn-sm me-2 rounded-pill fw-bold shadow-sm" data-bs-toggle="modal" data-bs-target="#finalizeWinnersModal">
                                       <i class="fas fa-eye me-2"></i>View Final Winners
                                   </button>';
                         }
-                        // SCENARIO 3: Ready to SUBMIT (all matches done, status is 'pending' or 'rejected')
                         elseif ($all_matches_completed && !$is_locked) {
                              $button_text = ($status_lower == 'results rejected') ? 'Resubmit Winners' : 'Finalize Winners';
                              $button_icon = ($status_lower == 'results rejected') ? 'fas fa-exclamation-triangle' : 'fas fa-flag-checkered';
-                             echo "<button class='btn btn-success me-2' data-bs-toggle='modal' data-bs-target='#finalizeWinnersModal'>
+                             echo "<button class='btn btn-success btn-sm me-2 rounded-pill fw-bold shadow-sm' data-bs-toggle='modal' data-bs-target='#finalizeWinnersModal'>
                                        <i class='$button_icon me-2'></i>$button_text
                                    </button>";
                         }
-                        // SCENARIO 4: Not ready to submit (matches incomplete)
                         elseif (!$all_matches_completed && !$is_locked) {
-                             echo '<span class="text-muted fst-italic me-2">Mark all matches as "Completed" to finalize winners.</span>';
+                             echo '<span class="badge bg-light text-secondary border px-3 py-2 rounded-pill me-2"><i class="fas fa-info-circle me-1"></i>Complete matches to finalize</span>';
                         }
                         ?>
                         
-                        <?php // ### CHANGE 7: Hide "Add Match" button if locked ### ?>
                         <?php if (!$is_locked): ?>
-                        <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#addMatchModal">
+                        <button class="btn btn-primary btn-sm rounded-pill fw-bold shadow-sm px-3" data-bs-toggle="modal" data-bs-target="#addMatchModal">
                             <i class="fas fa-plus me-2"></i>Add Match
                         </button>
                         <?php endif; ?>
                     </div>
                 </div>
-                <div class="card-body p-4">
-                    <div class="table-responsive">
-                        <table class="table table-hover align-middle" id="matchesTable">
+                
+                <div class="card-body p-0">
+                    <div class="table-responsive results-table-container">
+                        <table class="table results-table table-hover align-middle" id="matchesTable">
                             <thead>
                                 <tr>
-                                    <th>Matchup</th>
-                                    <th class="text-center">Score</th>
-                                    <th class="text-center">Winner</th>
-                                    <th class="text-center">Status</th>
-                                    <th>Date & Time</th>
-                                    <th>Venue</th>
-                                    <th class="text-end">Actions</th>
+                                    <th style="min-width: 220px;">Matchup</th>
+                                    <th class="text-center" style="min-width: 100px;">Score</th>
+                                    <th class="text-center" style="min-width: 100px;">Winner</th>
+                                    <th class="text-center" style="min-width: 120px;">Status</th>
+                                    <th style="min-width: 150px;">Date & Time</th>
+                                    <th style="min-width: 180px;">Venue</th>
+                                    <th class="text-end sticky-col" style="min-width: 90px;">Actions</th>
                                 </tr>
                             </thead>
                             <tbody>
                                 <?php if (empty($matches)): ?>
-                                    <tr><td colspan="7" class="text-center text-muted p-4">No matches created yet.</td></tr>
+                                    <tr>
+                                        <td colspan="7" class="text-center text-muted p-5">
+                                            <i class="fas fa-clipboard-list fa-3x mb-3 text-secondary opacity-50"></i>
+                                            <p class="mb-0 fw-bold">No matches created yet.</p>
+                                            <p class="small">Click "Add Match" to start scheduling.</p>
+                                        </td>
+                                    </tr>
                                 <?php else: ?>
                                     <?php foreach ($matches as $match): ?>
                                         <?php
-                                            $team1_class = '';
-                                            $team2_class = '';
+                                            $team1_class = 'text-dark';
+                                            $team2_class = 'text-dark';
                                             $winner_id = $match['winner_team_id'];
                                             
                                             if ($winner_id) {
                                                 if ($winner_id == $match['team1_id']) {
-                                                    $team1_class = 'winner';
-                                                    $team2_class = 'loser';
+                                                    $team1_class = 'text-success fw-bold';
+                                                    $team2_class = 'text-muted text-decoration-line-through';
                                                 } elseif ($winner_id == $match['team2_id']) {
-                                                    $team2_class = 'winner';
-                                                    $team1_class = 'loser';
+                                                    $team2_class = 'text-success fw-bold';
+                                                    $team1_class = 'text-muted text-decoration-line-through';
                                                 }
                                             }
                                         ?>
                                         <tr>
                                             <td class="matchup-cell">
-                                                <strong class="<?php echo $team1_class; ?>"><?= htmlspecialchars($match['team1_name']) ?></strong>
-                                                <small class="text-muted d-block">vs</small>
-                                                <strong class="<?php echo $team2_class; ?>"><?= htmlspecialchars($match['team2_name']) ?></strong>
+                                                <div class="<?php echo $team1_class; ?>"><?= htmlspecialchars($match['team1_name']) ?></div>
+                                                <div class="small text-muted fw-bold my-1 text-uppercase" style="font-size: 0.7rem; letter-spacing: 1px;">VS</div>
+                                                <div class="<?php echo $team2_class; ?>"><?= htmlspecialchars($match['team2_name']) ?></div>
                                             </td>
                                             <td class="text-center score-cell">
-                                                <span class="<?php echo $team1_class; ?>"><?= htmlspecialchars($match['score1']) ?></span> - 
-                                                <span class="<?php echo $team2_class; ?>"><?= htmlspecialchars($match['score2']) ?></span>
+                                                <?= htmlspecialchars($match['score1']) ?> - <?= htmlspecialchars($match['score2']) ?>
                                             </td>
-                                            <td class="text-center winner-initialism">
-                                                <?php echo htmlspecialchars($match['winner_initialism'] ?? '---'); ?>
+                                            <td class="text-center">
+                                                <?php if(!empty($match['winner_initialism'])): ?>
+                                                    <span class="winner-badge"><i class="fas fa-trophy me-1"></i><?= htmlspecialchars($match['winner_initialism']) ?></span>
+                                                <?php else: ?>
+                                                    <span class="text-muted small">-</span>
+                                                <?php endif; ?>
                                             </td>
                                             <td class="text-center">
                                                 <?= getMatchStatusBadge($match['status']) ?>
                                             </td>
                                             <td>
-                                                <?= $match['match_date'] ? htmlspecialchars(date('M d, Y', strtotime($match['match_date']))) : 'TBA' ?>
-                                                <small class="text-muted d-block"><?= $match['match_time'] ? htmlspecialchars(date('g:i A', strtotime($match['match_time']))) : '' ?></small>
+                                                <?php if($match['match_date']): ?>
+                                                    <div class="fw-bold text-dark"><?= date('M d, Y', strtotime($match['match_date'])) ?></div>
+                                                    <?php if($match['match_time']): ?>
+                                                        <div class="small text-muted"><i class="far fa-clock me-1"></i><?= date('g:i A', strtotime($match['match_time'])) ?></div>
+                                                    <?php endif; ?>
+                                                <?php else: ?>
+                                                    <span class="text-muted small">Date TBA</span>
+                                                <?php endif; ?>
                                             </td>
-                                            <td><?= htmlspecialchars($match['venue']) ?></td>
-                                            <td class="text-end">
-                                                <?php // ### CHANGE 8: Hide edit/delete buttons if locked ### ?>
+                                            <td>
+                                                <?php if($match['venue']): ?>
+                                                    <i class="fas fa-map-marker-alt text-danger me-1"></i><?= htmlspecialchars($match['venue']) ?>
+                                                <?php else: ?>
+                                                    <span class="text-muted small">Venue TBA</span>
+                                                <?php endif; ?>
+                                            </td>
+                                            <td class="text-end sticky-col">
+                                                <div class="action-stack">
                                                 <?php if (!$is_locked): ?>
-                                                    <button class="btn btn-sm btn-primary table-action-btn" 
+                                                    <button class="action-btn btn-primary" 
                                                         data-bs-toggle="modal" 
                                                         data-bs-target="#editMatchModal"
                                                         data-match-id="<?= $match['match_id'] ?>"
@@ -554,10 +664,10 @@ function getMatchStatusBadge($status) {
                                                         data-score1="<?= $match['score1'] ?>"
                                                         data-score2="<?= $match['score2'] ?>"
                                                         data-winner-team-id="<?= $match['winner_team_id'] ?>"
-                                                        title="Edit Match & Results">
+                                                        title="Edit Match">
                                                         <i class="fas fa-edit"></i>
                                                     </button>
-                                                    <button class="btn btn-sm btn-danger table-action-btn"
+                                                    <button class="action-btn btn-danger"
                                                             data-bs-toggle="modal" data-bs-target="#deleteMatchModal"
                                                             data-match-id="<?= $match['match_id'] ?>"
                                                             data-match-name="<?= htmlspecialchars($match['team1_name'] . ' vs ' . $match['team2_name']) ?>"
@@ -565,8 +675,9 @@ function getMatchStatusBadge($status) {
                                                         <i class="fas fa-trash"></i>
                                                     </button>
                                                 <?php else: ?>
-                                                    <span class="badge bg-light text-dark">Locked</span>
+                                                    <span class="badge bg-light text-dark border"><i class="fas fa-lock me-1"></i>Locked</span>
                                                 <?php endif; ?>
+                                                </div>
                                             </td>
                                         </tr>
                                     <?php endforeach; ?>
@@ -584,7 +695,7 @@ function getMatchStatusBadge($status) {
         <div class="modal-dialog modal-lg modal-dialog-centered">
             <div class="modal-content">
                 <div class="modal-header">
-                    <h5 class="modal-title">Create New Match</h5>
+                    <h5 class="modal-title"><i class="fas fa-plus-circle me-2 text-primary"></i>Create New Match</h5>
                     <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
                 </div>
                 <form method="POST" action="">
@@ -610,11 +721,11 @@ function getMatchStatusBadge($status) {
                                 </select>
                             </div>
                             <div class="col-md-6">
-                                <label class="form-label">Match Date</label>
+                                <label class="form-label">Date</label>
                                 <input type="date" class="form-control" name="match_date">
                             </div>
                             <div class="col-md-6">
-                                <label class="form-label">Match Time</label>
+                                <label class="form-label">Time</label>
                                 <input type="time" class="form-control" name="match_time">
                             </div>
                             <div class="col-md-12">
@@ -624,8 +735,8 @@ function getMatchStatusBadge($status) {
                         </div>
                     </div>
                     <div class="modal-footer">
-                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
-                        <button type="submit" class="btn btn-primary">Create Match</button>
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                        <button type="submit" class="btn btn-primary px-4 fw-bold">Create Match</button>
                     </div>
                 </form>
             </div>
@@ -636,7 +747,7 @@ function getMatchStatusBadge($status) {
         <div class="modal-dialog modal-xl modal-dialog-centered">
             <div class="modal-content">
                 <div class="modal-header">
-                    <h5 class="modal-title">Edit Match & Results</h5>
+                    <h5 class="modal-title"><i class="fas fa-edit me-2 text-primary"></i>Edit Match Details</h5>
                     <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
                 </div>
                 <form method="POST" action="">
@@ -645,7 +756,7 @@ function getMatchStatusBadge($status) {
                     <div class="modal-body">
                         <div class="row g-4">
                             <div class="col-lg-7">
-                                <h5>Match Details</h5>
+                                <h6 class="text-uppercase text-muted fw-bold mb-3 small">Match Information</h6>
                                 <div class="row g-3">
                                     <div class="col-md-6">
                                         <label class="form-label">Team 1</label>
@@ -664,11 +775,11 @@ function getMatchStatusBadge($status) {
                                         </select>
                                     </div>
                                     <div class="col-md-6">
-                                        <label class="form-label">Match Date</label>
+                                        <label class="form-label">Date</label>
                                         <input type="date" class="form-control" id="edit_match_date" name="match_date">
                                     </div>
                                     <div class="col-md-6">
-                                        <label class="form-label">Match Time</label>
+                                        <label class="form-label">Time</label>
                                         <input type="time" class="form-control" id="edit_match_time" name="match_time">
                                     </div>
                                     <div class="col-md-12">
@@ -677,25 +788,26 @@ function getMatchStatusBadge($status) {
                                     </div>
                                 </div>
                             </div>
-                            <div class="col-lg-5" style="border-left: 1px solid #dee2e6;">
-                                <h5>Match Results</h5>
+                            
+                            <div class="col-lg-5 border-start">
+                                <h6 class="text-uppercase text-success fw-bold mb-3 small">Scoring & Status</h6>
                                 <div class="row g-3">
                                     <div class="col-md-12">
-                                        <label class="form-label">Match Status</label>
-                                        <select class="form-select" id="edit_status" name="status" required>
+                                        <label class="form-label">Status</label>
+                                        <select class="form-select fw-bold" id="edit_status" name="status" required>
                                             <option value="Upcoming">Upcoming</option>
                                             <option value="Ongoing">Ongoing</option>
                                             <option value="Completed">Completed</option>
                                             <option value="Cancelled">Cancelled</option>
                                         </select>
                                     </div>
-                                    <div class="col-md-6">
-                                        <label class="form-label">Team 1 Score</label>
-                                        <input type="number" class="form-control" id="edit_score1" name="score1" value="0" min="0">
+                                    <div class="col-6">
+                                        <label class="form-label text-center w-100">Team 1 Score</label>
+                                        <input type="number" class="form-control text-center fw-bold fs-5" id="edit_score1" name="score1" value="0" min="0" onfocus="this.select()" onblur="if(this.value===''){this.value='0'}">
                                     </div>
-                                    <div class="col-md-6">
-                                        <label class="form-label">Team 2 Score</label>
-                                        <input type="number" class="form-control" id="edit_score2" name="score2" value="0" min="0">
+                                    <div class="col-6">
+                                        <label class="form-label text-center w-100">Team 2 Score</label>
+                                        <input type="number" class="form-control text-center fw-bold fs-5" id="edit_score2" name="score2" value="0" min="0" onfocus="this.select()" onblur="if(this.value===''){this.value='0'}">
                                     </div>
                                     <div class="col-md-12">
                                         <label class="form-label">Winner (if Completed)</label>
@@ -708,7 +820,7 @@ function getMatchStatusBadge($status) {
                     </div>
                     <div class="modal-footer">
                         <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
-                        <button type="submit" class="btn btn-primary">Save Changes</button>
+                        <button type="submit" class="btn btn-primary px-4 fw-bold">Save Changes</button>
                     </div>
                 </form>
             </div>
@@ -722,44 +834,45 @@ function getMatchStatusBadge($status) {
                     <input type="hidden" name="action" value="delete_match">
                     <input type="hidden" name="match_id" id="delete_match_id">
                     <div class="modal-header bg-danger text-white">
-                        <h5 class="modal-title">Confirm Deletion</h5>
+                        <h5 class="modal-title"><i class="fas fa-trash-alt me-2"></i>Confirm Deletion</h5>
                         <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
                     </div>
                     <div class="modal-body">
                         <p>Are you sure you want to delete this match?</p>
-                        <p class="text-dark fw-bold" id="delete_match_name"></p>
+                        <p class="text-dark fw-bold fs-5 text-center" id="delete_match_name"></p>
+                        <p class="text-danger small mb-0 text-center"><i class="fas fa-exclamation-triangle me-1"></i>This action cannot be undone.</p>
                     </div>
                     <div class="modal-footer">
                         <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-                        <button type="submit" class="btn btn-danger">Yes, Delete</button>
+                        <button type="submit" class="btn btn-danger px-4 fw-bold">Yes, Delete Match</button>
                     </div>
                 </form>
             </div> 
         </div>
     </div>
 
-    <div class="modal fade" id="finalizeWinnersModal" tabindex="-1" aria-labelledby="finalizeWinnersModalLabel" aria-hidden="true">
+    <div class="modal fade" id="finalizeWinnersModal" tabindex="-1">
         <div class="modal-dialog modal-lg modal-dialog-centered">
             <div class="modal-content">
                 <div class="modal-header">
-                    <h5 class="modal-title" id="finalizeWinnersModalLabel">Submit Final Winners for <?php echo htmlspecialchars($category_name); ?></h5>
-                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                    <h5 class="modal-title"><i class="fas fa-award me-2 text-warning"></i>Submit Final Winners</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
                 </div>
                 <form method="POST" action="">
                     <input type="hidden" name="action" value="submit_final_winners">
                     <div class="modal-body">
                         
                         <?php if ($status_lower == 'completed'): ?>
-                            <div class="alert alert-success"><i class="fas fa-check-circle me-2"></i>These results have been approved and are locked.</div>
+                            <div class="alert alert-success"><i class="fas fa-check-circle me-2"></i>Results approved and locked.</div>
                         <?php elseif ($status_lower == 'results submitted'): ?>
-                             <div class="alert alert-warning"><i class="fas fa-paper-plane me-2"></i>These results are pending administrator approval.</div>
+                             <div class="alert alert-warning"><i class="fas fa-clock me-2"></i>Pending administrator approval.</div>
                         <?php else: ?>
-                            <p class="text-muted">All matches are marked 'Completed'. You can now submit the final 1st, 2nd, and 3rd place winners and their **Medal Counts** to the administrator for approval.</p>
+                            <div class="alert alert-info"><i class="fas fa-info-circle me-2"></i>All matches are complete. Select the overall top 3 winners.</div>
                         <?php endif; ?>
                         
-                        <div class="row g-3">
+                        <div class="row mb-3 align-items-center p-2 rounded border-bottom">
                             <div class="col-md-8">
-                                <label class="form-label"><i class="fas fa-medal" style="color: gold;"></i> Gold Medal Winner</label>
+                                <label class="form-label fw-bold text-warning"><i class="fas fa-medal"></i> GOLD Winner</label>
                                 <select name="gold_winner_college_id" class="form-select" <?php echo $is_locked ? 'disabled' : ''; ?> required>
                                     <option value="">Select Gold Winner</option>
                                     <?php foreach ($colleges as $college): ?>
@@ -770,12 +883,14 @@ function getMatchStatusBadge($status) {
                                 </select>
                             </div>
                             <div class="col-md-4">
-                                <label class="form-label">Medal Count (Gold)</label>
-                                <input type="number" name="gold_count" class="form-control" value="<?php echo $gold_count; ?>" <?php echo $is_locked ? 'disabled' : ''; ?>>
+                                <label class="form-label small text-muted">Medal Count</label>
+                                <input type="number" name="gold_count" class="form-control fw-bold text-center" value="<?php echo $gold_count; ?>" min="0" onfocus="this.select()" onblur="if(this.value===''){this.value='0'}" <?php echo $is_locked ? 'disabled' : ''; ?>>
                             </div>
+                        </div>
 
+                        <div class="row mb-3 align-items-center p-2 rounded border-bottom">
                             <div class="col-md-8">
-                                <label class="form-label"><i class="fas fa-medal" style="color: silver;"></i> Silver Medal Winner</label>
+                                <label class="form-label fw-bold text-secondary"><i class="fas fa-medal"></i> SILVER Winner</label>
                                 <select name="silver_winner_college_id" class="form-select" <?php echo $is_locked ? 'disabled' : ''; ?> required>
                                     <option value="">Select Silver Winner</option>
                                     <?php foreach ($colleges as $college): ?>
@@ -786,12 +901,14 @@ function getMatchStatusBadge($status) {
                                 </select>
                             </div>
                             <div class="col-md-4">
-                                <label class="form-label">Medal Count (Silver)</label>
-                                <input type="number" name="silver_count" class="form-control" value="<?php echo $silver_count; ?>" <?php echo $is_locked ? 'disabled' : ''; ?>>
+                                <label class="form-label small text-muted">Medal Count</label>
+                                <input type="number" name="silver_count" class="form-control fw-bold text-center" value="<?php echo $silver_count; ?>" min="0" onfocus="this.select()" onblur="if(this.value===''){this.value='0'}" <?php echo $is_locked ? 'disabled' : ''; ?>>
                             </div>
+                        </div>
 
+                        <div class="row align-items-center p-2 rounded">
                             <div class="col-md-8">
-                                <label class="form-label"><i class="fas fa-medal" style="color: #cd7f32;"></i> Bronze Medal Winner</label>
+                                <label class="form-label fw-bold" style="color: #cd7f32;"><i class="fas fa-medal"></i> BRONZE Winner</label>
                                 <select name="bronze_winner_college_id" class="form-select" <?php echo $is_locked ? 'disabled' : ''; ?> required>
                                     <option value="">Select Bronze Winner</option>
                                     <?php foreach ($colleges as $college): ?>
@@ -802,16 +919,16 @@ function getMatchStatusBadge($status) {
                                 </select>
                             </div>
                             <div class="col-md-4">
-S                                <label class="form-label">Medal Count (Bronze)</label>
-                                <input type="number" name="bronze_count" class="form-control" value="<?php echo $bronze_count; ?>" <?php echo $is_locked ? 'disabled' : ''; ?>>
+                                <label class="form-label small text-muted">Medal Count</label>
+                                <input type="number" name="bronze_count" class="form-control fw-bold text-center" value="<?php echo $bronze_count; ?>" min="0" onfocus="this.select()" onblur="if(this.value===''){this.value='0'}" <?php echo $is_locked ? 'disabled' : ''; ?>>
                             </div>
                         </div>
+
                     </div>
                     <div class="modal-footer">
                         <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
-                        <?php // Hide submit button if locked ?>
                         <?php if (!$is_locked): ?>
-                            <button type="submit" class="btn btn-success">Submit Final Winners</button>
+                            <button type="submit" class="btn btn-success px-4 fw-bold">Submit Final Winners</button>
                         <?php endif; ?>
                     </div>
                 </form>
@@ -868,26 +985,33 @@ S                                <label class="form-label">Medal Count (Bronze)<
                 document.getElementById('delete_match_name').textContent = button.dataset.matchName;
             });
 
+            // --- Sidebar Logic ---
+            const mobileToggle = document.getElementById('mobileToggle');
+            if (mobileToggle) {
+                mobileToggle.addEventListener('click', function() {
+                    document.getElementById('sidebar').classList.toggle('show');
+                });
+            }
+
             let resizeTimer;
             window.addEventListener('resize', function() {
                 clearTimeout(resizeTimer);
                 resizeTimer = setTimeout(function() {
                     if (window.innerWidth > 992) {
-                        sidebar.classList.remove('show');
-                        sidebarOverlay.classList.remove('show');
+                        document.getElementById('sidebar').classList.remove('show');
                     }
                 }, 250);
             });
 
-            // --- ### NEW: FIX SIDEBAR/FOOTER OVERLAP ### ---
+            // --- Sidebar Height Adjustment ---
             const footer = document.querySelector('footer');
+            const sidebar = document.getElementById('sidebar');
             const navbar = document.querySelector('.navbar');
 
             if (sidebar && footer && navbar) {
                 function adjustSidebarHeight() {
-                    // This logic should only apply to desktop view
                     if (window.innerWidth <= 992) {
-                        sidebar.style.height = ''; // Reset to CSS default for mobile
+                        sidebar.style.height = ''; 
                         return;
                     }
 
@@ -895,25 +1019,16 @@ S                                <label class="form-label">Medal Count (Bronze)<
                     const footerTop = footer.getBoundingClientRect().top;
                     const viewportHeight = window.innerHeight;
                     
-                    // 1. Calculate the max possible height (navbar top to viewport bottom)
                     const maxSidebarHeight = viewportHeight - navbarHeight;
-
-                    // 2. Calculate the available height (navbar top to footer top)
                     const availableHeight = footerTop - navbarHeight;
-
-                    // 3. Choose the smaller of the two heights, but never less than 0
                     const newHeight = Math.max(0, Math.min(maxSidebarHeight, availableHeight));
                     
-                    // 4. Apply the new height as an inline style
                     sidebar.style.height = `${newHeight}px`;
                 }
 
-                // Add listeners for scroll and resize events
                 window.addEventListener('scroll', adjustSidebarHeight, { passive: true });
                 window.addEventListener('resize', adjustSidebarHeight);
                 
-                // Initial call to set the correct height on page load
-                // Small delay to ensure all elements are rendered
                 setTimeout(adjustSidebarHeight, 100);
             }
         });

@@ -4,29 +4,39 @@ session_start();
 require_once '../db_connect.php'; 
 
 // 1. SECURITY & ACCESS CONTROL
-if (!isset($_SESSION['role']) || 
-    ($_SESSION['role'] !== 'Sports Director' && $_SESSION['role'] !== 'Administrator')
-) {
-    header('Location: ../login.php'); // Redirect to main login page
+// STRICT: Only 'Sports Director' is allowed
+if (!isset($_SESSION['role']) || $_SESSION['role'] !== 'Sports Director') {
+    header('Location: ../login.php'); 
     exit();
 }
-// -----------------------------------------------------------------
 
-// Ensure user_id is set in the session for logging
+// Ensure user_id is set
 if (!isset($_SESSION['user_id'])) {
     die("Session error: User ID is not set.");
 }
+
 $current_user_id = $_SESSION['user_id'];
 
-$name = isset($_SESSION['username']) ? $_SESSION['username'] : 'Sports Director';
+// --- START: NEW NAME FETCHING LOGIC ---
+$stmt_name = $conn->prepare("SELECT full_name, username FROM users WHERE id = ?");
+$stmt_name->bind_param("i", $current_user_id);
+$stmt_name->execute();
+$result_name = $stmt_name->get_result();
+$user_data = $result_name->fetch_assoc();
+$stmt_name->close();
+
+// Determine Name: Use Full Name if available, otherwise Username (Email)
+if (!empty($user_data['full_name'])) {
+    $name = $user_data['full_name'];
+} else {
+    $name = $user_data['username'] ?? 'Sports Director';
+}
+// --- END: NEW NAME FETCHING LOGIC ---
 $current_page = basename($_SERVER['PHP_SELF']);
 
-// --- Logic for Sidebar Accordions ---
-$event_pages = ['Manage_Games.php', 'Manage_Game_Events.php', 'Manage_Categories.php'];
-$is_event_page = in_array($current_page, $event_pages);
-
-$management_pages = ['colleges.php', 'events.php', 'results.php', 'reports.php'];
-$is_management_page = in_array($current_page, $management_pages);
+// --- Page Variables ---
+$upload_dir = '../uploads/colleges/'; 
+$default_logo = 'images/default_avatar.png';
 
 // Helper function for handling file uploads
 function handle_file_upload($file_key, $upload_dir, $current_db_path = null) {
@@ -62,36 +72,31 @@ function handle_file_upload($file_key, $upload_dir, $current_db_path = null) {
     return $current_db_path;
 }
 
-// --- Page Specific PHP ---
-// Note: Kept folder name as 'colleges' to avoid breaking existing file paths on server
-$upload_dir = '../uploads/colleges/'; 
-$default_logo = 'images/default_avatar.png';
+// --- CRUD LOGIC ---
 
-// 1. ADD TEAM (Formerly College)
+// 1. ADD TEAM
 if (isset($_POST['add_college'])) {
     $college_name = $_POST['college_name'];
     $college_code = $_POST['college_code'];
-    $team_manager = $_POST['team_manager']; // Changed from dean_name
-    $slogan       = $_POST['slogan'];       // Changed from description
-    // Removed total_students
+    $team_manager = $_POST['team_manager']; 
+    $slogan       = $_POST['slogan'];       
+    $unit_color   = $_POST['unit_color'] ?? '#cccccc'; // Capture Color
 
     $logo_path = handle_file_upload('logo_url', $upload_dir, $default_logo);
-    // Removed dean_photo_upload
 
-    // Insert into DB (Columns updated based on your request)
-    $stmt = $conn->prepare("INSERT INTO colleges (college_name, college_code, team_manager, slogan, logo_url) VALUES (?, ?, ?, ?, ?)");
-    $stmt->bind_param("sssss", $college_name, $college_code, $team_manager, $slogan, $logo_path);
+    $stmt = $conn->prepare("INSERT INTO colleges (college_name, college_code, team_manager, slogan, logo_url, unit_color) VALUES (?, ?, ?, ?, ?, ?)");
+    $stmt->bind_param("ssssss", $college_name, $college_code, $team_manager, $slogan, $logo_path, $unit_color);
     
     if($stmt->execute()) {
         $new_college_id = (int)$conn->insert_id;
-        $context = [
-            'team_name' => $college_name,
-            'team_code' => $college_code
-        ];
-        // Log activity (assuming log_activity function exists in db_connect or included file)
-        if(function_exists('log_activity')) {
-            log_activity($conn, $current_user_id, 'CREATED_TEAM', $new_college_id, 'college', null, null, $context);
-        }
+        $context = ['team_name' => $college_name, 'team_code' => $college_code];
+        
+        // Log activity
+        $log_stmt = $conn->prepare("INSERT INTO system_logs (actor_user_id, action_type, related_id, related_table, log_context) VALUES (?, 'CREATED_COLLEGE', ?, 'colleges', ?)");
+        $json_context = json_encode($context);
+        $log_stmt->bind_param("iis", $current_user_id, $new_college_id, $json_context);
+        $log_stmt->execute();
+        $log_stmt->close();
         
         $_SESSION['message'] = "Team created successfully.";
         $_SESSION['message_type'] = "success";
@@ -110,25 +115,25 @@ if (isset($_POST['edit_college'])) {
     $college_id   = (int)$_POST['edit_college_id'];
     $college_name = $_POST['edit_college_name'];
     $college_code = $_POST['edit_college_code'];
-    $team_manager = $_POST['edit_team_manager']; // Changed
-    $slogan       = $_POST['edit_slogan'];       // Changed
+    $team_manager = $_POST['edit_team_manager'];
+    $slogan       = $_POST['edit_slogan'];
+    $unit_color   = $_POST['edit_unit_color']; // Capture Color Update
 
     $current_logo = $_POST['current_logo_url'];
-
     $logo_path = handle_file_upload('edit_logo_url', $upload_dir, $current_logo);
 
-    // Update DB
-    $stmt = $conn->prepare("UPDATE colleges SET college_name = ?, college_code = ?, team_manager = ?, slogan = ?, logo_url = ? WHERE college_id = ?");
-    $stmt->bind_param("sssssi", $college_name, $college_code, $team_manager, $slogan, $logo_path, $college_id);
+    $stmt = $conn->prepare("UPDATE colleges SET college_name = ?, college_code = ?, team_manager = ?, slogan = ?, logo_url = ?, unit_color = ? WHERE college_id = ?");
+    $stmt->bind_param("ssssssi", $college_name, $college_code, $team_manager, $slogan, $logo_path, $unit_color, $college_id);
      
     if($stmt->execute()) {
-        $context = [
-            'team_name' => $college_name,
-            'team_code' => $college_code
-        ];
-        if(function_exists('log_activity')) {
-            log_activity($conn, $current_user_id, 'UPDATED_TEAM', $college_id, 'college', null, null, $context);
-        }
+        $context = ['college_name' => $college_name, 'team_code' => $college_code];
+        
+        // Log activity
+        $log_stmt = $conn->prepare("INSERT INTO system_logs (actor_user_id, action_type, related_id, related_table, log_context) VALUES (?, 'UPDATED_COLLEGE', ?, 'colleges', ?)");
+        $json_context = json_encode($context);
+        $log_stmt->bind_param("iis", $current_user_id, $college_id, $json_context);
+        $log_stmt->execute();
+        $log_stmt->close();
         
         $_SESSION['message'] = "Team updated successfully.";
         $_SESSION['message_type'] = "success";
@@ -145,7 +150,7 @@ if (isset($_POST['edit_college'])) {
 if (isset($_POST['delete_college'])) {
     $college_id = (int)$_POST['delete_college_id'];
     
-    // Check dependencies in results table
+    // Check dependencies
     $stmt_check = $conn->prepare("SELECT COUNT(*) FROM results WHERE winner_gold_college_id = ? OR winner_silver_college_id = ? OR winner_bronze_college_id = ?");
     $stmt_check->bind_param("iii", $college_id, $college_id, $college_id);
     $stmt_check->execute();
@@ -156,8 +161,7 @@ if (isset($_POST['delete_college'])) {
         $_SESSION['message'] = "Error: Cannot delete Team. It is linked to {$count} approved result(s).";
         $_SESSION['message_type'] = "danger";
     } else {
-        
-        // Get data for logging/cleanup before deleting
+        // Get data for logging
         $stmt_get_data = $conn->prepare("SELECT college_name, logo_url FROM colleges WHERE college_id = ?");
         $stmt_get_data->bind_param("i", $college_id);
         $stmt_get_data->execute();
@@ -165,20 +169,24 @@ if (isset($_POST['delete_college'])) {
         $stmt_get_data->close();
         $deleted_team_name = $college_data['college_name'] ?? 'Unknown';
 
-        // Delete from DB
+        // Delete
         $stmt = $conn->prepare("DELETE FROM colleges WHERE college_id = ?");
         $stmt->bind_param("i", $college_id);
         
         if($stmt->execute()) {
-            $context = ['deleted_team_name' => $deleted_team_name];
-            if(function_exists('log_activity')) {
-                log_activity($conn, $current_user_id, 'DELETED_TEAM', $college_id, 'college', null, null, $context);
-            }
+            $context = ['deleted_college_name' => $deleted_team_name];
+            
+            // Log activity
+            $log_stmt = $conn->prepare("INSERT INTO system_logs (actor_user_id, action_type, related_id, related_table, log_context) VALUES (?, 'DELETED_COLLEGE', ?, 'colleges', ?)");
+            $json_context = json_encode($context);
+            $log_stmt->bind_param("iis", $current_user_id, $college_id, $json_context);
+            $log_stmt->execute();
+            $log_stmt->close();
             
             $_SESSION['message'] = "Team deleted successfully.";
             $_SESSION['message_type'] = "success";
 
-            // Delete logo file
+            // Delete file
             if ($college_data) {
                 if ($college_data['logo_url'] && $college_data['logo_url'] !== $default_logo && file_exists('../' . $college_data['logo_url'])) {
                     @unlink('../' . $college_data['logo_url']);
@@ -194,225 +202,208 @@ if (isset($_POST['delete_college'])) {
     exit();
 }
 
-// --- FETCH DATA (READ) ---
+// --- FETCH DATA ---
 $colleges = [];
 $result = $conn->query("SELECT * FROM colleges ORDER BY college_name");
 if ($result) {
     $colleges = $result->fetch_all(MYSQLI_ASSOC);
 }
 
-// Check for session messages
+// Session Messages
 $message = null; 
 $message_type = 'info'; 
-
 if (isset($_SESSION['message'])) {
     $message = $_SESSION['message'];
     $message_type = $_SESSION['message_type'];
     unset($_SESSION['message']);
     unset($_SESSION['message_type']);
 }
+
+// Count pending requests for sidebar badge (To match Dashboard)
+$pending_requests_count = $conn->query("SELECT COUNT(*) FROM account_requests WHERE status = 'pending'")->fetch_row()[0] ?? 0;
+$pending_results_count = $conn->query("SELECT COUNT(*) FROM categories WHERE status='Results Submitted'")->fetch_row()[0] ?? 0;
 ?>
 <!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Manage Teams - SD Panel</title>
+    <title>Manage Teams - Director Panel</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" rel="stylesheet">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=Poppins:wght@400;500;600;700;800&display=swap" rel="stylesheet">
     <style>
-        /* ... (Your CSS is unchanged) ... */
-        :root { --sidebar-width: 260px; --header-height: 82px; --transition: all 0.3s ease; --card-shadow: 0 5px 20px rgba(0, 0, 0, 0.08); --bg-light: #F8F9FA; }
+        /* --- Unified CSS from Dashboard --- */
+        :root { 
+            --sidebar-width: 260px; 
+            --header-height: 82px; 
+            --transition: all 0.3s ease; 
+            --card-shadow: 0 5px 20px rgba(0, 0, 0, 0.08); 
+            --bg-light: #F8F9FA; 
+            --primary-gradient: linear-gradient(135deg, #2c3e50 0%, #4ca1af 100%);
+            --accent-color: #1abc9c;
+        }
         body { background-color: var(--bg-light); margin: 0; padding: 0; min-height: 100vh; font-family: 'Inter', sans-serif; display: flex; flex-direction: column; }
+        
+        /* Navbar */
         .navbar { background: linear-gradient(135deg, #1a1a1a 0%, #2d2d2d 100%) !important; box-shadow: 0 4px 20px rgba(0,0,0,0.15); padding: 1rem 1.5rem; height: var(--header-height); position: fixed; top: 0; left: 0; right: 0; z-index: 1050; }
-        .user-dropdown .dropdown-toggle { color: white; display: flex; align-items: center; text-decoration: none; padding: 8px 12px; border-radius: 8px; }
+        .user-dropdown .dropdown-toggle { color: white; display: flex; align-items: center; text-decoration: none; padding: 8px 12px; border-radius: 8px; transition: var(--transition); }
+        .user-dropdown .dropdown-toggle:hover { background-color: rgba(255, 255, 255, 0.1); }
         .user-dropdown .dropdown-toggle img { width: 36px; height: 36px; border-radius: 50%; object-fit: cover; margin-right: 10px; }
-        .sidebar { width: var(--sidebar-width); position: fixed; top: var(--header-height); left: 0; height: calc(100vh - var(--header-height)); background: #2c3e50; color: white; box-shadow: 5px 0 15px rgba(0,0,0,0.2); z-index: 1040; transition: width var(--transition); overflow-y: auto; overflow-x: hidden; }
+        
+        /* Sidebar */
+        .sidebar { width: var(--sidebar-width); position: fixed; top: var(--header-height); left: 0; height: calc(100vh - var(--header-height)); background: #2c3e50; color: white; box-shadow: 5px 0 15px rgba(0,0,0,0.2); z-index: 1040; transition: width var(--transition); overflow-y: auto; }
         .sidebar-nav { padding: 20px 0; }
         .sidebar-nav .nav-link { color: rgba(255, 255, 255, 0.7); font-size: 1.05rem; font-weight: 500; padding: 12px 25px; transition: var(--transition); border-left: 5px solid transparent; margin: 2px 0; display: flex; align-items: center; text-decoration: none; }
         .sidebar-nav .nav-link i { width: 30px; text-align: center; flex-shrink: 0; font-size: 0.95em; }
-        .sidebar-nav .nav-link:hover { color: white; background: rgba(255, 255, 255, 0.05); border-left-color: #1abc9c; }
+        .sidebar-nav .nav-link:hover { color: white; background: rgba(255, 255, 255, 0.05); border-left-color: var(--accent-color); }
         .sidebar-nav .nav-link.active { color: white; background: rgba(255, 255, 255, 0.1); border-left-color: #3498db; font-weight: 600; }
-        .sidebar-nav .nav-title { padding: 10px 25px; font-size: 0.75rem; font-weight: 600; color: rgba(255, 255, 255, 0.4); text-transform: uppercase; letter-spacing: 1px; }
+        .sidebar-nav .nav-title { padding: 15px 25px 5px; font-size: 0.75rem; font-weight: 700; color: rgba(255, 255, 255, 0.4); text-transform: uppercase; letter-spacing: 1px; }
+
         .main-content { flex: 1 0 auto; padding: 30px; margin-top: var(--header-height); margin-left: var(--sidebar-width); transition: margin-left var(--transition); min-height: calc(100vh - var(--header-height)); }
-        
         /* Footer */
         footer {
             flex-shrink: 0;
             background: #2c3e50 !important;
             box-shadow: 0 -2px 10px rgba(0,0,0,0.1);
-            padding-left: var(--sidebar-width);
-            transition: padding-left var(--transition);
+            padding-left: var(--sidebar-width); 
+            transition: padding-left var(--transition); 
             position: relative;
             z-index: 1041;
         }
-        .sidebar.minimized ~ footer { padding-left: var(--sidebar-min-width); }
-        
+                .sidebar.minimized ~ footer {
+            padding-left: var(--sidebar-min-width); 
+        }
+
+        /* Page Specific */
         .section-title { font-family: 'Poppins', sans-serif; font-weight: 600; color: #333; }
         .card { border: none; border-radius: 15px; box-shadow: var(--card-shadow); }
         .table-img { width: 50px; height: 50px; border-radius: 50%; object-fit: cover; }
-        .user-dropdown .dropdown-toggle { color: white; display: flex; align-items: center; text-decoration: none; padding: 8px 12px; border-radius: 8px; transition: var(--transition); }
-        .user-dropdown .dropdown-toggle:hover { background-color: rgba(255, 255, 255, 0.1); }
-        .user-dropdown .dropdown-toggle .user-name { font-weight: 600; font-size: 0.95rem; }
-        .navbar-profile-icon { width: 36px; height: 36px; font-size: 36px; text-align: center; line-height: 1; border-radius: 50%; margin-right: 10px; color: rgba(255,255,255,0.8); }
+        
+        /* [NEW] Unit Color Swatch */
+        .color-swatch {
+            width: 30px;
+            height: 30px;
+            border-radius: 6px;
+            border: 1px solid rgba(0,0,0,0.1);
+            display: inline-block;
+        }
     </style>
 </head>
 <body>
     <nav class="navbar navbar-dark bg-dark">
         <div class="container-fluid d-flex align-items-center justify-content-between">
-            <a class="navbar-brand d-flex align-items-center" href="dashboard.php">
+            <a class="navbar-brand d-flex align-items-center" href="sports_director_dashboard.php">
                 <img src="../imageslogo.png" alt="Logo" class="me-2" style="height: 50px; width: 48px; object-fit: contain;">
                 <div class="d-flex flex-column lh-sm">
                     <strong class="text-white" style="font-size: 1.25rem;">PIT SPORTS TALLYING</strong>
-                    <small class="text-light" style="font-size: 0.75rem;">
-                        <?php 
-                            if ($_SESSION['role'] === 'Administrator') {
-                                echo 'Administrator Panel';
-                            } else {
-                                echo 'Sports Director Panel';
-                            }
-                        ?>
-                    </small>
+                    <small class="text-light" style="font-size: 0.75rem;">Director Panel</small>
                 </div>
             </a>
+            <button class="navbar-toggler d-lg-none" type="button" id="mobileToggle">
+                <span class="navbar-toggler-icon"></span>
+            </button>
             <div class="dropdown user-dropdown ms-auto me-2 me-lg-0">
                 <a href="#" class="dropdown-toggle" id="userDropdown" data-bs-toggle="dropdown" aria-expanded="false">
-                    <i class="fas fa-user-circle navbar-profile-icon"></i>
+                    <i class="fas fa-user-circle" style="font-size: 36px; margin-right: 10px;"></i>
                     <span class="user-name d-none d-lg-inline"><?= htmlspecialchars($name); ?></span>
                 </a>
                 <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="userDropdown">
-                    <li><a class="dropdown-item" href="../admin_profile.php"><i class="fas fa-user-circle"></i> Profile</a></li>
-                    <li><a class="dropdown-item" href="../Tournament_Manager_page.php" target="_blank"><i class="fas fa-globe"></i> View Public Site</a></li>
+                    <li><a class="dropdown-item" href="../admin_profile.php"><i class="fas fa-user-circle me-2"></i> Profile</a></li>
+                    <li><a class="dropdown-item" href="../Tournament_Manager_page.php" target="_blank"><i class="fas fa-globe me-2"></i> Public Site</a></li>
                     <li><hr class="dropdown-divider"></li>
-                    <li><a class="dropdown-item text-danger" href="../login.php"><i class="fas fa-sign-out-alt"></i> Logout</a></li>
+                    <li><a class="dropdown-item text-danger" href="../logout.php"><i class="fas fa-sign-out-alt me-2"></i> Logout</a></li>
                 </ul>
             </div>
         </div>
     </nav>
     
-    <?php if (isset($_SESSION['role']) && $_SESSION['role'] === 'Administrator'): ?>
     <div class="sidebar" id="sidebar">
-            <button id="sidebarToggle" title="Toggle Sidebar">
-                <i class="fas fa-bars"></i>
-            </button>
-            <ul class="nav flex-column sidebar-nav">
-                <li class="nav-item">
-                    <a class="nav-link <?php if ($current_page == 'admin_dashboard.php') echo 'active'; ?>" href="../admin_dashboard.php">
-                        <i class="fas fa-tachometer-alt me-2"></i> <span>Dashboard</span>
-                    </a>
-                </li>
-                <li class="nav-item">
-                    <a class="nav-link <?php if ($is_event_page) echo 'active'; ?>" data-bs-toggle="collapse" href="#eventsCollapse" role="button" aria-expanded="<?php echo $is_event_page ? 'true' : 'false'; ?>" aria-controls="eventsCollapse">
-                        <i class="fas fa-calendar-alt me-2"></i> <span>Manage Events</span> <i class="fas fa-chevron-down ms-auto sidebar-chevron"></i>
-                    </a>
-                    <div class="collapse <?php if ($is_event_page) echo 'show'; ?>" id="eventsCollapse">
-                        <ul class="sub-menu">
-                            <li><a class="nav-link <?php if ($current_page == 'Manage_Games.php') echo 'active'; ?>" href="../Manage_Games.php"><span>Games (L1)</span></a></li>
-                            <li><a class="nav-link <?php if ($current_page == 'Manage_Game_Events.php') echo 'active'; ?>" href="../Manage_Game_Events.php"><span>Game Events (L2)</span></a></li>
-                            <li><a class="nav-link <?php if ($current_page == 'Manage_Categories.php') echo 'active'; ?>" href="../Manage_Categories.php"><span>Categories (L3)</span></a></li>
-                        </ul>
-                    </div>
-                </li>
-                <li class="nav-item">
-                    <a class="nav-link <?php if ($is_management_page) echo 'active'; ?>" data-bs-toggle="collapse" href="#teamsCollapse" role="button" aria-expanded="<?php echo $is_management_page ? 'true' : 'false'; ?>" aria-controls="teamsCollapse">
-                        <i class="fas fa-users me-2"></i> <span>Manage Teams</span> <i class="fas fa-chevron-down ms-auto sidebar-chevron"></i>
-                    </a>
-                    <div class="collapse <?php if ($is_management_page) echo 'show'; ?>" id="teamsCollapse">
-                        <ul class="sub-menu">
-                            <li class="text-muted" style="padding: 10px 25px 5px 60px;">Management</li>
-                            <li><a class="nav-link <?php if ($current_page == 'colleges.php') echo 'active'; ?>" href="colleges.php"><span>Manage Teams</span></a></li>
-                            <li><a class="nav-link <?php if ($current_page == 'events.php') echo 'active'; ?>" href="events.php"><span>Manage Events (L1-L3)</span></a></li>
-                            <li class="nav-item">
-                            <a class="nav-link <?php if ($current_page == 'Manage_Matches.php') echo 'active'; ?>" href="Manage_Matches.php">
-                                <span>Manage Matches</span>
-                            </a>
-                        </li>
-                            <li class="text-muted" style="padding: 10px 25px 5px 60px;">Tallying</li>
-                            <li><a class="nav-link <?php if ($current_page == 'results.php') echo 'active'; ?>" href="results.php"><span>Approve Results</span></a></li>
-                            <li><a class="nav-link <?php if ($current_page == 'reports.php') echo 'active'; ?>" href="reports.php"><span>Medal Reports</span></a></li>
-                        </ul>
-                    </div>
-                </li>
-                <li class="nav-item">
-                    <a class="nav-link <?php if ($current_page == 'Manage_Users.php') echo 'active'; ?>" href="../Manage_Users.php">
-                        <i class="fas fa-users-cog me-2"></i> <span>Manage Users</span>
-                    </a>
-                </li>
-                <li class="nav-item">
-                <a class="nav-link <?php if ($current_page == 'Manage_medals.php') echo 'active'; ?>" href="Manage_medals.php">
-                    <i class="fas fa-medal me-2"></i> <span>Manage Medals</span>
+        <ul class="nav flex-column sidebar-nav">
+            <li class="nav-item">
+                <a class="nav-link" href="sports_director_dashboard.php">
+                    <i class="fas fa-tachometer-alt me-2"></i> <span>Dashboard</span>
+                </a>
+            </li>
+            
+            <li class="nav-item mt-3"><span class="nav-title">Tournament Mgmt</span></li>
+            <li class="nav-item">
+                <a class="nav-link active" href="colleges.php">
+                    <i class="fas fa-users me-2"></i> <span>Manage Teams</span>
                 </a>
             </li>
             <li class="nav-item">
-                <a class="nav-link <?php if ($current_page == 'Manage_Requests.php') echo 'active'; ?>" href="../Manage_Requests.php">
+                <a class="nav-link" href="events.php">
+                    <i class="fas fa-calendar-alt me-2"></i> <span>Manage Events (L1-L3)</span>
+                </a>
+            </li>
+            <li class="nav-item">
+                <a class="nav-link" href="Manage_Matches.php">
+                    <i class="fas fa-trophy me-2"></i> <span>Manage Matches</span>
+                </a>
+            </li>
+
+            <li class="nav-item mt-3"><span class="nav-title">Administration</span></li>
+            <li class="nav-item">
+                <a class="nav-link" href="../Manage_Users.php">
+                    <i class="fas fa-users-cog me-2"></i> <span>Manage Users</span>
+                </a>
+            </li>
+            <li class="nav-item">
+                <a class="nav-link" href="../Manage_Requests.php">
                     <i class="fas fa-user-plus me-2"></i> <span>Account Requests</span>
+                    <?php if($pending_requests_count > 0): ?>
+                        <span class="badge bg-danger ms-auto rounded-pill"><?= $pending_requests_count ?></span>
+                    <?php endif; ?>
+                </a>
+            </li>
+             <li class="nav-item">
+                <a class="nav-link" href="../Manage_Viewreports.php">
+                    <i class="fas fa-file-alt me-2"></i> <span>View System Reports</span>
+                </a>
+            </li>
+
+            <li class="nav-item mt-3"><span class="nav-title">Tallying & Scoring</span></li>
+            <li class="nav-item">
+                <a class="nav-link" href="results.php">
+                    <i class="fas fa-check-double me-2"></i> <span>Approve Results</span>
+                    <?php if($pending_results_count > 0): ?>
+                        <span class="badge bg-warning text-dark ms-auto rounded-pill"><?= $pending_results_count ?></span>
+                    <?php endif; ?>
                 </a>
             </li>
             <li class="nav-item">
-                <a class="nav-link <?php if ($current_page == 'Manage_Viewreports.php') echo 'active'; ?>" href="../Manage_Viewreports.php">
-                    <i class="fas fa-chart-line me-2"></i> <span>View Reports</span>
+                <a class="nav-link" href="reports.php">
+                    <i class="fas fa-chart-line me-2"></i> <span>Medal Standings</span>
                 </a>
             </li>
-                <li class="nav-item mt-3">
-                    <a class="nav-link text-danger" href="../logout.php">
-                        <i class="fas fa-sign-out-alt me-2"></i> <span>Logout</span>
-                    </a>
-                </li>
-            </ul>
-        </div>
-        <?php else: ?>
-        <div class="sidebar" id="sidebar">
-            <ul class="nav flex-column sidebar-nav">
-                <li class="nav-item">
-                    <a class="nav-link <?php if ($current_page == 'sports_director_dashboard.php') echo 'active'; ?>" 
-                       href="sports_director_dashboard.php">
-                        <i class="fas fa-tachometer-alt me-2"></i> <span>Dashboard</span>
-                    </a>
-                </li>
-                <li class="nav-item mt-3"><span class="nav-title">Management</span></li>
-                <li class="nav-item">
-                    <a class="nav-link <?php if ($current_page == 'colleges.php') echo 'active'; ?>" href="colleges.php">
-                        <i class="fas fa-users me-2"></i> <span>Manage Teams</span>
-                    </a>
-                </li>
-                <li class="nav-item">
-                    <a class="nav-link <?php if ($current_page == 'events.php') echo 'active'; ?>" href="events.php">
-                        <i class="fas fa-calendar-alt me-2"></i> <span>Manage Events (L1-L3)</span>
-                    </a>
-                </li>
-                <li class="nav-item">
-                    <a class="nav-link <?= ($current_page == 'view_all_matches.php') ? 'active' : '' ?>" href="view_all_matches.php">
-                        <i class="fas fa-trophy me-2"></i> <span>View All Matches</span>
-                    </a>
-                </li>
-                 <li class="nav-item">
-                    <a class="nav-link <?php if ($current_page == 'Manage_Viewreports.php') echo 'active'; ?>" href="../Manage_Viewreports.php">
-                        <i class="fas fa-chart-line me-2"></i> <span>View Reports</span>
-                    </a>
-                </li>
-                <li class="nav-item mt-3"><span class="nav-title">Tallying</span></li>
-                <li class="nav-item">
-                    <a class="nav-link <?php if ($current_page == 'results.php') echo 'active'; ?>" href="results.php">
-                        <i class="fas fa-check-double me-2"></i> <span>Approve Results</span>
-                    </a>
-                </li>
-                <li class="nav-item">
-                    <a class="nav-link <?php if ($current_page == 'reports.php') echo 'active'; ?>" href="reports.php">
-                        <i class="fas fa-chart-line me-2"></i> <span>Medal Reports</span>
-                    </a>
-                </li>
-                <li class="nav-item mt-auto">
-                    <a class="nav-link text-danger" href="../logout.php">
-                        <i class="fas fa-sign-out-alt me-2"></i> <span>Logout</span>
-                    </a>
-                </li>
-            </ul>
-        </div>
-    <?php endif; ?> 
+
+            <!-- NEW SECTION: SEASON MANAGEMENT -->
+            <li class="nav-item mt-3"><span class="nav-title">Season Management</span></li>
+            <li class="nav-item">
+                <a class="nav-link <?= ($current_page == 'manage_archives.php') ? 'active' : '' ?>" href="../manage_archives.php">
+                    <i class="fas fa-history me-2"></i> <span>Archives & Reset</span>
+                </a>
+            </li>
+            
+            <li class="nav-item mt-auto">
+                <a class="nav-link text-danger" href="../logout.php">
+                    <i class="fas fa-sign-out-alt me-2"></i> <span>Logout</span>
+                </a>
+            </li>
+        </ul>
+    </div>
 
     <div class="main-content">
         <div class="container-fluid">
+            
+            <nav aria-label="breadcrumb" class="mb-4">
+              <ol class="breadcrumb">
+                <li class="breadcrumb-item"><a href="sports_director_dashboard.php">Dashboard</a></li>
+                <li class="breadcrumb-item active" aria-current="page">Manage Teams</li>
+              </ol>
+            </nav>
+
             <h1 class="section-title mb-4">Manage Teams</h1>
 
             <?php if ($message): ?>
@@ -423,8 +414,8 @@ if (isset($_SESSION['message'])) {
             <?php endif; ?>
 
             <div class="card">
-                <div class="card-header d-flex justify-content-between align-items-center">
-                    <h5 class="mb-0">All Teams</h5>
+                <div class="card-header d-flex justify-content-between align-items-center bg-white py-3">
+                    <h5 class="mb-0 fw-bold">All Teams</h5>
                     <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#addCollegeModal">
                         <i class="fas fa-plus me-2"></i>Add New Team
                     </button>
@@ -436,7 +427,8 @@ if (isset($_SESSION['message'])) {
                                 <tr>
                                     <th>Logo</th>
                                     <th>Team Name</th>
-                                    <th>Code</th> 
+                                    <th>Code</th>
+                                    <th>Unit Color</th> 
                                     <th>Team Manager</th>
                                     <th>Slogan</th>
                                     <th>Actions</th>
@@ -446,7 +438,7 @@ if (isset($_SESSION['message'])) {
                                 <?php foreach ($colleges as $college): ?>
                                 <?php
                                     $logo = (!empty($college['logo_url'])) ? $college['logo_url'] : $default_logo;
-                                    // NOTE: Dean's Photo and Students removed from table
+                                    $unit_color = $college['unit_color'] ?? '#cccccc';
                                 ?>
                                 <tr>
                                     <td>
@@ -455,22 +447,32 @@ if (isset($_SESSION['message'])) {
                                     </td>
                                     <td>
                                         <a href="team_profile.php?team_id=<?= $college['college_id'] ?>" 
-                                        title="View Profile for <?= htmlspecialchars($college['college_name']) ?>">
-                                            <strong><?= htmlspecialchars($college['college_name']) ?></strong>
+                                           class="text-decoration-none fw-bold text-dark"
+                                           title="View Profile for <?= htmlspecialchars($college['college_name']) ?>">
+                                            <?= htmlspecialchars($college['college_name']) ?>
                                         </a>
                                     </td>
-                                    <td><strong><?= htmlspecialchars($college['college_code'] ?? 'N/A') ?></strong></td>
-                                    <td><?= htmlspecialchars($college['team_manager'] ?? 'N/A') ?></td>
-                                    <td class="text-muted"><small><?= htmlspecialchars($college['slogan'] ?? '') ?></small></td>
+                                    <td><span class="badge bg-light text-dark border"><?= htmlspecialchars($college['college_code'] ?? 'N/A') ?></span></td>
+                                    
                                     <td>
-                                        <button class="btn btn-sm btn-outline-primary edit-btn"
+                                        <div class="d-flex align-items-center gap-2">
+                                            <span class="color-swatch" style="background-color: <?= htmlspecialchars($unit_color) ?>;"></span>
+                                            <small class="text-muted text-uppercase"><?= htmlspecialchars($unit_color) ?></small>
+                                        </div>
+                                    </td>
+
+                                    <td><?= htmlspecialchars($college['team_manager'] ?? 'N/A') ?></td>
+                                    <td class="text-muted fst-italic"><small><?= htmlspecialchars($college['slogan'] ?? '') ?></small></td>
+                                    <td>
+                                        <button class="btn btn-sm btn-outline-primary edit-btn me-1"
                                             data-bs-toggle="modal" data-bs-target="#editCollegeModal"
                                             data-id="<?= $college['college_id'] ?>"
                                             data-name="<?= htmlspecialchars($college['college_name']) ?>"
                                             data-code="<?= htmlspecialchars($college['college_code'] ?? '') ?>" 
                                             data-manager="<?= htmlspecialchars($college['team_manager'] ?? '') ?>"
                                             data-slogan="<?= htmlspecialchars($college['slogan'] ?? '') ?>" 
-                                            data-logo="<?= htmlspecialchars($logo) ?>">
+                                            data-logo="<?= htmlspecialchars($logo) ?>"
+                                            data-color="<?= htmlspecialchars($unit_color) ?>">
                                             <i class="fas fa-edit"></i>
                                         </button>
                                         <button class="btn btn-sm btn-outline-danger delete-btn"
@@ -503,10 +505,22 @@ if (isset($_SESSION['message'])) {
                                 <label for="college_name" class="form-label">Team Name</label>
                                 <input type="text" class="form-control" id="college_name" name="college_name" required>
                             </div>
-                            <div class="mb-3">
-                                <label for="college_code" class="form-label">Team Code / Initialism</label>
-                                <input type="text" class="form-control" id="college_code" name="college_code" required placeholder="e.g., COTE, CAS">
+                            
+                            <div class="row">
+                                <div class="col-md-6 mb-3">
+                                    <label for="college_code" class="form-label">Team Code</label>
+                                    <input type="text" class="form-control" id="college_code" name="college_code" required placeholder="e.g., COTE">
+                                </div>
+                                <div class="col-md-6 mb-3">
+                                    <label class="form-label">Unit Color</label>
+                                    <div class="input-group">
+                                        <input type="color" class="form-control form-control-color" id="add_color_picker" value="#cccccc" title="Pick a color">
+                                        <input type="text" class="form-control" id="add_unit_color" name="unit_color" value="#cccccc" placeholder="#RRGGBB">
+                                    </div>
+                                    <div class="form-text text-muted small">Pick a color OR type a hex code.</div>
+                                </div>
                             </div>
+
                             <div class="mb-3">
                                 <label for="team_manager" class="form-label">Team Manager</label>
                                 <input type="text" class="form-control" id="team_manager" name="team_manager">
@@ -546,10 +560,21 @@ if (isset($_SESSION['message'])) {
                                 <label for="edit_college_name" class="form-label">Team Name</label>
                                 <input type="text" class="form-control" id="edit_college_name" name="edit_college_name" required>
                             </div>
-                            <div class="mb-3">
-                                <label for="edit_college_code" class="form-label">Team Code / Initialism</label>
-                                <input type="text" class="form-control" id="edit_college_code" name="edit_college_code" required placeholder="e.g., COTE, CAS">
+                            
+                            <div class="row">
+                                <div class="col-md-6 mb-3">
+                                    <label for="edit_college_code" class="form-label">Team Code</label>
+                                    <input type="text" class="form-control" id="edit_college_code" name="edit_college_code" required placeholder="e.g., COTE">
+                                </div>
+                                <div class="col-md-6 mb-3">
+                                    <label class="form-label">Unit Color</label>
+                                    <div class="input-group">
+                                        <input type="color" class="form-control form-control-color" id="edit_color_picker" title="Pick a color">
+                                        <input type="text" class="form-control" id="edit_unit_color" name="edit_unit_color" placeholder="#RRGGBB">
+                                    </div>
+                                </div>
                             </div>
+
                             <div class="mb-3">
                                 <label for="edit_team_manager" class="form-label">Team Manager</label>
                                 <input type="text" class="form-control" id="edit_team_manager" name="edit_team_manager">
@@ -608,6 +633,35 @@ if (isset($_SESSION['message'])) {
     
     <script>
     document.addEventListener('DOMContentLoaded', function() {
+        
+        // [NEW] Function to sync Color Picker and Text Input
+        function setupColorSync(pickerId, textId) {
+            const picker = document.getElementById(pickerId);
+            const text = document.getElementById(textId);
+            
+            if(!picker || !text) return;
+
+            // 1. Picker changes -> Update Text
+            picker.addEventListener('input', function() {
+                text.value = this.value;
+            });
+
+            // 2. Text changes -> Update Picker (only if valid hex)
+            text.addEventListener('input', function() {
+                const val = this.value;
+                // Simple Hex Check: starts with #, then 6 chars (0-9, A-F)
+                if (/^#[0-9A-F]{6}$/i.test(val)) {
+                    picker.value = val;
+                }
+            });
+        }
+
+        // Initialize Sync for Add Modal
+        setupColorSync('add_color_picker', 'add_unit_color');
+        // Initialize Sync for Edit Modal
+        setupColorSync('edit_color_picker', 'edit_unit_color');
+
+
         // EDIT MODAL SCRIPT
         const editCollegeModal = document.getElementById('editCollegeModal');
         editCollegeModal.addEventListener('show.bs.modal', function(event) {
@@ -616,10 +670,13 @@ if (isset($_SESSION['message'])) {
             document.getElementById('edit_college_id').value = button.dataset.id;
             document.getElementById('edit_college_name').value = button.dataset.name;
             document.getElementById('edit_college_code').value = button.dataset.code;
-            
-            // Updated to use new data attributes
             document.getElementById('edit_team_manager').value = button.dataset.manager;
             document.getElementById('edit_slogan').value = button.dataset.slogan;
+            
+            // [NEW] Populate Color
+            const color = button.dataset.color || '#cccccc';
+            document.getElementById('edit_unit_color').value = color;
+            document.getElementById('edit_color_picker').value = color; // Sync picker too
             
             document.getElementById('current_logo_url').value = button.dataset.logo;
         });
@@ -632,42 +689,50 @@ if (isset($_SESSION['message'])) {
             document.getElementById('delete_college_name').textContent = button.dataset.name;
         });
 
-        // SIDEBAR/FOOTER LOGIC
-        const sidebar = document.getElementById('sidebar');
-        if (sidebar) { // Only run if sidebar exists (admin/SD)
-            let resizeTimer;
-            window.addEventListener('resize', function() {
-                clearTimeout(resizeTimer);
-                resizeTimer = setTimeout(function() {
-                    if (window.innerWidth > 992) {
-                        sidebar.classList.remove('show');
-                    }
-                }, 250);
+        // SIDEBAR TOGGLE
+        const mobileToggle = document.getElementById('mobileToggle');
+        if(mobileToggle) {
+            mobileToggle.addEventListener('click', function() {
+                document.getElementById('sidebar').classList.toggle('show');
             });
+        }
 
-            const footer = document.querySelector('footer');
-            const navbar = document.querySelector('.navbar');
-
-            if (footer && navbar) {
-                function adjustSidebarHeight() {
-                    if (window.innerWidth <= 992) {
-                        sidebar.style.height = ''; 
-                        return;
-                    }
-                    const navbarHeight = navbar.offsetHeight;
-                    const footerTop = footer.getBoundingClientRect().top;
-                    const viewportHeight = window.innerHeight;
-                    
-                    const maxSidebarHeight = viewportHeight - navbarHeight;
-                    const availableHeight = footerTop - navbarHeight;
-                    const newHeight = Math.max(0, Math.min(maxSidebarHeight, availableHeight));
-                    
-                    sidebar.style.height = `${newHeight}px`;
+        let resizeTimer;
+        window.addEventListener('resize', function() {
+            clearTimeout(resizeTimer);
+            resizeTimer = setTimeout(function() {
+                if (window.innerWidth > 992) {
+                    const sidebar = document.getElementById('sidebar');
+                    if(sidebar) sidebar.classList.remove('show');
                 }
-                window.addEventListener('scroll', adjustSidebarHeight, { passive: true });
-                window.addEventListener('resize', adjustSidebarHeight);
-                setTimeout(adjustSidebarHeight, 100);
+            }, 250);
+        });
+
+        const footer = document.querySelector('footer');
+        const navbar = document.querySelector('.navbar');
+        const sidebar = document.getElementById('sidebar');
+
+        if (sidebar && footer && navbar) {
+            function adjustSidebarHeight() {
+                if (window.innerWidth <= 992) {
+                    sidebar.style.height = '';
+                    return;
+                }
+
+                const navbarHeight = navbar.offsetHeight;
+                const footerTop = footer.getBoundingClientRect().top;
+                const viewportHeight = window.innerHeight;
+                
+                const maxSidebarHeight = viewportHeight - navbarHeight;
+                const availableHeight = footerTop - navbarHeight;
+                const newHeight = Math.max(0, Math.min(maxSidebarHeight, availableHeight));
+                
+                sidebar.style.height = `${newHeight}px`;
             }
+
+            window.addEventListener('scroll', adjustSidebarHeight, { passive: true });
+            window.addEventListener('resize', adjustSidebarHeight);
+            setTimeout(adjustSidebarHeight, 100);
         }
     });
     </script>

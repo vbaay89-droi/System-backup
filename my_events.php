@@ -16,6 +16,23 @@ $user_id = (int)$_SESSION['user_id'];
 $username = isset($_SESSION['username']) ? $_SESSION['username'] : 'Event Manager';
 $current_page = basename($_SERVER['PHP_SELF']);
 
+// --- NEW: FETCH FULL NAME FROM DB ---
+// 1. Prepare a query to get the full_name and username for this specific ID
+$stmt = $conn->prepare("SELECT full_name, username FROM users WHERE id = ?");
+$stmt->bind_param("i", $user_id); // Bind the logged-in user's ID
+$stmt->execute();
+$result = $stmt->get_result();
+$user_data = $result->fetch_assoc(); // Get the data as an array
+$stmt->close();
+
+// 2. Decide which name to display
+// If 'full_name' is not empty, use it. Otherwise, fallback to 'username'.
+if (!empty($user_data['full_name'])) {
+    $display_name = $user_data['full_name'];
+} else {
+    $display_name = $user_data['username'] ?? $username; // Fallback
+}
+
 // 2. FORM HANDLING (Add/Edit/Delete Category)
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     if (isset($_POST['action'])) {
@@ -77,7 +94,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                         error_log("Failed to log CREATED_CATEGORY: " . $log_e->getMessage());
                     }
                     
-                    $alert_message = "SUCCESS: Category '{$category_name}' was created!";
+                    if ($category_name === 'Main Event' || $category_name === 'Main Competition') {
+                        $alert_message = "Success! Event initialized successfully.";
+                    } else {
+                        $alert_message = "Success! Category '{$category_name}' created successfully.";
+                    }
                     
                 } else {
                     // --- THIS IS AN UPDATE OPERATION ---
@@ -116,7 +137,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                         error_log("Failed to log UPDATED_CATEGORY: " . $log_e->getMessage());
                     }
 
-                    $alert_message = "SUCCESS: Category '{$category_name}' was updated!";
+                    // --- IMPROVED USER FEEDBACK ---
+                    // Check if this is a "Main Event" (Single Category)
+                    if ($category_name === 'Main Event' || $category_name === 'Main Competition') {
+                        // Friendly message for single events
+                        $alert_message = "Success! Event details updated successfully.";
+                    } else {
+                        // Standard message for sub-categories
+                        $alert_message = "Success! Category '{$category_name}' updated successfully.";
+                    }
                 }
                 $stmt->close();
 
@@ -213,7 +242,9 @@ $managed_data = [];
 try {
     $sql = "SELECT
         g.game_name,
-        ge.event_id, ge.event_name,
+        ge.event_id, 
+        ge.event_name,
+        ge.event_structure, /* <--- Now this will work! */
         c.category_id, c.category_name, 
         
         -- NEW DYNAMIC STATUS LOGIC --
@@ -276,6 +307,7 @@ try {
                 $managed_data[$game_name][$event_id] = [
                     'event_id' => $event_id,
                     'event_name' => $event_name,
+                    'event_structure' => $row['event_structure'], /* <--- Capture the data */
                     'categories' => []
                 ];
             }
@@ -340,20 +372,24 @@ $status_options = [
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" rel="stylesheet">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=Poppins:wght@400;500;600;700;800&display=swap" rel="stylesheet">
     <style>
+        /* --- GLOBAL VARIABLES --- */
         :root { 
             --sidebar-width: 260px; 
+            --sidebar-collapsed-width: 80px; /* NEW: Compact width */
             --header-height: 82px; 
-            --transition: all 0.3s ease; 
+            --transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1); 
             --card-shadow: 0 5px 20px rgba(0, 0, 0, 0.08); 
             --bg-light: #F8F9FA; 
             --bs-purple: #6f42c1; 
             --bs-info: #0dcaf0;
-            
+            --primary-gradient: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
             --bs-table-bg-light-danger: #fbe9eb;
             --bs-table-border-light-danger: #f5c6cb;
         }
+        
         body { 
-            background-color: var(--bg-light); 
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            background-attachment: fixed;
             margin: 0; 
             padding: 0; 
             min-height: 100vh;
@@ -361,76 +397,264 @@ $status_options = [
             display: flex; 
             flex-direction: column; 
         }
-        .navbar { background: linear-gradient(135deg, #1a1a1a 0%, #2d2d2d 100%) !important; box-shadow: 0 4px 20px rgba(0,0,0,0.15); padding: 1rem 1.5rem; height: var(--header-height); position: fixed; top: 0; left: 0; right: 0; z-index: 1050; }
-        .navbar-brand .brand-heading { font-family: 'Poppins', sans-serif; font-weight: 700; }
-        .user-dropdown .dropdown-toggle { color: white; display: flex; align-items: center; text-decoration: none; padding: 8px 12px; border-radius: 8px; }
-        .user-dropdown .dropdown-toggle img { width: 36px; height: 36px; border-radius: 50%; object-fit: cover; margin-right: 10px; }
-        .sidebar { width: var(--sidebar-width); position: fixed; top: var(--header-height); left: 0; height: calc(100vh - var(--header-height)); background: #2c3e50; color: white; box-shadow: 5px 0 15px rgba(0,0,0,0.2); z-index: 1040; transition: width var(--transition); overflow-y: auto; overflow-x: hidden; }
-        .sidebar-nav { padding: 50px 0 20px 0; }
-        .sidebar-nav .nav-link { color: rgba(255, 255, 255, 0.7); font-size: 1.05rem; font-weight: 500; padding: 15px 25px; transition: var(--transition); border-left: 5px solid transparent; margin: 2px 0; display: flex; align-items: center; text-decoration: none; }
-        .sidebar-nav .nav-link i { width: 30px; text-align: center; flex-shrink: 0; font-size: 0.95em; }
-        .sidebar-nav .nav-link:hover { color: white; background: rgba(255, 255, 255, 0.05); border-left-color: #1abc9c; }
-        .sidebar-nav .nav-link.active { color: white; background: rgba(255, 255, 255, 0.1); border-left-color: #3498db; font-weight: 600; }
-        .main-content { flex: 1 0 auto; padding: 30px; margin-top: var(--header-height); margin-left: var(--sidebar-width); transition: margin-left var(--transition); min-height: calc(100vh - var(--header-height)); }
-        footer {
-            flex-shrink: 0;
-            background: #2c3e50 !important;
-            box-shadow: 0 -2px 10px rgba(0,0,0,0.1);
-            padding-left: var(--sidebar-width);
-            transition: padding-left var(--transition);
-            position: relative;
-            z-index: 1041;
-        }
-        .sidebar.minimized ~ footer {
-            padding-left: var(--sidebar-min-width);
-        }
-        .section-title { font-family: 'Poppins', sans-serif; font-weight: 600; color: #333; }
-        .card { border: none; border-radius: 15px; box-shadow: var(--card-shadow); }
         
-        .game-heading { font-family: 'Poppins', sans-serif; font-weight: 600; color: var(--bs-success, #198754); border-bottom: 2px solid var(--bs-success, #198754); padding-bottom: 8px; display: inline-block; }
-        .winner-icon { font-size: 1.1em; margin-right: 4px; opacity: 0.9; }
-        .gold { color: #FFD700; }
-        .silver { color: #C0C0C0; }
-        .bronze { color: #CD7F32; }
-        .winner-count { font-weight: 600; color: #333; }
-        .user-dropdown .dropdown-toggle:hover { background-color: rgba(255, 255, 255, 0.1); }
-        .navbar-profile-icon { width: 36px; height: 36px; font-size: 36px; text-align: center; line-height: 1; border-radius: 50%; margin-right: 10px; color: rgba(255,255,255,0.8); }
-        
-        .text-purple { color: var(--bs-purple) !important; }
-        .text-bg-purple { color: #fff !important; background-color: var(--bs-purple) !important; }
-        
-        .dropdown-item.disabled, .dropdown-item:disabled { pointer-events: auto; }
-        
-        .table-danger-light {
-            --bs-table-bg: var(--bs-table-bg-light-danger);
-            --bs-table-border-color: var(--bs-table-border-light-danger);
-            --bs-table-striped-bg: #f7e0e3;
-            --bs-table-hover-bg: #f3d4d9;
+        /* Glassmorphism Background */
+        body::before {
+            content: '';
+            position: fixed;
+            top: 0; left: 0; right: 0; bottom: 0;
+            background: radial-gradient(circle at 20% 50%, rgba(120, 119, 198, 0.3), transparent 50%),
+                        radial-gradient(circle at 80% 80%, rgba(99, 102, 241, 0.2), transparent 50%);
+            pointer-events: none;
+            z-index: 0;
         }
-        .popover-header {
-            font-weight: 600;
-            color: var(--bs-danger);
+        
+        /* --- NAVBAR --- */
+        .navbar { 
+            background: rgba(26, 26, 26, 0.95) !important;
+            backdrop-filter: blur(10px);
+            box-shadow: 0 8px 32px rgba(0,0,0,0.2); 
+            padding: 1rem 1.5rem; 
+            height: var(--header-height); 
+            position: fixed; 
+            top: 0; left: 0; right: 0; 
+            z-index: 1050;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
         }
-        .dropdown-menu {
-            z-index: 1042;
+        
+        .navbar-brand .brand-heading { 
+            font-family: 'Poppins', sans-serif; 
+            font-weight: 700;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+        
+        .user-dropdown .dropdown-toggle { 
+            color: white; 
+            display: flex; align-items: center; 
+            text-decoration: none; 
+            padding: 8px 16px; 
+            border-radius: 50px;
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(10px);
+            transition: all 0.3s ease;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+        }
+        
+        .user-dropdown .dropdown-toggle:hover {
+            background: rgba(255, 255, 255, 0.2);
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.3);
+        }
+        
+        .user-dropdown .dropdown-toggle img { 
+            width: 36px; height: 36px; 
+            border-radius: 50%; object-fit: cover; margin-right: 10px;
+            border: 2px solid rgba(255, 255, 255, 0.3);
+        }
+        
+        .navbar-profile-icon { 
+            width: 36px; height: 36px; font-size: 36px; 
+            text-align: center; line-height: 1; border-radius: 50%; margin-right: 10px; 
+            color: rgba(255,255,255,0.8); 
         }
 
-        /* --- MODIFICATION: Style for the NOTE MODAL --- */
-        #noteModal .modal-body-note {
-            background-color: #f8f9fa;
-            border-radius: 8px;
-            padding: 1rem;
-            white-space: pre-wrap; /* This respects newlines in the note */
-            word-wrap: break-word;
-            font-family: monospace;
-            max-height: 300px;
-            overflow-y: auto;
+        /* --- EXPANDABLE SIDEBAR LOGIC --- */
+        .sidebar { 
+            width: var(--sidebar-collapsed-width); /* Start Compact */
+            position: fixed; 
+            top: var(--header-height); 
+            left: 0; 
+            height: calc(100vh - var(--header-height)); 
+            background: rgba(44, 62, 80, 0.95);
+            backdrop-filter: blur(10px);
+            color: white; 
+            box-shadow: 5px 0 30px rgba(0,0,0,0.3); 
+            z-index: 1040; 
+            transition: width 0.3s cubic-bezier(0.4, 0, 0.2, 1); 
+            overflow-x: hidden; 
+            white-space: nowrap; /* Prevent text wrapping */
+            border-right: 1px solid rgba(255, 255, 255, 0.1);
         }
-        /* --- ADD THIS NEW RULE --- */
-        .winner-item-line {
-            white-space: nowrap;
-            overflow: hidden; /* Optional: hides text if it's too long */
-            text-overflow: ellipsis; /* Optional: adds '...' if too long */
+        
+        /* Expand on Hover */
+        .sidebar:hover {
+            width: var(--sidebar-width);
+        }
+        
+        .sidebar-nav { padding: 30px 0; }
+        
+        .sidebar-nav .nav-link { 
+            color: rgba(255, 255, 255, 0.7); 
+            font-size: 1.05rem; 
+            font-weight: 500; 
+            padding: 15px 0; /* Adjusted padding */
+            padding-left: 25px; /* Fixed left padding for icon */
+            transition: all 0.2s ease; 
+            border-left: 5px solid transparent; 
+            margin: 2px 0; 
+            display: flex; 
+            align-items: center; 
+            text-decoration: none;
+            justify-content: flex-start;
+        }
+        
+        .sidebar-nav .nav-link i { 
+            width: 30px; 
+            text-align: center; 
+            flex-shrink: 0; 
+            font-size: 1.1em;
+            margin-right: 15px; /* Space between icon and text */
+            transition: transform 0.3s ease;
+        }
+        
+        /* Text fading logic */
+        .sidebar-nav .nav-link span {
+            opacity: 0;
+            transition: opacity 0.2s ease;
+            display: inline-block;
+        }
+        
+        .sidebar:hover .nav-link span {
+            opacity: 1;
+            transition-delay: 0.1s;
+        }
+        
+        .sidebar-nav .nav-link:hover {
+            color: white; 
+            background: rgba(255, 255, 255, 0.05); 
+            border-left-color: #667eea;
+        }
+        
+        .sidebar-nav .nav-link:hover i { transform: scale(1.2); }
+        
+        .sidebar-nav .nav-link.active { 
+            color: white; 
+            background: linear-gradient(90deg, rgba(102, 126, 234, 0.2), transparent); 
+            border-left-color: #667eea; 
+            font-weight: 600;
+        }
+
+        /* --- MAIN CONTENT & FOOTER --- */
+        .main-content { 
+            flex: 1 0 auto; 
+            /* Fix margin to collapsed width so it doesn't jump */
+            margin-left: var(--sidebar-collapsed-width); 
+            width: calc(100% - var(--sidebar-collapsed-width));
+            padding: 30px; 
+            margin-top: var(--header-height); 
+            transition: margin-left 0.3s ease; 
+            position: relative;
+            z-index: 1;
+        }
+        
+        footer {
+            flex-shrink: 0;
+            background: rgba(44, 62, 80, 0.95) !important;
+            backdrop-filter: blur(10px);
+            box-shadow: 0 -2px 20px rgba(0,0,0,0.2);
+            /* Fix padding to collapsed width */
+            padding-left: var(--sidebar-collapsed-width);
+            transition: padding-left 0.3s ease;
+            position: relative;
+            z-index: 1041;
+            border-top: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        /* --- PAGE ELEMENTS --- */
+        /* Green Game Heading (Requested) */
+        .game-heading { 
+            font-family: 'Poppins', sans-serif; 
+            font-weight: 600; 
+            color: #28a745; /* Solid Green */
+            border-bottom: 3px solid #28a745; /* Solid Green Underline */
+            padding-bottom: 8px; 
+            display: inline-block;
+            margin-bottom: 2rem;
+            margin-top: 1rem;
+            font-size: 2rem;
+        }
+        
+        .page-header {
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(10px);
+            border-radius: 20px;
+            padding: 2rem;
+            margin-bottom: 2rem;
+            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.1);
+            border: 1px solid rgba(255, 255, 255, 0.3);
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .page-header::before {
+            content: ''; position: absolute; top: 0; left: 0; right: 0; height: 5px;
+            background: linear-gradient(90deg, #667eea 0%, #764ba2 100%);
+        }
+        
+        .page-header h1 {
+            font-family: 'Poppins', sans-serif; font-weight: 700;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text;
+            margin: 0; font-size: 2.5rem;
+        }
+        
+        .breadcrumb { background: transparent; padding: 0; margin-bottom: 0; }
+        .breadcrumb-item a { color: #667eea; text-decoration: none; transition: all 0.3s ease; }
+        .breadcrumb-item a:hover { color: #764ba2; transform: translateX(2px); }
+        
+        /* Help Section */
+        .help-section {
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(10px);
+            border-radius: 15px;
+            margin-bottom: 2rem;
+            box-shadow: 0 5px 25px rgba(0, 0, 0, 0.08);
+            border: 1px solid rgba(102, 126, 234, 0.2);
+            overflow: hidden;
+        }
+        .help-header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            padding: 1rem 1.5rem; cursor: pointer;
+            display: flex; align-items: center; justify-content: space-between;
+            color: white;
+        }
+        .help-header h5 { margin: 0; font-weight: 600; display: flex; align-items: center; gap: 10px; }
+        .help-toggle { transition: transform 0.3s ease; }
+        .help-toggle.collapsed { transform: rotate(180deg); }
+        .help-content { padding: 1.5rem; background: white; }
+        .help-content li { margin-bottom: 0.75rem; line-height: 1.6; }
+        
+        /* Global Bootstrap Overrides */
+        .form-control, .form-select {
+            border-radius: 10px; border: 2px solid rgba(102, 126, 234, 0.2); padding: 0.75rem 1rem;
+        }
+        .form-control:focus, .form-select:focus {
+            border-color: #667eea; box-shadow: 0 0 0 0.2rem rgba(102, 126, 234, 0.25);
+        }
+        .modal-content {
+            border-radius: 20px; border: none; box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+        }
+        .modal-header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; border-radius: 20px 20px 0 0;
+        }
+        .modal-header .btn-close { filter: brightness(0) invert(1); }
+        
+        /* Scrollbar */
+        ::-webkit-scrollbar { width: 8px; height: 8px; }
+        ::-webkit-scrollbar-track { background: rgba(0, 0, 0, 0.1); }
+        ::-webkit-scrollbar-thumb { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); border-radius: 10px; }
+
+        /* Responsive Mobile */
+        @media (max-width: 992px) {
+            .sidebar { width: 0; } /* Hidden by default on mobile */
+            .sidebar:hover { width: var(--sidebar-width); } /* Can slide out */
+            .sidebar.show { width: var(--sidebar-width); } /* JS Class toggle */
+            .sidebar.show .nav-link span { opacity: 1; }
+            
+            .main-content, footer { margin-left: 0; width: 100%; }
         }
     </style>
 </head>
@@ -438,7 +662,7 @@ $status_options = [
 
     <nav class="navbar navbar-dark bg-dark">
         <div class="container-fluid d-flex align-items-center justify-content-between">
-            <a class="navbar-brand d-flex align-items: center" href="event_manager_dashboard.php">
+            <a class="navbar-brand d-flex align-items-center" href="event_manager_dashboard.php">
                 <img src="imageslogo.png" alt="Logo" class="me-2" style="height: 50px; width: 48px; object-fit: contain;">
                 <div class="d-flex flex-column lh-sm">
                     <strong class="text-white brand-heading" style="font-size: 1.25rem;">PIT SPORTS TALLYING</strong>
@@ -448,12 +672,12 @@ $status_options = [
             <div class="dropdown user-dropdown ms-auto me-2 me-lg-0">
                 <a href="#" class="dropdown-toggle" id="userDropdown" data-bs-toggle="dropdown" aria-expanded="false">
                     <i class="fas fa-user-circle navbar-profile-icon"></i>
-                    <span class="user-name d-none d-lg-inline"><?= htmlspecialchars($username); ?></span>
+                    <span class="user-name d-none d-lg-inline"><?= htmlspecialchars($display_name); ?></span>
                 </a>
                 <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="userDropdown">
-                    <li><a class="dropdown-item" href="admin_profile.php"><i class="fas fa-user-circle"></i> Profile</a></li>
+                    <li><a class="dropdown-item" href="admin_profile.php"><i class="fas fa-user-circle me-2"></i> Profile</a></li>
                     <li><hr class="dropdown-divider"></li>
-                    <li><a class="dropdown-item text-danger" href="login.php"><i class="fas fa-sign-out-alt"></i> Logout</a></li>
+                    <li><a class="dropdown-item text-danger" href="login.php"><i class="fas fa-sign-out-alt me-2"></i> Logout</a></li>
                 </ul>
             </div>
         </div>
@@ -487,64 +711,75 @@ $status_options = [
     <div class="main-content">
         <div class="container-fluid">
             
-            <nav aria-label="breadcrumb" class="mb-2">
-                <ol class="breadcrumb">
-                    <li class="breadcrumb-item"><a href="event_manager_dashboard.php">Dashboard</a></li>
-                    <li class="breadcrumb-item active" aria-current="page">My Assigned Events</li>
-                </ol>
-            </nav>
-            <h1 class="section-title mb-4">My Assigned Events</h1>
+            <!-- Page Header -->
+            <div class="page-header">
+                <nav aria-label="breadcrumb" class="mb-3">
+                    <ol class="breadcrumb">
+                        <li class="breadcrumb-item"><a href="event_manager_dashboard.php"><i class="fas fa-home me-1"></i>Dashboard</a></li>
+                        <li class="breadcrumb-item active" aria-current="page">My Assigned Events</li>
+                    </ol>
+                </nav>
+                <h1><i class="fas fa-trophy me-3"></i>My Assigned Events</h1>
+            </div>
             
-            <div class="alert alert-info d-flex align-items-center" role="alert">
-    <i class="fas fa-info-circle fa-2x me-3" style="opacity: 0.8;"></i>
-    <div>
-        <h5 class="alert-heading mb-1" style="font-weight: 600;">How to Manage Your Events</h5>
-        The 'Actions' column is smart. It shows different buttons based on the event's <strong>Type</strong> (Medal vs. Match) and its current <strong>Status</strong>.
-        <ul class="mb-0 mt-2" style="padding-left: 1.2rem;">
-            <li>
-                <strong>`Medal` Events (e.g., Javelin):</strong>
-                Follow a 3-step process on this page using the main button:
-                <strong>Start</strong> ➔ <strong>Complete</strong> ➔ <strong>Submit</strong>.
-            </li>
-            <li>
-                <strong>`Match` Events (e.g., Badminton):</strong>
-                Use the <strong>Manage</strong> button. This takes you to a separate page to set up schedules, update scores, and finalize winners.
-            </li>
-            <li>
-                The <strong>Edit</strong> button (pencil icon) lets you change details like the event name or venue, but not on events that are in-progress.
-            </li>
-            <li>
-                The <strong>Delete</strong> button (trash icon) is only available for <strong>Upcoming</strong> or <strong>Cancelled</strong> events.
-            </li>
-        </ul>
-    </div>
-</div>
+            <!-- Collapsible Help Section -->
+            <div class="help-section">
+                <div class="help-header" onclick="toggleHelp()">
+                    <h5>
+                        <i class="fas fa-question-circle"></i>
+                        How to Manage Your Events?
+                    </h5>
+                    <i class="fas fa-chevron-up help-toggle collapsed" id="helpToggle"></i>
+                </div>
+                
+                <div class="help-content" id="helpContent" style="display: none;">
+                    <p class="mb-3">The <strong>Actions</strong> column is smart. It adapts based on the event type (Medal vs. Match) and its current status.</p>
+                    <ul class="list-unstyled">
+                        <li class="mb-2">
+                            <i class="fas fa-medal text-warning me-2"></i><strong>Medal Events (e.g., Athletics):</strong>
+                            Follow the 3-step button flow: <span class="badge bg-success">Start</span> ➔ <span class="badge bg-warning text-dark">Complete</span> ➔ <span class="badge bg-primary">Submit</span>.
+                        </li>
+                        <li class="mb-2">
+                            <i class="fas fa-basketball-ball text-info me-2"></i><strong>Match Events (e.g., Basketball):</strong>
+                            Click the <span class="badge bg-primary">Manage</span> button to open the Match Scheduler, where you can update brackets and scores.
+                        </li>
+                        <li class="mb-2">
+                            <i class="fas fa-layer-group text-secondary me-2"></i><strong>Single-Category Events:</strong> 
+                            For events with no sub-categories, the 'Category' column is hidden. 
+                            <br><small class="text-danger ms-4"><i class="fas fa-exclamation-circle me-1"></i> <strong>Note:</strong> You cannot delete this event type here. Contact the Administrator if the entire event needs removal.</small>
+                        </li>
+                        <li class="mb-2">
+                            <i class="fas fa-edit text-secondary me-2"></i><strong>Edit (Pencil):</strong> 
+                            Update details like Venue or Date. Disabled once an event is <em>Ongoing</em> or <em>Completed</em>.
+                        </li>
+                        <li>
+                            <i class="fas fa-trash-alt text-danger me-2"></i><strong>Delete (Trash):</strong> 
+                            Only available for <strong>Upcoming</strong> sub-categories. Disabled for single-category events to prevent accidental data loss.
+                        </li>
+                    </ul>
+                </div>
+            </div>
             
-            <!-- This container holds session-based alerts (from POST redirects) -->
+            <!-- Alert Container -->
             <div id="alert-container">
             <?php if (!empty($alert_message)): ?>
                 <div class="alert alert-<?php echo $alert_type; ?> alert-dismissible fade show" role="alert">
+                    <i class="fas fa-<?php echo $alert_type === 'success' ? 'check-circle' : 'exclamation-triangle'; ?> me-2"></i>
                     <?php echo htmlspecialchars($alert_message); ?>
                     <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
                 </div>
             <?php endif; ?>
             </div>
 
-            <!-- 
-              This is the new wrapper div that our JavaScript will target.
-              On initial page load, we call render_event_list() to show the data.
-              On AJAX polls, the JavaScript will replace the contents of this div.
-            -->
+            <!-- Events Container -->
             <div id="events-container">
                 <?php
-                    // This renders the initial list on page load
-                    // The function is defined in 'my_events_view.php'
                     render_event_list($managed_data, $college_map);
                 ?>
             </div>
 
-        </div> <!-- End of .container-fluid -->
-    </div> <!-- End of .main-content -->
+        </div>
+    </div>
     
     <footer class="bg-dark text-white py-4">
         <div class="text-center">
@@ -562,7 +797,7 @@ $status_options = [
                     <input type="hidden" name="category_id" id="modal_category_id">
                     
                     <div class="modal-header">
-                        <h5 class="modal-title" id="categoryModalLabel">Add Category</h5>
+                        <h5 class="modal-title" id="categoryModalLabel"><i class="fas fa-plus-circle me-2"></i>Add Category</h5>
                         <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
                     </div>
                     <div class="modal-body">
@@ -610,7 +845,7 @@ $status_options = [
                     </div>
                     <div class="modal-footer">
                         <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
-                        <button type="submit" class="btn btn-primary">Save Category</button>
+                        <button type="submit" class="btn btn-primary"><i class="fas fa-save me-2"></i>Save Category</button>
                     </div>
                 </form>
             </div>
@@ -626,16 +861,16 @@ $status_options = [
                     <input type="hidden" name="category_id" id="delete_category_id">
                     
                     <div class="modal-header bg-danger text-white">
-                        <h5 class="modal-title" id="deleteModalLabel">Confirm Deletion</h5>
+                        <h5 class="modal-title" id="deleteModalLabel"><i class="fas fa-trash-alt me-2"></i>Confirm Deletion</h5>
                         <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
                     </div>
                     <div class="modal-body">
                         <p>Are you sure you want to delete: <strong id="delete_category_name" class="text-dark"></strong>?</p>
-                        <p class="text-danger mb-0">This will permanently delete the category. This action cannot be undone.</p>
+                        <p class="text-danger mb-0"><i class="fas fa-exclamation-triangle me-2"></i>This will permanently delete the category. This action cannot be undone.</p>
                     </div>
                     <div class="modal-footer">
                         <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-                        <button type="submit" class="btn btn-danger">Yes, Delete Category</button>
+                        <button type="submit" class="btn btn-danger"><i class="fas fa-trash-alt me-2"></i>Yes, Delete Category</button>
                     </div>
                 </form>
             </div> 
@@ -644,10 +879,10 @@ $status_options = [
     
     <!-- Start Event Modal -->
     <div class="modal fade" id="startModal" tabindex="-1" aria-labelledby="startModalLabel" aria-hidden="true">
-      <div class="modal-dialog">
+      <div class="modal-dialog modal-dialog-centered">
         <div class="modal-content">
           <div class="modal-header bg-success text-white">
-            <h5 class="modal-title" id="startModalLabel">Confirm Event Start</h5>
+            <h5 class="modal-title" id="startModalLabel"><i class="fas fa-play-circle me-2"></i>Confirm Event Start</h5>
             <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
           </div>
           <form action="update_category_status.php" method="POST">
@@ -659,7 +894,7 @@ $status_options = [
                 <input type="hidden" id="startCategoryId" name="category_id">
                 <input type="hidden" name="new_status" value="Ongoing">
                 <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-                <button type="submit" class="btn btn-success">Yes, Start Event</button>
+                <button type="submit" class="btn btn-success"><i class="fas fa-play me-2"></i>Yes, Start Event</button>
               </div>
           </form>
         </div>
@@ -668,10 +903,10 @@ $status_options = [
     
     <!-- Complete Event Modal -->
     <div class="modal fade" id="completeModal" tabindex="-1" aria-labelledby="completeModalLabel" aria-hidden="true">
-      <div class="modal-dialog">
+      <div class="modal-dialog modal-dialog-centered">
         <div class="modal-content">
           <div class="modal-header bg-success text-white">
-            <h5 class="modal-title" id="completeModalLabel">Confirm Event Completion</h5>
+            <h5 class="modal-title" id="completeModalLabel"><i class="fas fa-check-circle me-2"></i>Confirm Event Completion</h5>
             <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
           </div>
           <form action="update_category_status.php" method="POST">
@@ -683,18 +918,17 @@ $status_options = [
                 <input type="hidden" id="completeCategoryId" name="category_id">
                 <input type="hidden" name="new_status" value="Completed (Pending Results)">
                 <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-                <button type="submit" class="btn btn-success">Yes, Mark as Completed</button>
+                <button type="submit" class="btn btn-success"><i class="fas fa-check me-2"></i>Yes, Mark as Completed</button>
               </div>
           </form>
         </div>
       </div>
     </div>
 
-    <!-- --- MODIFICATION: Added Rejection Note Modal BACK --- -->
+    <!-- Rejection Note Modal -->
     <div class="modal fade" id="noteModal" tabindex="-1" aria-labelledby="noteModalLabel" aria-hidden="true">
         <div class="modal-dialog modal-dialog-centered">
             <div class="modal-content">
-                <!-- MODIFICATION: Changed header to bg-danger -->
                 <div class="modal-header bg-danger text-white">
                     <h5 class="modal-title" id="noteModalLabel"><i class="fas fa-exclamation-triangle me-2"></i>Rejection Note</h5>
                     <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
@@ -702,7 +936,6 @@ $status_options = [
                 <div class="modal-body">
                     <p class="mb-2">The administrator left the following note for: <strong id="note_category_name"></strong></p>
                     <div id="note_text" class="modal-body-note">
-                        <!-- Note content will be injected here by JavaScript -->
                     </div>
                 </div>
                 <div class="modal-footer">
@@ -714,6 +947,20 @@ $status_options = [
     
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
     <script>
+        // Help Section Toggle
+        function toggleHelp() {
+            const helpContent = document.getElementById('helpContent');
+            const helpToggle = document.getElementById('helpToggle');
+            
+            if (helpContent.style.display === 'none') {
+                helpContent.style.display = 'block';
+                helpToggle.classList.remove('collapsed');
+            } else {
+                helpContent.style.display = 'none';
+                helpToggle.classList.add('collapsed');
+            }
+        }
+        
         // Store old tooltip/popover instances to clean them up
         let currentTooltips = [];
         let currentPopovers = [];
@@ -748,7 +995,7 @@ $status_options = [
             var popoverTriggerList = [].slice.call(container.querySelectorAll('[data-bs-toggle="popover"]'))
             currentPopovers = popoverTriggerList.map(function (popoverTriggerEl) {
                 return new bootstrap.Popover(popoverTriggerEl, {
-                    trigger: 'focus' // This makes it dismissible when you click away
+                    trigger: 'focus'
                 });
             });
         }
@@ -757,7 +1004,6 @@ $status_options = [
          * Fetches the latest event data from the server and updates the DOM.
          */
         async function fetchEventUpdates() {
-            // If an update is already in progress, skip this one.
             if (isFetchingUpdates) {
                 console.log('Update fetch already in progress, skipping.');
                 return;
@@ -766,24 +1012,19 @@ $status_options = [
             isFetchingUpdates = true;
 
             try {
-                // We add a timestamp (cache-buster) to prevent browser caching
-                // And partial=1 to tell the server we only want the event list
                 const response = await fetch(`my_events.php?partial=1&t=${Date.now()}`);
                 
-                // Find the containers
                 const container = document.getElementById('events-container');
                 const alertContainer = document.getElementById('alert-container');
 
                 if (!response.ok) {
                     console.error('Failed to fetch updates, server responded with:', response.status);
                     
-                    if(response.status === 401) { // Unauthorized
+                    if(response.status === 401) {
                         const html = await response.text();
                         if (alertContainer) {
-                            // Show the "session expired" message
                             alertContainer.innerHTML = html;
                         }
-                        // Stop polling if session is dead
                         stopPolling(); 
                     }
                     return;
@@ -792,15 +1033,12 @@ $status_options = [
                 const html = await response.text();
                 
                 if (container) {
-                    // Replace the content of the events container
                     container.innerHTML = html;
-                    // Re-initialize all tooltips and popovers inside the new content
                     initDynamicComponents(container);
                 }
             } catch (error) {
                 console.error('Error fetching real-time updates:', error);
             } finally {
-                // Always set the flag to false when done
                 isFetchingUpdates = false;
             }
         }
@@ -809,9 +1047,7 @@ $status_options = [
          * Starts the polling interval
          */
         function startPolling() {
-            // Clear any existing interval just in case
             stopPolling(); 
-            // Start a new one (e.g., every 10 seconds)
             eventPollingInterval = setInterval(fetchEventUpdates, 10000);
             console.log('Event polling started (10s interval).');
         }
@@ -832,14 +1068,10 @@ $status_options = [
          */
         function handleVisibilityChange() {
             if (document.visibilityState === 'hidden') {
-                // User switched tabs or minimized
                 stopPolling();
             } else if (document.visibilityState === 'visible') {
-                // User came back
                 console.log('Page is visible. Fetching immediate update...');
-                // 1. Fetch updates immediately
                 fetchEventUpdates();
-                // 2. Restart the regular polling
                 startPolling();
             }
         }
@@ -850,17 +1082,14 @@ $status_options = [
             
             const eventsContainer = document.getElementById('events-container');
             if (eventsContainer) {
-                // Initial call to set up tooltips/popovers on page load
                 initDynamicComponents(eventsContainer);
             }
 
-            // Start polling for the first time
             startPolling();
             
-            // Add the Page Visibility API listener
             document.addEventListener('visibilitychange', handleVisibilityChange, false);
             
-            // --- Modal logic for Add/Edit Category ---
+            // --- Modal logic for Add/Edit Category (UPDATED) ---
             const categoryModal = document.getElementById('categoryModal');
             
             categoryModal.addEventListener('show.bs.modal', function (event) {
@@ -872,6 +1101,8 @@ $status_options = [
                 
                 const action = button.getAttribute('data-action');
                 
+                // Form Elements
+                const modalForm = categoryModal.querySelector('form');
                 const modalTitle = categoryModal.querySelector('.modal-title');
                 const eventIdInput = categoryModal.querySelector('#modal_event_id');
                 const eventNameInput = categoryModal.querySelector('#modal_event_name');
@@ -884,16 +1115,50 @@ $status_options = [
                 const eventTimeInput = categoryModal.querySelector('#modal_event_time');
                 const venueInput = categoryModal.querySelector('#modal_venue');
                 
+                // Get Data
                 const eventId = button.getAttribute('data-event-id');
                 const eventName = button.getAttribute('data-event-name');
                 
                 eventIdInput.value = eventId;
                 eventNameInput.value = eventName;
+                
+                // Clean up previous hidden inputs if any exist
+                const oldHidden = document.getElementById('hidden_main_event_name');
+                if(oldHidden) oldHidden.remove();
 
                 if (action === 'edit') {
-                    modalTitle.textContent = 'Edit Category';
+                    modalTitle.innerHTML = '<i class="fas fa-edit me-2"></i>Edit Category';
                     categoryIdInput.value = button.getAttribute('data-category-id');
-                    categoryNameInput.value = button.getAttribute('data-category-name');
+                    
+                    let rawName = button.getAttribute('data-category-name');
+                    
+                    // --- LOGIC TO HANDLE "NO CATEGORY" ---
+                    // Check if this is a "Main Event" (Single Category)
+                    if (rawName === 'Main Event' || rawName === 'Main Competition') {
+                        // 1. VISUAL: Show "No Category" to the user
+                        categoryNameInput.value = "(No Category Event)";
+                        
+                        // 2. DISABLE: Prevent editing
+                        categoryNameInput.disabled = true;
+                        categoryNameInput.classList.add('bg-light', 'text-muted'); // Style to look read-only
+                        
+                        // 3. INTERNAL: Create a hidden input so the real name "Main Event" is still saved
+                        // (Otherwise PHP receives nothing and throws an error)
+                        const hiddenInput = document.createElement('input');
+                        hiddenInput.type = 'hidden';
+                        hiddenInput.name = 'category_name';
+                        hiddenInput.value = rawName; // Keep 'Main Event'
+                        hiddenInput.id = 'hidden_main_event_name';
+                        modalForm.appendChild(hiddenInput);
+                        
+                    } else {
+                        // Normal Category Logic
+                        categoryNameInput.value = rawName;
+                        categoryNameInput.disabled = false;
+                        categoryNameInput.classList.remove('bg-light', 'text-muted');
+                    }
+                    // -------------------------------------
+
                     let status = button.getAttribute('data-status');
                     categoryStatusSelect.value = status; 
                     categoryTypeSelect.value = button.getAttribute('data-category-type');
@@ -901,10 +1166,15 @@ $status_options = [
                     eventDateInput.value = button.getAttribute('data-event-date');
                     eventTimeInput.value = button.getAttribute('data-event-time');
                     venueInput.value = button.getAttribute('data-venue');
+                    
                 } else {
-                    modalTitle.textContent = 'Add Category to ' + eventName;
+                    // Add Mode
+                    modalTitle.innerHTML = '<i class="fas fa-plus-circle me-2"></i>Add Category to ' + eventName;
                     categoryIdInput.value = '';
                     categoryNameInput.value = '';
+                    categoryNameInput.disabled = false; // Reset disabled state
+                    categoryNameInput.classList.remove('bg-light', 'text-muted');
+                    
                     categoryStatusSelect.value = 'Upcoming';
                     categoryTypeSelect.value = ''; 
                     categoryTypeSelect.disabled = false;
@@ -958,7 +1228,7 @@ $status_options = [
                 });
             }
 
-            // --- MODIFICATION: Added listener for "Note" Modal BACK ---
+            // --- Modal logic for "Note" Modal ---
             var noteModal = document.getElementById('noteModal');
             if (noteModal) {
                 noteModal.addEventListener('show.bs.modal', function (event) {
@@ -970,21 +1240,8 @@ $status_options = [
                     var modalNoteText = noteModal.querySelector('#note_text');
                     
                     modalCategoryName.textContent = categoryName;
-                    modalNoteText.textContent = note; // Using .textContent preserves newlines
+                    modalNoteText.textContent = note;
                 });
-            }
-
-            // Helper function to show a session-based alert
-            function showAlert(message, type, container = '#alert-container') {
-                const alertContainer = document.querySelector(container);
-                if (!alertContainer) return;
-                const alert = `
-                    <div class="alert alert-${type} alert-dismissible fade show" role="alert">
-                        ${message}
-                        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
-                    </div>
-                `;
-                alertContainer.insertAdjacentHTML('afterbegin', alert);
             }
             
             // --- Sidebar Height Adjustment Logic ---
@@ -993,9 +1250,7 @@ $status_options = [
                 clearTimeout(resizeTimer);
                 resizeTimer = setTimeout(function() {
                     if (window.innerWidth > 992) {
-                        // This logic is mostly for mobile toggling, can be expanded if needed
                     }
-                    // Always adjust height on resize
                     adjustSidebarHeight();
                 }, 250);
             });
@@ -1006,9 +1261,8 @@ $status_options = [
 
             if (sidebar && footer && navbar) {
                 function adjustSidebarHeight() {
-                    // This logic should only apply to desktop view
                     if (window.innerWidth <= 992) {
-                        sidebar.style.height = ''; // Reset to CSS default for mobile
+                        sidebar.style.height = '';
                         return;
                     }
 
@@ -1016,24 +1270,16 @@ $status_options = [
                     const footerTop = footer.getBoundingClientRect().top;
                     const viewportHeight = window.innerHeight;
                     
-                    // 1. Calculate the max possible height (navbar top to viewport bottom)
                     const maxSidebarHeight = viewportHeight - navbarHeight;
-
-                    // 2. Calculate the available height (navbar top to footer top)
                     const availableHeight = footerTop - navbarHeight;
-
-                    // 3. Choose the smaller of the two heights, but never less than 0
                     const newHeight = Math.max(0, Math.min(maxSidebarHeight, availableHeight));
                     
-                    // 4. Apply the new height as an inline style
                     sidebar.style.height = `${newHeight}px`;
                 }
 
-                // Add listeners for scroll and resize events
                 window.addEventListener('scroll', adjustSidebarHeight, { passive: true });
                 window.addEventListener('resize', adjustSidebarHeight);
                 
-                // Initial call to set the correct height on page load
                 setTimeout(adjustSidebarHeight, 100);
             }
         });

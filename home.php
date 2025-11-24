@@ -13,6 +13,7 @@ $medal_tally = [];
 $sql = "SELECT 
             C.college_name, C.logo_url,
             C.college_code,
+            C.unit_color, 
             
             SUM(CASE WHEN Cat.gold_winner_college_id = C.college_id THEN Cat.gold_count ELSE 0 END) AS gold,
             SUM(CASE WHEN Cat.silver_winner_college_id = C.college_id THEN Cat.silver_count ELSE 0 END) AS silver,
@@ -28,7 +29,7 @@ $sql = "SELECT
             C.college_id = Cat.silver_winner_college_id OR 
             C.college_id = Cat.bronze_winner_college_id
         ) AND Cat.status = 'Results Approved'
-        GROUP BY C.college_id, C.college_name, C.logo_url, C.college_code
+        GROUP BY C.college_id, C.college_name, C.logo_url, C.college_code, C.unit_color
         ORDER BY gold DESC, silver DESC, bronze DESC, C.college_name ASC";
 
 $stmt = $conn->prepare($sql);
@@ -55,17 +56,6 @@ $formattedTime = $lastUpdated ? date("m/d/Y \a\\t h:i A", strtotime($lastUpdated
 
 
 // --- HELPER FUNCTIONS ---
-
-function getCollegeStyle(?string $college_code): array {
-    switch (strtoupper($college_code ?? '')) {
-        case 'COTE': return ['maroon-border', 'maroon-bg'];
-        case 'CAS': return ['yellow-border', 'yellow-bg'];
-        case 'COMED': return ['green-border', 'green-bg'];
-        case 'CTE': return ['skyblue-border', 'skyblue-bg'];
-        case 'PIT-TC': return ['blue-border', 'blue-bg'];
-        default: return ['default-border', 'default-bg'];
-    }
-}
 
 function getRankMeta(int $rank): array {
     switch ($rank) {
@@ -256,7 +246,7 @@ $conn->close();
             box-shadow: var(--shadow-md);
         }
         
-        /* --- ENTRY STYLES --- */
+        /* --- ENTRY STYLES (UPDATED FOR DYNAMIC COLORS) --- */
         .entry {
             display: flex;
             justify-content: space-between;
@@ -269,43 +259,48 @@ $conn->close();
             transition: var(--transition);
             position: relative;
             overflow: hidden;
+            
+            /* 1. Set default CSS Variable */
+            --team-color: #cccccc; 
+            
+            /* 2. Use Variable for Border */
+            border-left: 6px solid var(--team-color);
         }
-        .entry::before { content: ''; position: absolute; left: 0; top: 0; bottom: 0; width: 6px; transition: var(--transition); }
-        .entry:hover { transform: translateX(8px); box-shadow: var(--shadow-lg); }
-
-        /* --- COLLEGE COLOR STYLES --- */
-        .maroon-border::before { background: linear-gradient(180deg, #800000, #a00000); }
-        .maroon-bg { background: linear-gradient(135deg, #800000, #a00000); }
         
-        .yellow-border::before { background: linear-gradient(180deg, #FFD700, #FFA500); }
-        .yellow-bg { background: linear-gradient(135deg, #FFD700, #FFA500); }
-        
-        .green-border::before { background: linear-gradient(180deg, #28a745, #20c997); }
-        .green-bg { background: linear-gradient(135deg, #28a745, #20c997); }
-        
-        .skyblue-border::before { background: linear-gradient(180deg, #87CEEB, #4682B4); }
-        .skyblue-bg { background: linear-gradient(135deg, #87CEEB, #4682B4); }
-        
-        .blue-border::before { background: linear-gradient(180deg, #0d6efd, #0a58ca); }
-        .blue-bg { background: linear-gradient(135deg, #0d6efd, #0a58ca); }
-        
-        .default-border::before { background: linear-gradient(180deg, #6c757d, #495057); }
-        .default-bg { background: linear-gradient(135deg, #6c757d, #495057); }
-        
-        /* --- HOVER STYLES --- */
-        .entry.maroon-border:hover { background-color: #fff5f5; }
-        .entry.yellow-border:hover { background-color: #fffcf2; }
-        .entry.green-border:hover { background-color: #f4fcf4; }
-        .entry.skyblue-border:hover { background-color: #f4fcff; }
-        .entry.blue-border:hover { background-color: #f4f7ff; }
-        .entry.default-border:hover { background-color: #f9f9f9; }
+        .entry:hover { 
+            transform: translateX(8px); 
+            box-shadow: var(--shadow-lg);
+            
+            /* 3. DYNAMIC HOVER BACKGROUND (Mix team color with 90% white) */
+            background-color: color-mix(in srgb, var(--team-color), white 90%);
+        }
 
         .left { display: flex; align-items: center; gap: 1.5rem; }
-        .rank-icon { width: 70px; height: 70px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 1.2rem; color: white; font-weight: 800; box-shadow: var(--shadow-md); position: relative; }
+        
+        /* Rank Icon now uses Variable */
+        .rank-icon { 
+            width: 70px; 
+            height: 70px; 
+            border-radius: 50%; 
+            display: flex; 
+            align-items: center; 
+            justify-content: center; 
+            font-size: 1.2rem; 
+            color: white; 
+            font-weight: 800; 
+            box-shadow: var(--shadow-md); 
+            position: relative; 
+            
+            /* 4. Use Variable for Background */
+            background: var(--team-color);
+        }
         .rank-icon::after { content: ''; position: absolute; inset: -4px; border-radius: 50%; background: inherit; opacity: 0.2; z-index: -1; }
         
         .school-logo { width: 80px; height: 80px; object-fit: cover; border-radius: 50%; border: 4px solid #f0f0f0; box-shadow: var(--shadow-sm); transition: var(--transition); }
-        .entry:hover .school-logo { transform: scale(1.1); border-color: var(--primary-green); }
+        .entry:hover .school-logo { 
+    transform: scale(1.1); 
+    border-color: var(--team-color); /* <--- Now it uses the Unit Color */
+}
         .college-code { font-size: 1.3rem; font-weight: 800; color: var(--text-dark); font-family: 'Poppins', sans-serif; }
         .badge { padding: 0.4rem 0.9rem; border-radius: 50px; font-weight: 600; font-size: 0.75rem; box-shadow: var(--shadow-sm); }
         .right { display: flex; align-items: center; gap: 2.5rem; }
@@ -490,17 +485,19 @@ $conn->close();
                     $rank = 1; 
                     ?>
                     <?php foreach ($medal_tally as $tally_row): ?>
-                        <?php 
-                        $college_code = $tally_row['college_code'] ?? 'N/A';
-                        [ $border, $bg ] = getCollegeStyle($college_code);
-                        [ $rank_icon_html, $label ] = getRankMeta($rank);
-                        ?>
-                        
-                        <div class="entry <?= $border ?>">
-                            <div class="left">
-                                <div class="rank-icon <?= $bg ?>">
-                                    <?= $rank_icon_html ?>
-                                </div>
+                    <?php 
+                    $college_code = $tally_row['college_code'] ?? 'N/A';
+                    // Get the color from DB, default to gray if missing
+                    $unit_color = !empty($tally_row['unit_color']) ? $tally_row['unit_color'] : '#cccccc';
+                    
+                    [ $rank_icon_html, $label ] = getRankMeta($rank);
+                    ?>
+                    
+                    <div class="entry" style="--team-color: <?= htmlspecialchars($unit_color) ?>;">
+                        <div class="left">
+                            <div class="rank-icon">
+                                <?= $rank_icon_html ?>
+                            </div>
                                 
                                 <img src="<?= htmlspecialchars($tally_row['logo_url'] ?? $default_logo) ?>" 
                                     alt="<?= htmlspecialchars($tally_row['college_name']) ?>" 
@@ -624,22 +621,7 @@ $conn->close();
     
     <script>
     const defaultLogo = <?= json_encode($default_logo); ?>; 
-    // FIX: We now store the initial data to compare against later
     let previousMedalTally = <?= json_encode($medal_tally); ?>;
-
-    // --- HELPER FUNCTIONS ---
-
-    function getCollegeStyle(collegeCode) {
-        if (!collegeCode) collegeCode = 'DEFAULT';
-        switch (collegeCode.toUpperCase()) {
-            case 'COTE': return ['maroon-border', 'maroon-bg'];
-            case 'CAS': return ['yellow-border', 'yellow-bg'];
-            case 'COMED': return ['green-border', 'green-bg'];
-            case 'CTE': return ['skyblue-border', 'skyblue-bg'];
-            case 'PIT-TC': return ['blue-border', 'blue-bg'];
-            default: return ['default-border', 'default-bg'];
-        }
-    }
 
     function getRankLabel(rank) {
         switch (rank) {
@@ -707,14 +689,17 @@ $conn->close();
                 const collegeCode = tally.college_code || 'DEFAULT';
                 const logoUrl = tally.logo_url || defaultLogo; 
                 
-                const [borderClass, bgClass] = getCollegeStyle(collegeCode);
+                // NEW CODE: Get color from JSON data
+                const unitColor = tally.unit_color || '#cccccc';
+                
                 const label = getRankLabel(rank);
                 const rankIconHtml = getRankIcon(rank);
 
+                // [NEW] Fixed JS Syntax and applied CSS Variable
                 overallHtml += `
-                    <div class="entry ${borderClass}">
+                    <div class="entry" style="--team-color: ${unitColor};">
                         <div class="left">
-                            <div class="rank-icon ${bgClass}">${rankIconHtml}</div>
+                            <div class="rank-icon">${rankIconHtml}</div>
                             <img src="${logoUrl}" alt="${tally.college_name}" class="school-logo" onerror="this.onerror=null; this.src='${defaultLogo}'">
                             <div>
                                 <div>
@@ -752,7 +737,7 @@ $conn->close();
                             </div>
                         </div>
                     </div>
-                `;
+                `; 
 
                 printHtml += `
                     <tr>
@@ -780,17 +765,15 @@ $conn->close();
             })
             .then(data => {
                 if (data.success && data.medal_tally) {
-                    // FIX: Compare actual data instead of just timestamp
                     const newTallyStr = JSON.stringify(data.medal_tally);
                     const oldTallyStr = JSON.stringify(previousMedalTally);
 
                     if (newTallyStr !== oldTallyStr) {
                         console.log("Medal data changed! Playing confetti.");
                         playConfetti(); 
-                        previousMedalTally = data.medal_tally; // Update our copy of data
+                        previousMedalTally = data.medal_tally; 
                     }
 
-                    // Optional: Keep timestamp logic for the "Updated on" text
                     if (data.last_updated && data.last_updated !== currentLastUpdated) {
                         currentLastUpdated = data.last_updated;
                     }

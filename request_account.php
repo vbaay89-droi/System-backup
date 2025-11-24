@@ -1,6 +1,6 @@
 <?php
 session_start();
-require_once 'config.php'; // Your DB connection
+require_once 'config.php'; 
 
 // Load PHPMailer
 require __DIR__ . '/PHPMailer-master/src/Exception.php';
@@ -14,33 +14,30 @@ use PHPMailer\PHPMailer\Exception;
 $current_page = basename($_SERVER['PHP_SELF']);
 
 $message = '';
-$message_type = 'danger'; // Default to danger
+$message_type = 'danger'; 
 
 // Handle form submission
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $full_name = trim($_POST['full_name'] ?? '');
     $email = trim($_POST['email'] ?? '');
-    $username = $email; // Set username to be the email
-    $requested_role = trim($_POST['requested_role'] ?? '');
+    $username = $email; 
+    // FIXED: Role is hardcoded to Event Manager
+    $requested_role = 'Event Manager';
     $password = $_POST['password'] ?? '';
     $confirm_password = $_POST['confirm_password'] ?? '';
     
     // --- Validation ---
-    if (empty($full_name) || empty($email) || empty($requested_role) || empty($password) || empty($confirm_password)) {
+    if (empty($full_name) || empty($email) || empty($password) || empty($confirm_password)) {
         $message = "All fields are required.";
     } elseif (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
         $message = "Invalid email format.";
-    } elseif (!in_array($requested_role, ['Event Manager', 'Sports Director'])) {
-        $message = "Invalid role selected.";
     } elseif (strlen($password) < 8) {
         $message = "Password must be at least 8 characters long.";
     } elseif ($password !== $confirm_password) {
         $message = "Passwords do not match.";
     } else {
-        
         try {
             // --- Check for existing user ---
-            // We only need to check the main 'users' table now.
             $stmt_check_users = $conn->prepare("SELECT id FROM users WHERE email = ?");
             $stmt_check_users->bind_param("s", $email);
             $stmt_check_users->execute();
@@ -51,12 +48,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             } else {
                 
                 // --- Create the Pending Account ---
-                
-                // 1. HASH THE PASSWORD (CRITICAL FOR SECURITY)
                 $hashed_password = password_hash($password, PASSWORD_DEFAULT);
                 
-                // 2. Insert into 'users' table as PENDING (is_approved = 0)
-                // (Assuming your column for role is named 'role')
                 $stmt_insert = $conn->prepare(
                     "INSERT INTO users (full_name, email, username, role, password, is_approved) 
                      VALUES (?, ?, ?, ?, ?, 0)"
@@ -68,14 +61,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 }
                 $stmt_insert->close();
                 
-                // 3. Send the "Request Received" confirmation email
+                // Send Confirmation Email
                 $mail = new PHPMailer(true);
                 try {
                     $mail->isSMTP();
                     $mail->Host       = 'smtp.gmail.com';
                     $mail->SMTPAuth   = true;
                     $mail->Username   = 'vbaay89@gmail.com';
-                    $mail->Password   = 'vthz porq dnhj frdc'; // Your APP PASSWORD
+                    $mail->Password   = 'vthz porq dnhj frdc'; 
                     $mail->SMTPSecure = PHPMailer::ENCRYPTION_STARTTLS;
                     $mail->Port       = 587;
 
@@ -93,21 +86,17 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
                     $mail->send();
                     
-                    $message = "Success! Your request has been submitted for review. Please check your email for a confirmation message.";
-                    $message_type = 'success';
+                    // Redirect to login with success status
+                    header("Location: login.php?status=success");
+                    exit();
 
                 } catch (Exception $e) {
-                    // Email failed, but the request is still in the system.
-                    // This is OK. The admin can still approve it.
-                    // We log the error.
-                    error_log("Mailer Error (Request Confirmation): {$mail->ErrorInfo}");
-                    
-                    // Show a slightly different success message
-                    $message = "Success! Your request has been submitted for review. (We couldn't send a confirmation email, but your request is in the system.)";
-                    $message_type = 'success';
+                    error_log("Mailer Error: {$mail->ErrorInfo}");
+                    // Still consider success if DB insert worked, just warn about email
+                    header("Location: login.php?status=success"); 
+                    exit();
                 }
             }
-            
             $stmt_check_users->close();
 
         } catch (Exception $e) {
@@ -126,183 +115,190 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
   <title>Request Account - SmartScore PIT</title>
   <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
   <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" rel="stylesheet">
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=Poppins:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=Poppins:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+
   <style>
-    /* YOUR CSS IS UNCHANGED */
+    /* --- EXACT STYLES FROM LOGIN.PHP --- */
     :root {
       --primary-green: #4CAF50;
       --primary-dark: #2E7D32;
       --accent-gold: #FFD700;
       --text-dark: #1A1A1A;
-      --shadow-md: 0 4px 16px rgba(0,0,0,0.08);
-      --shadow-lg: 0 8px 32px rgba(0,0,0,0.12);
       --transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
     }
+
     * { margin: 0; padding: 0; box-sizing: border-box; }
+
     body {
-      background: linear-gradient(135deg, #667eea 0%, #764ba2 25%, #f093fb 50%, #4facfe 75%, #00f2fe 100%);
-      background-size: 400% 400%;
-      animation: gradientShift 15s ease infinite;
-      min-height: 100vh;
+      margin: 0; padding: 0; min-height: 100vh;
       font-family: 'Inter', sans-serif;
-      display: flex;
-      flex-direction: column;
-      position: relative;
+      display: flex; flex-direction: column;
+      position: relative; overflow-x: hidden;
     }
-    @keyframes gradientShift {
-      0% { background-position: 0% 50%; }
-      50% { background-position: 100% 50%; }
-      100% { background-position: 0% 50%; }
+
+    /* Background */
+    body::before {
+      content: ''; position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+      background: url('siglakas_cover.png'); background-size: cover; z-index: -2;
     }
+
+    body::after {
+      content: ''; position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+      background: linear-gradient(135deg, rgba(0,0,0,0.7) 0%, rgba(0,0,0,0.5) 50%, rgba(0,0,0,0.7) 100%);
+      z-index: -1;
+    }
+
+    /* Particles */
+    .particles { position: fixed; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; z-index: 1; }
+    .particle {
+      position: absolute; background: rgba(255, 255, 255, 0.3);
+      border-radius: 50%; animation: float 20s infinite;
+    }
+    @keyframes float {
+      0%, 100% { transform: translateY(0) translateX(0) rotate(0deg); opacity: 0; }
+      10% { opacity: 1; } 90% { opacity: 1; }
+      100% { transform: translateY(-100vh) translateX(100px) rotate(360deg); opacity: 0; }
+    }
+
+    /* Navbar */
     .navbar {
-        background: rgba(26, 26, 26, 0.95) !important;
+        background: rgba(26, 26, 26, 0.98) !important;
         backdrop-filter: blur(20px);
-        box-shadow: 0 8px 32px rgba(0,0,0,0.2);
+        box-shadow: 0 8px 32px rgba(0,0,0,0.3);
         padding: 1rem 0;
         position: relative;
         z-index: 1000;
     }
-    .navbar-brand { transition: var(--transition); }
+    .navbar::before {
+        content: ''; position: absolute; bottom: 0; left: 0; right: 0; height: 3px;
+        background: linear-gradient(90deg, transparent, var(--primary-green), var(--accent-gold), transparent);
+        animation: borderGlow 3s ease-in-out infinite;
+    }
+    @keyframes borderGlow { 0%, 100% { opacity: 0.5; } 50% { opacity: 1; } }
+
     .navbar-brand:hover { transform: translateY(-2px) scale(1.02); }
-    .brand-logo { 
-        filter: drop-shadow(0 4px 8px rgba(255,255,255,0.3));
-        transition: filter 0.3s;
-        animation: pulse 2s ease-in-out infinite;
-    }
-    @keyframes pulse {
-      0%, 100% { filter: drop-shadow(0 4px 8px rgba(255,255,255,0.3)); }
-      50% { filter: drop-shadow(0 6px 12px rgba(255,255,255,0.5)); }
-    }
+    
     .brand-heading { 
-        font-family: 'Poppins', sans-serif; 
-        font-weight: 700; 
+        font-family: 'Poppins', sans-serif; font-weight: 700; letter-spacing: -0.5px;
         background: linear-gradient(90deg, #fff, #4CAF50);
-        -webkit-background-clip: text;
-        background-clip: text;
+        -webkit-background-clip: text; background-clip: text;
     }
+
     .nav-link { 
-        font-weight: 500; 
-        font-size: 0.95rem; 
-        padding: 0.5rem 1.25rem !important; 
-        margin: 0 0.25rem; 
-        border-radius: 12px; 
-        transition: var(--transition); 
+        font-weight: 500; font-size: 0.95rem; padding: 0.5rem 1.25rem !important; 
+        margin: 0 0.25rem; border-radius: 12px; transition: var(--transition); position: relative; overflow: hidden;
     }
-    .btn-danger, .btn-success { 
-        padding: 0.6rem 1.5rem; 
-        border-radius: 12px; 
-        font-weight: 600; 
-        transition: var(--transition); 
-        border: none; 
-        box-shadow: 0 4px 15px rgba(0,0,0,0.2);
+    .nav-link:hover { 
+        background: rgba(76, 175, 80, 0.2); color: var(--primary-green) !important; transform: translateY(-2px);
     }
+    .btn-success { padding: 0.6rem 1.5rem; border-radius: 12px; font-weight: 600; }
+
+    /* Main Content */
     .main-content {
-      flex: 1 0 auto;
-      display: flex;
-      justify-content: center;
-      align-items: center;
-      padding: 2rem 0 50px;
-      position: relative;
-      z-index: 10;
+      flex: 1; display: flex; justify-content: center; 
+      align-items: flex-start; /* Matches login.php alignment */
+      padding: 3rem 0; position: relative; z-index: 10;
     }
+    .login-wrapper { width: 100%; max-width: 1400px; margin: 0 auto; padding: 0 2rem; }
+
+    /* Branding Section */
+    .brand-section {
+      display: flex; flex-direction: column; justify-content: center; align-items: flex-start;
+      text-align: left; animation: fadeInLeft 0.8s ease-out; padding: 2rem;
+    }
+    @keyframes fadeInLeft { from { opacity: 0; transform: translateX(-50px); } to { opacity: 1; transform: translateX(0); } }
+
+    .logo-container { display: flex; justify-content: flex-start; align-items: center; gap: 2rem; margin-bottom: 2rem; }
+
+    .main-logo {
+      width: 100px; height: 100px; object-fit: contain;
+      filter: drop-shadow(0 5px 15px rgba(0,0,0,0.4));
+      animation: logoFloat 3s ease-in-out infinite;
+      transition: transform 0.3s ease;
+      border-radius: 50%; background: rgba(255,255,255,0.05);
+    }
+    .main-logo:hover { transform: scale(1.1) rotate(5deg); filter: drop-shadow(0 8px 20px rgba(255,215,0,0.6)); }
+    @keyframes logoFloat { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-15px); } }
+
+    .brand-title {
+      font-family: 'Poppins', sans-serif; font-weight: 900; 
+      font-size: 3.5rem; line-height: 1.3; color: white;
+      text-shadow: 0 4px 20px rgba(0,0,0,0.5), 0 0 40px rgba(255,255,255,0.3);
+      margin: 0;
+      background: linear-gradient(135deg, #ffffff 0%, #FFD700 50%, #4CAF50 100%);
+      -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent;
+      animation: titleGlow 3s ease-in-out infinite;
+    }
+
+    /* Form Section */
+    .login-section { display: flex; justify-content: center; align-items: center; animation: fadeInRight 0.8s ease-out; }
+    @keyframes fadeInRight { from { opacity: 0; transform: translateX(50px); } to { opacity: 1; transform: translateX(0); } }
+
     .login-container {
-      background: rgba(255, 255, 255, 0.95);
-      backdrop-filter: blur(20px);
+      background: rgba(255, 255, 255, 0.98);
+      backdrop-filter: blur(30px);
       border-radius: 24px;
-      box-shadow: 0 20px 60px rgba(0,0,0,0.3);
-      padding: 40px;
-      width: 100%;
-      max-width: 520px;
-      margin: 0 auto;
-      animation: slideInRight 0.8s ease-out;
-    }
-    @keyframes slideInRight {
-      from { opacity: 0; transform: translateX(50px); }
-      to { opacity: 1; transform: translateX(0); }
-    }
-    .login-container .logo {
-      width: 80px;
-      height: 80px;
-      object-fit: contain;
-      margin-bottom: 15px;
-    }
-    .login-container h2 {
-      font-weight: 800;
-      color: #1A1A1A;
-      font-family: 'Poppins', sans-serif;
+      box-shadow: 0 20px 60px rgba(0,0,0,0.5), 
+                  0 0 100px rgba(76, 175, 80, 0.2),
+                  inset 0 0 100px rgba(255,255,255,0.1);
+      padding: 2.5rem 2.5rem; /* Slightly tighter padding for taller form */
+      width: 100%; max-width: 480px;
+      position: relative; overflow: hidden;
+      border: 2px solid rgba(255,255,255,0.3);
       margin-bottom: 2rem;
     }
-    .form-label {
-      text-align: left;
-      display: block;
-      margin-bottom: 10px;
-      font-weight: 600;
-      color: #333;
-      font-size: 0.95rem;
+    .login-container::after {
+      content: ''; position: absolute; top: 0; left: 0; right: 0; height: 5px;
+      background: linear-gradient(90deg, var(--primary-green), var(--accent-gold), var(--primary-green));
+      background-size: 200% 100%; animation: gradientMove 3s ease infinite;
     }
-    .form-control, .form-select {
-      width: 100%;
-      padding: 14px 14px 14px 3rem;
-      font-size: 1rem;
-      border-radius: 12px;
-      border: 2px solid #e0e0e0;
-      margin-bottom: 1.2rem;
-      transition: var(--transition);
-      background: #f8f9fa;
+    @keyframes gradientMove { 0%, 100% { background-position: 0% 50%; } 50% { background-position: 100% 50%; } }
+
+    .login-container h2 {
+      font-weight: 800; color: #1A1A1A; font-family: 'Poppins', sans-serif; margin-bottom: 1.5rem;
+      position: relative; display: inline-block; font-size: 1.8rem;
     }
-    .form-control:focus, .form-select:focus {
-      border-color: var(--primary-green);
-      box-shadow: 0 0 0 4px rgba(76, 175, 80, 0.1);
-      background: white;
-      outline: none;
+    
+    .form-label { text-align: left; display: block; margin-bottom: 8px; font-weight: 600; color: #333; font-size: 0.9rem; }
+    
+    .form-control {
+      width: 100%; padding: 12px 12px 12px 3rem; font-size: 0.95rem; border-radius: 12px;
+      border: 2px solid #e0e0e0; margin-bottom: 1rem; transition: var(--transition); background: #f8f9fa;
     }
-    .position-relative i {
-      color: #999;
-      font-size: 1.1rem;
-      z-index: 10;
+    .form-control:focus {
+      border-color: var(--primary-green); box-shadow: 0 0 0 4px rgba(76, 175, 80, 0.1); background: white; outline: none;
     }
+    .position-relative i { color: #999; font-size: 1rem; z-index: 10; }
+
     .btn-login {
-      width: 100%;
-      padding: 15px 0;
-      font-size: 1.15rem;
-      font-weight: 700;
-      border-radius: 12px;
-      transition: var(--transition);
-      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-      border: none;
-      color: white;
+      width: 100%; padding: 14px 0; font-size: 1.1rem; font-weight: 700; border-radius: 12px;
+      transition: var(--transition); background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      border: none; color: white; text-transform: uppercase; letter-spacing: 1px;
+      box-shadow: 0 8px 20px rgba(102, 126, 234, 0.4);
     }
-    /* New style for password validation message */
-    .password-message {
-      font-size: 0.875rem;
-      margin-top: -15px;
-      margin-bottom: 15px;
-      display: none; /* Hide by default */
-    }
-    .alert {
-      border-radius: 12px;
-      border: none;
-      padding: 1rem 1.25rem;
-      animation: slideDown 0.5s ease-out;
-    }
-    @keyframes slideDown {
-      from { opacity: 0; transform: translateY(-20px); }
-      to { opacity: 1; transform: translateY(0); }
-    }
-    footer { 
-      flex-shrink: 0; 
-      width: 100%; 
-      background: rgba(26, 26, 26, 0.95);
-      backdrop-filter: blur(20px);
-      position: relative;
-      z-index: 100;
+    .btn-login:hover { transform: translateY(-3px); box-shadow: 0 12px 30px rgba(102, 126, 234, 0.5); }
+
+    .password-message { font-size: 0.85rem; margin-top: -5px; margin-bottom: 15px; display: none; text-align: left; }
+
+    /* Footer */
+    footer { flex-shrink: 0; width: 100%; background: rgba(26, 26, 26, 0.98); backdrop-filter: blur(20px); position: relative; z-index: 100; }
+    footer::before { content: ''; position: absolute; top: 0; left: 0; right: 0; height: 3px; background: linear-gradient(90deg, transparent, var(--primary-green), var(--accent-gold), transparent); }
+
+    /* Responsive */
+    @media (max-width: 991.98px) {
+      .main-content { align-items: center; }
+      .brand-section { margin-bottom: 2rem; align-items: center; text-align: center; }
+      .logo-container { gap: 1.5rem; justify-content: center; }
+      .brand-title { font-size: 2rem; }
+      .login-section { padding-top: 0; margin-top: 0; }
     }
   </style>
 </head>
 
 <body>
-  
-  <nav class="navbar navbar-expand-lg navbar-dark bg-dark fixed-top">
+  <div class="particles" id="particles"></div>
+
+  <nav class="navbar navbar-expand-lg navbar-dark bg-dark">
     <div class="container-fluid d-flex align-items-center justify-content-between">
         <a class="navbar-brand d-flex align-items-center interactive-brand" href="home.php" style="cursor: pointer;">
             <img src="imageslogo.png" alt="Logo" class="me-2 brand-logo" style="height: 50px; width: 48px; object-fit: contain;">
@@ -311,49 +307,51 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 <small class="text-light brand-subheading" style="font-size: 0.75rem;">Official College Tournament System</small>
             </div>
         </a>
-        <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav"
-            aria-controls="navbarNav" aria-expanded="false" aria-label="Toggle navigation">
+        <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
             <span class="navbar-toggler-icon"></span>
         </button>
         <div class="collapse navbar-collapse" id="navbarNav">
             <ul class="navbar-nav ms-auto align-items-center">
-                <li class="nav-item">
-                    <a class="nav-link" href="home.php">Home</a>
-                </li>
-                <li class="nav-item">
-                    <a class="nav-link" href="Event.php">Events</a>
-                </li>
-                <li class="nav-item">
-                    <a class="nav-link" href="Teams.php">Teams</a>
-                </li>
-                <li class="nav-item">
-                    <a href="login.php" class="btn btn-success ms-3">Admin Login</a>
-                </li>
+                <li class="nav-item"><a class="nav-link" href="home.php">Home</a></li>
+                <li class="nav-item"><a class="nav-link" href="Eventpage.php">Events</a></li>
+                <li class="nav-item"><a class="nav-link" href="college_team.php">Colleges</a></li>
+                <li class="nav-item"><a href="login.php" class="btn btn-success ms-3">Login</a></li>
             </ul>
         </div>
     </div>
   </nav>
 
   <div class="main-content">
-    <div class="container">
-      <div class="row justify-content-center">
-        <div class="col-lg-6">
-          
-          <div class="login-container">
+    <div class="login-wrapper">
+      <!-- Align Items Start to match login.php structure -->
+      <div class="row align-items-start">
 
+        <div class="col-lg-7 brand-section">
+          <div class="logo-container">
+            <img src="imageslogo.png" alt="PIT Logo" class="main-logo">
+            <img src="images/siglakas_pfpNOBG.png" alt="Siglakas Logo" class="main-logo">
+          </div>
+          <h1 class="brand-title">
+            SmartScore: A Web-Based Scoring and Medal Tally Platform for Siglakas Events
+          </h1>
+        </div>
+
+        <!-- Added Top Padding to align visually with logo on desktop -->
+        <div class="col-lg-5 login-section pt-lg-5 mt-lg-4">
+          <div class="login-container">
             <div class="text-center">
-              <img src="imageslogo.png" alt="PIT Logo" class="logo">
-              <h2 id="login-view-title">Request an Account</h2>
+              <h2>Request Account</h2>
+              <p class="text-muted mb-4" style="font-size: 0.9rem;">Join as an Event Manager</p>
             </div>
 
             <?php if (!empty($message)): ?>
                 <div class="alert alert-<?= htmlspecialchars($message_type) ?> alert-dismissible fade show" role="alert">
-                    <?= htmlspecialchars($message) ?>
+                    <i class="fas <?= $message_type == 'success' ? 'fa-check-circle' : 'fa-exclamation-circle' ?> me-2"></i>
+                    <small><?= htmlspecialchars($message) ?></small>
                     <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
                 </div>
             <?php endif; ?>
 
-            <?php if ($message_type !== 'success'): // Hide form on success ?>
             <form action="request_account.php" method="POST" id="requestForm">
                 
                 <div class="mb-3 text-start">
@@ -372,21 +370,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     </div>
                 </div>
 
-                <div class="mb-3 text-start"> <label for="requested_role" class="form-label">I am a...</label>
-                    <div class="position-relative">
-                        <select class="form-select" id="requested_role" name="requested_role" required style="padding-left: 3rem;">
-                            <option value="" disabled selected>Select your role</option>
-                            <option value="Event Manager" <?= ($_POST['requested_role'] ?? '') == 'Event Manager' ? 'selected' : '' ?>>Event Manager</option>
-                            <option value="Sports Director" <?= ($_POST['requested_role'] ?? '') == 'Sports Director' ? 'selected' : '' ?>>Sports Director</option>
-                        </select>
-                        <i class="fas fa-briefcase position-absolute top-50 start-0 translate-middle-y ms-3 text-muted"></i>
-                    </div>
-                </div>
+                <!-- ROLE INPUT REMOVED - AUTOMATICALLY HANDLED IN PHP -->
 
                 <div class="mb-3 text-start">
                     <label for="password" class="form-label">Password</label>
                     <div class="position-relative">
-                        <input type="password" class="form-control" id="password" name="password" placeholder="Create a password (min. 8 characters)" required>
+                        <input type="password" class="form-control" id="password" name="password" placeholder="Create a password (min. 8 chars)" required>
                         <i class="fas fa-lock position-absolute top-50 start-0 translate-middle-y ms-3 text-muted"></i>
                     </div>
                 </div>
@@ -407,11 +396,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     </button>
                 </div>
             </form>
-            <?php endif; ?>
 
             <p class="mt-4 text-muted text-center">
                 <small>
-                    <a href="login.php" style="text-decoration: none;">
+                    <a href="login.php" style="text-decoration: none; color: var(--primary-green); font-weight: 600;">
                         <i class="fas fa-arrow-left me-1"></i> Back to Login
                     </a>
                 </small>
@@ -419,6 +407,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
           </div>
         </div>
+
       </div>
     </div>
   </div>
@@ -433,18 +422,28 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
   <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
   
   <script>
-    // Navbar padding adjustment
-    const navbarHeight = document.querySelector('.navbar').offsetHeight;
-    document.querySelector('.main-content').style.paddingTop = `${navbarHeight + 30}px`;
+    document.addEventListener('DOMContentLoaded', function() {
+      // Particles
+      const particlesContainer = document.getElementById('particles');
+      for (let i = 0; i < 40; i++) {
+        const particle = document.createElement('div');
+        particle.className = 'particle';
+        particle.style.left = Math.random() * 100 + '%';
+        particle.style.width = Math.random() * 6 + 2 + 'px';
+        particle.style.height = particle.style.width;
+        particle.style.animationDelay = Math.random() * 20 + 's';
+        particle.style.animationDuration = (Math.random() * 10 + 15) + 's';
+        particlesContainer.appendChild(particle);
+      }
 
-    // --- New Password Validation Script ---
-    const passwordInput = document.getElementById('password');
-    const confirmPasswordInput = document.getElementById('confirm_password');
-    const messageElement = document.getElementById('passwordMessage');
-    const submitButton = document.getElementById('submitButton');
-    const requestForm = document.getElementById('requestForm');
+      // Password Validation
+      const passwordInput = document.getElementById('password');
+      const confirmPasswordInput = document.getElementById('confirm_password');
+      const messageElement = document.getElementById('passwordMessage');
+      const submitButton = document.getElementById('submitButton');
+      const requestForm = document.getElementById('requestForm');
 
-    function validatePasswords() {
+      function validatePasswords() {
         const password = passwordInput.value;
         const confirmPassword = confirmPasswordInput.value;
         
@@ -465,29 +464,38 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         } else {
             messageElement.textContent = "";
             messageElement.style.display = 'none';
-            // Disable submit if fields are empty (let 'required' handle it)
             submitButton.disabled = false; 
         }
-    }
+      }
 
-    // Add event listeners to check as the user types
-    if (passwordInput && confirmPasswordInput) {
-        passwordInput.addEventListener('keyup', validatePasswords);
-        confirmPasswordInput.addEventListener('keyup', validatePasswords);
-    }
+      if (passwordInput && confirmPasswordInput) {
+          passwordInput.addEventListener('keyup', validatePasswords);
+          confirmPasswordInput.addEventListener('keyup', validatePasswords);
+      }
 
-    // Final check on form submit
-    if (requestForm) {
-        requestForm.addEventListener('submit', function(event) {
-            validatePasswords();
-            if (submitButton.disabled) {
-                // Prevent form submission if validation failed
-                event.preventDefault();
-                messageElement.textContent = "Please fix the errors before submitting.";
-                messageElement.style.display = 'block';
-            }
+      if (requestForm) {
+          requestForm.addEventListener('submit', function(event) {
+              validatePasswords();
+              if (submitButton.disabled) {
+                  event.preventDefault();
+                  messageElement.textContent = "Please fix the errors before submitting.";
+                  messageElement.style.display = 'block';
+              }
+          });
+      }
+      
+      // Input Focus Animation
+      const inputs = document.querySelectorAll('.form-control');
+      inputs.forEach(input => {
+        input.addEventListener('focus', function() {
+          this.parentElement.style.transform = 'scale(1.02)';
+          this.parentElement.style.transition = 'transform 0.3s ease';
         });
-    }
+        input.addEventListener('blur', function() {
+          this.parentElement.style.transform = 'scale(1)';
+        });
+      });
+    });
   </script>
 </body>
 </html>

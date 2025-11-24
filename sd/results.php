@@ -3,22 +3,32 @@ session_start();
 require_once '../db_connect.php'; // Use the main config file
 
 // 1. SECURITY & ACCESS CONTROL
-if (!isset($_SESSION['role']) || 
-    ($_SESSION['role'] !== 'Sports Director' && $_SESSION['role'] !== 'Administrator')
-) {
-    header('Location: ../login.php'); // Redirect to main login page
+// STRICT: Only 'Sports Director' is allowed
+if (!isset($_SESSION['role']) || $_SESSION['role'] !== 'Sports Director') {
+    header('Location: ../login.php'); 
     exit();
 }
-$name = isset($_SESSION['username']) ? $_SESSION['username'] : 'Sports Director';
-$current_page = basename($_SERVER['PHP_SELF']); // This will be 'results.php'
-$user_id = (int)$_SESSION['user_id']; // Current logged-in user
 
-// --- Logic for Sidebar Accordions ---
-$event_pages = ['Manage_Games.php', 'Manage_Game_Events.php', 'Manage_Categories.php'];
-$is_event_page = in_array($current_page, $event_pages);
-$management_pages = ['colleges.php', 'events.php', 'results.php', 'reports.php'];
-$is_management_page = in_array($current_page, $management_pages);
+$current_user_id = $_SESSION['user_id'];
 
+// --- FETCH NAME LOGIC ---
+$stmt_name = $conn->prepare("SELECT full_name, username FROM users WHERE id = ?");
+$stmt_name->bind_param("i", $current_user_id);
+$stmt_name->execute();
+$result_name = $stmt_name->get_result();
+$user_data = $result_name->fetch_assoc();
+$stmt_name->close();
+
+if (!empty($user_data['full_name'])) {
+    $name = $user_data['full_name'];
+} else {
+    $name = $user_data['username'] ?? 'Sports Director';
+}
+
+$current_page = basename($_SERVER['PHP_SELF']); 
+$user_id = (int)$_SESSION['user_id']; 
+
+// Alert Messages
 $alert_message = '';
 $alert_type = 'success';
 
@@ -29,9 +39,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
     try {
         $category_id = (int)$_POST['category_id'];
         $event_name_for_log = $_POST['event_name_for_log'] ?? 'an event';
-        $context = ['event_name' => $event_name_for_log];
 
-        // Action: Approve a 'Submitted' result
+        // Action: Approve
         if ($_POST['action'] === 'approve_result') {
             $stmt_cat = $conn->prepare(
                "UPDATE categories SET 
@@ -44,7 +53,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
             $stmt_cat->execute();
             
             if ($stmt_cat->affected_rows > 0) {
-                // log_activity($conn, $user_id, 'APPROVED_RESULT', $category_id, 'category', null, null, $context);
                 $conn->commit();
                 $alert_message = "SUCCESS: The results have been approved and published!";
             } else {
@@ -53,11 +61,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
             $stmt_cat->close();
 
         } 
-        // Action: Reject a 'Submitted' result
+        // Action: Reject
         elseif ($_POST['action'] === 'reject_result') {
             $rejection_reason = trim($_POST['rejection_reason']) ?: 'No reason provided.';
-            $context['rejection_reason'] = $rejection_reason;
-
+            
             $stmt_cat = $conn->prepare(
                 "UPDATE categories SET 
                  status = 'Results Rejected', 
@@ -68,22 +75,18 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
             $stmt_cat->execute();
             
             if ($stmt_cat->affected_rows > 0) {
-                // log_activity($conn, $user_id, 'REJECTED_RESULT', $category_id, 'category', null, null, $context);
                 $conn->commit();
                 $alert_message = "SUCCESS: The results have been rejected and sent back to the Event Manager.";
             } else {
-                 throw new Exception("Could not find the pending result. It might have already been processed.");
+                 throw new Exception("Could not find the pending result.");
             }
             $stmt_cat->close();
         }
         
-        // ### NEW ACTION: REVOKE an 'Approved' result ###
+        // Action: Revoke
         elseif ($_POST['action'] === 'revoke_result') {
             $revoke_reason = trim($_POST['revoke_reason']) ?: 'Approval revoked by Director.';
-            $context['revoke_reason'] = $revoke_reason;
 
-            // Set status back to 'Rejected' so the manager MUST review it.
-            // Clear approval data.
             $stmt_cat = $conn->prepare(
                 "UPDATE categories SET 
                  status = 'Results Rejected', 
@@ -96,11 +99,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
             $stmt_cat->execute();
             
             if ($stmt_cat->affected_rows > 0) {
-                // log_activity($conn, $user_id, 'REVOKED_RESULT', $category_id, 'category', null, null, $context);
                 $conn->commit();
-                $alert_message = "SUCCESS: The approval has been revoked. The results are now marked as 'Rejected' and sent back to the Event Manager.";
+                $alert_message = "SUCCESS: The approval has been revoked.";
             } else {
-                 throw new Exception("Could not find the approved result. It might have already been processed.");
+                 throw new Exception("Could not find the approved result.");
             }
             $stmt_cat->close();
         }
@@ -113,8 +115,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
     }
 }
 
-// 4. FETCH DATA FOR DISPLAY
-// A. Fetch from 'colleges' table
+// 3. FETCH DATA
+// A. Colleges Map
 $colleges_result = $conn->query("SELECT college_id, college_name FROM colleges");
 $colleges = $colleges_result->fetch_all(MYSQLI_ASSOC);
 $college_map = [];
@@ -123,15 +125,11 @@ foreach ($colleges as $college) {
 }
 
 function getCollegeName($college_id, $college_map) {
-    if (empty($college_id) || $college_id == 0) {
-        return '<em>N/A</em>';
-    }
+    if (empty($college_id) || $college_id == 0) return '<em>N/A</em>';
     return isset($college_map[$college_id]) ? htmlspecialchars($college_map[$college_id]) : '<em>Unknown</em>';
 }
 
-// B. Fetch all 'Submitted' results from the 'categories' table
-$pending_results = [];
-// ### FIX 1 of 4: Changed c.event_type to c.category_type ###
+// B. Pending Results
 $sql_pending = "SELECT 
             c.category_id, c.category_name, c.category_type,
             c.gold_winner_college_id, c.gold_count,
@@ -147,18 +145,10 @@ $sql_pending = "SELECT
         WHERE c.status = 'Results Submitted'
         GROUP BY c.category_id
         ORDER BY c.updated_at DESC";
-
 $result_pending = $conn->query($sql_pending);
-if ($result_pending) {
-    $pending_results = $result_pending->fetch_all(MYSQLI_ASSOC);
-} else {
-    $alert_message = "ERROR: Could not fetch pending results. " . $conn->error;
-    $alert_type = 'danger';
-}
+$pending_results = ($result_pending) ? $result_pending->fetch_all(MYSQLI_ASSOC) : [];
 
-// C. ### NEW: Fetch all 'Approved' results from the 'categories' table ###
-$approved_results = [];
-// ### FIX 2 of 4: Changed c.event_type to c.category_type ###
+// C. Approved Results
 $sql_approved = "SELECT 
             c.category_id, c.category_name, c.category_type,
             c.gold_winner_college_id, c.gold_count,
@@ -172,239 +162,319 @@ $sql_approved = "SELECT
         LEFT JOIN users u ON c.approved_by_user_id = u.id
         WHERE c.status = 'Results Approved'
         ORDER BY c.approved_at DESC";
-
 $result_approved = $conn->query($sql_approved);
-if ($result_approved) {
-    $approved_results = $result_approved->fetch_all(MYSQLI_ASSOC);
-} else {
-    $alert_message = "ERROR: Could not fetch approved results. " . $conn->error;
-    $alert_type = 'danger';
-}
+$approved_results = ($result_approved) ? $result_approved->fetch_all(MYSQLI_ASSOC) : [];
+
+// Sidebar Badges
+$pending_requests_count = $conn->query("SELECT COUNT(*) FROM account_requests WHERE status = 'pending'")->fetch_row()[0] ?? 0;
+$pending_results_count = count($pending_results); 
 ?>
 <!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Approve Results - SD Dashboard</title>
+    <title>Approve Results - Director Panel</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" rel="stylesheet">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=Poppins:wght@400;500;600;700;800&display=swap" rel="stylesheet">
     <style>
+        /* --- Unified CSS from Dashboard --- */
         :root { 
             --sidebar-width: 260px; 
             --header-height: 82px; 
             --transition: all 0.3s ease; 
             --card-shadow: 0 5px 20px rgba(0, 0, 0, 0.08); 
             --bg-light: #F8F9FA; 
-            --bs-purple: #6f42c1;
-            --bs-info: #0dcaf0;
+            --primary-gradient: linear-gradient(135deg, #2c3e50 0%, #4ca1af 100%);
+            --accent-color: #1abc9c;
         }
         body { background-color: var(--bg-light); margin: 0; padding: 0; min-height: 100vh; font-family: 'Inter', sans-serif; display: flex; flex-direction: column; }
+        
+        /* Navbar */
         .navbar { background: linear-gradient(135deg, #1a1a1a 0%, #2d2d2d 100%) !important; box-shadow: 0 4px 20px rgba(0,0,0,0.15); padding: 1rem 1.5rem; height: var(--header-height); position: fixed; top: 0; left: 0; right: 0; z-index: 1050; }
-        .user-dropdown .dropdown-toggle { color: white; display: flex; align-items: center; text-decoration: none; padding: 8px 12px; border-radius: 8px; }
+        .user-dropdown .dropdown-toggle { color: white; display: flex; align-items: center; text-decoration: none; padding: 8px 12px; border-radius: 8px; transition: var(--transition); }
+        .user-dropdown .dropdown-toggle:hover { background-color: rgba(255, 255, 255, 0.1); }
         .user-dropdown .dropdown-toggle img { width: 36px; height: 36px; border-radius: 50%; object-fit: cover; margin-right: 10px; }
-        .sidebar { width: var(--sidebar-width); position: fixed; top: var(--header-height); left: 0; height: calc(100vh - var(--header-height)); background: #2c3e50; color: white; box-shadow: 5px 0 15px rgba(0,0,0,0.2); z-index: 1040; transition: width var(--transition); overflow-y: auto; overflow-x: hidden; }
+        
+        /* Sidebar */
+        .sidebar { width: var(--sidebar-width); position: fixed; top: var(--header-height); left: 0; height: calc(100vh - var(--header-height)); background: #2c3e50; color: white; box-shadow: 5px 0 15px rgba(0,0,0,0.2); z-index: 1040; transition: width var(--transition); overflow-y: auto; }
         .sidebar-nav { padding: 20px 0; }
         .sidebar-nav .nav-link { color: rgba(255, 255, 255, 0.7); font-size: 1.05rem; font-weight: 500; padding: 12px 25px; transition: var(--transition); border-left: 5px solid transparent; margin: 2px 0; display: flex; align-items: center; text-decoration: none; }
         .sidebar-nav .nav-link i { width: 30px; text-align: center; flex-shrink: 0; font-size: 0.95em; }
-        .sidebar-nav .nav-link:hover { color: white; background: rgba(255, 255, 255, 0.05); border-left-color: #1abc9c; }
+        .sidebar-nav .nav-link:hover { color: white; background: rgba(255, 255, 255, 0.05); border-left-color: var(--accent-color); }
         .sidebar-nav .nav-link.active { color: white; background: rgba(255, 255, 255, 0.1); border-left-color: #3498db; font-weight: 600; }
-        .sidebar-nav .nav-title { padding: 10px 25px; font-size: 0.75rem; font-weight: 600; color: rgba(255, 255, 255, 0.4); text-transform: uppercase; letter-spacing: 1px; }
-        .main-content { flex: 1 0 auto; padding: 30px; margin-top: var(--header-height); margin-left: var(--sidebar-width); transition: margin-left var(--transition); min-height: calc(100vh - var(--header-height)); }
-        /* Footer */
-        footer {
-            flex-shrink: 0;
-            background: #2c3e50 !important;
-            box-shadow: 0 -2px 10px rgba(0,0,0,0.1);
-            padding-left: var(--sidebar-width); /* <-- MODIFIED */
-            transition: padding-left var(--transition); /* <-- MODIFIED */
-            position: relative;
-            z-index: 1041;
-        }
-                .sidebar.minimized ~ footer {
-            padding-left: var(--sidebar-min-width); /* <-- MODIFIED */
-        }
-        .section-title { font-family: 'Poppins', sans-serif; font-weight: 600; color: #333; }
-        .card { border: none; border-radius: 15px; box-shadow: var(--card-shadow); }
-        .medal-icon { font-size: 1.2em; }
-        .gold { color: #FFD700; }
-        .silver { color: #C0C0C0; }
-        .bronze { color: #CD7F32; }
-        .navbar-profile-icon { width: 36px; height: 36px; font-size: 36px; text-align: center; line-height: 1; border-radius: 50%; margin-right: 10px; color: rgba(255,255,255,0.8); }
-        .user-dropdown .dropdown-toggle { color: white; display: flex; align-items: center; text-decoration: none; padding: 8px 12px; border-radius: 8px; transition: var(--transition); }
-        .user-dropdown .dropdown-toggle:hover { background-color: rgba(255, 255, 255, 0.1); }
-        .user-dropdown .dropdown-toggle .user-name { font-weight: 600; font-size: 0.95rem; }
-        .winner-count { font-weight: 600; color: #333; }
-        
-        .badge.bg-purple { background-color: var(--bs-purple) !important; color: white; }
-        .badge.bg-info { background-color: var(--bs-info) !important; color: #000; }
+        .sidebar-nav .nav-title { padding: 15px 25px 5px; font-size: 0.75rem; font-weight: 700; color: rgba(255, 255, 255, 0.4); text-transform: uppercase; letter-spacing: 1px; }
 
-        /* ### NEW: Styles for the tabs ### */
-        .card-header-tabs {
-            margin: -0.5rem -1rem; /* Adjust to align with card padding */
-        }
-        .nav-tabs .nav-link {
-            border: none;
-            border-bottom: 3px solid transparent;
-            font-weight: 600;
-            color: #6c757d;
-        }
-        .nav-tabs .nav-link.active {
-            border-bottom-color: #0d6efd;
-            color: #0d6efd;
-            background: none;
+         /* Main Content */
+        .main-content { flex: 1 0 auto; padding: 30px; margin-top: var(--header-height); margin-left: var(--sidebar-width); transition: margin-left var(--transition); min-height: calc(100vh - var(--header-height)); }
+        .section-title { font-family: 'Poppins', sans-serif; font-weight: 600; color: #333; }
+        
+        /* Footer */
+        footer { flex-shrink: 0; background: #2c3e50 !important; box-shadow: 0 -2px 10px rgba(0,0,0,0.1); padding-left: var(--sidebar-width); transition: padding-left var(--transition); position: relative; z-index: 1041; }
+
+        @media (max-width: 992px) {
+            .sidebar { left: -260px; }
+            .sidebar.show { left: 0; }
+            .main-content, footer { margin-left: 0; }
         }
         
+        /* === ENHANCED TABLE DESIGN === */
+        .card { border: none; border-radius: 12px; box-shadow: 0 4px 16px rgba(0, 0, 0, 0.08); overflow: hidden; }
+        .card-header { background: #ffffff !important; border-bottom: 2px solid #f1f3f5 !important; padding: 0 !important; }
+        
+        /* Modern Table Container */
+        .results-table-container {
+            background: #ffffff;
+            border-radius: 0 0 12px 12px;
+            overflow-x: auto; /* Ensure scroll happens here */
+            position: relative;
+        }
+        
+        .results-table { margin-bottom: 0; font-size: 0.9375rem; border-collapse: separate; border-spacing: 0; width: 100%; }
+        
+        /* Enhanced Table Header */
+        .results-table thead th {
+            background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+            color: #2c3e50;
+            font-weight: 600;
+            font-size: 0.8125rem;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            padding: 1.125rem 1.25rem;
+            border-bottom: 2px solid #dee2e6;
+            white-space: nowrap;
+        }
+        
+        .results-table tbody td { padding: 1.25rem 1.25rem; vertical-align: middle; border-bottom: 1px solid #f1f3f5; transition: all 0.2s ease; }
+        .results-table tbody tr { transition: all 0.2s ease; }
+        .results-table tbody tr:hover { background-color: #f8f9fa; transform: none; /* Removed transform as it breaks sticky in some browsers */ }
+        
+        /* === UI FIX: STICKY ACTION COLUMN === */
+        /* This ensures the last column stays visible when scrolling horizontally */
+        .sticky-col {
+            position: sticky;
+            right: 0;
+            z-index: 2;
+            background-color: #fff; /* Default bg */
+            box-shadow: -5px 0 10px rgba(0,0,0,0.05); /* Shadow to indicate scroll depth */
+        }
+
+        /* Specific header background to match gradient */
+        .results-table thead th.sticky-col {
+            background: #e9ecef; 
+            z-index: 5; /* Higher z-index for header */
+        }
+
+        /* Ensure row hover color effects the sticky column too */
+        .results-table tbody tr:hover .sticky-col {
+            background-color: #f8f9fa;
+        }
+        /* ==================================== */
+
+        /* Event Information Column */
+        .event-info-cell { line-height: 1.6; }
+        .event-game-name { font-weight: 700; color: #1e293b; font-size: 1rem; margin-bottom: 0.25rem; }
+        .event-event-name { color: #64748b; font-size: 0.875rem; margin-bottom: 0.25rem; }
+        .event-category-name { color: #1e293b; font-weight: 600; font-size: 0.875rem; }
+        .event-no-category { color: #94a3b8; font-style: italic; font-size: 0.8125rem; }
+        
+        /* Type Badge Enhancement */
+        .type-badge { display: inline-flex; align-items: center; gap: 0.375rem; padding: 0.5rem 0.875rem; border-radius: 8px; font-size: 0.8125rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; box-shadow: 0 2px 4px rgba(0, 0, 0, 0.08); }
+        .type-badge.badge-match { background: linear-gradient(135deg, #e0e7ff 0%, #c7d2fe 100%); color: #4338ca; border: 1px solid #a5b4fc; }
+        .type-badge.badge-medal { background: linear-gradient(135deg, #fef3c7 0%, #fde68a 100%); color: #b45309; border: 1px solid #fcd34d; }
+        
+        /* Winners Column - Enhanced Medal Display */
+        .winners-column { display: flex; flex-direction: column; gap: 0.625rem; }
+        .winner-row { display: flex; align-items: center; gap: 0.625rem; padding: 0.5rem 0.75rem; border-radius: 8px; transition: all 0.2s ease; border-left: 3px solid transparent; }
+        .winner-row:hover { transform: translateX(3px); }
+        .winner-row.gold-winner { background: linear-gradient(135deg, #fef3c7 0%, #fde68a 100%); border-left-color: #f59e0b; }
+        .winner-row.silver-winner { background: linear-gradient(135deg, #f1f5f9 0%, #e2e8f0 100%); border-left-color: #94a3b8; }
+        .winner-row.bronze-winner { background: linear-gradient(135deg, #fed7aa 0%, #fdba74 100%); border-left-color: #ea580c; }
+        
+        .medal-icon.gold { color: #f59e0b; }
+        .medal-icon.silver { color: #64748b; }
+        .medal-icon.bronze { color: #ea580c; }
+        
+        .winner-college-name { flex: 1; font-weight: 600; color: #1e293b; font-size: 0.9375rem; white-space: normal; /* Allow text wrap */ }
+        .winner-count { font-weight: 700; color: #1e293b; font-size: 0.875rem; background: rgba(255, 255, 255, 0.8); padding: 0.125rem 0.5rem; border-radius: 12px; min-width: 32px; text-align: center; }
+        
+        /* Submitted/Approved By Column */
+        .submitter-info { display: flex; flex-direction: column; gap: 0.25rem; }
+        .submitter-name { font-weight: 600; color: #1e293b; font-size: 0.9375rem; display: flex; align-items: center; gap: 0.375rem; }
+        .submitter-name i { color: #64748b; font-size: 0.875rem; }
+        .submission-date { color: #64748b; font-size: 0.8125rem; display: flex; align-items: center; gap: 0.375rem; }
+        
+        /* Action Buttons Enhancement */
+        .action-buttons-group { display: flex; gap: 0.5rem; justify-content: flex-end; align-items: center; }
+        .action-btn { width: 38px; height: 38px; padding: 0; display: inline-flex; align-items: center; justify-content: center; border-radius: 8px; transition: all 0.2s ease; font-size: 0.875rem; box-shadow: 0 2px 4px rgba(0, 0, 0, 0.08); border: 2px solid transparent; }
+        .action-btn:hover { transform: translateY(-2px); box-shadow: 0 4px 8px rgba(0, 0, 0, 0.12); }
+        .action-btn.btn-success { background: linear-gradient(135deg, #10b981 0%, #059669 100%); border-color: #059669; color: white; }
+        .action-btn.btn-danger { background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%); border-color: #dc2626; color: white; }
+        .action-btn.btn-warning { background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%); border-color: #d97706; color: white; }
+        
+        /* STACKED BUTTONS STYLE */
+        .action-stack {
+            display: flex;
+            flex-direction: column;
+            gap: 0.4rem;
+            align-items: flex-end;
+            justify-content: center;
+        }
+        .action-stack .btn {
+            width: 100%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 0.75rem;
+            padding: 0.25rem 0.5rem;
+        }
+
+        /* Empty State */
+        .empty-state { padding: 4rem 2rem; text-align: center; background: linear-gradient(135deg, #f8f9fa 0%, #ffffff 100%); }
+        .empty-state-icon { font-size: 4rem; color: #cbd5e1; margin-bottom: 1.5rem; opacity: 0.5; }
+        .empty-state-title { font-size: 1.25rem; font-weight: 600; color: #475569; margin-bottom: 0.5rem; }
+        .empty-state-text { font-size: 0.9375rem; color: #94a3b8; }
+        
+        /* Tab Navigation */
+        .card-header-tabs { margin-bottom: -1rem; margin-left: 0; margin-right: 0; border-bottom: 0; }
+        .nav-tabs .nav-link { border: none; border-bottom: 3px solid transparent; font-weight: 600; color: #6c757d; padding: 1rem 1.5rem; transition: all 0.2s ease; }
+        .nav-tabs .nav-link:hover { color: #334155; border-color: #cbd5e1; }
+        .nav-tabs .nav-link.active { border-bottom-color: #0d6efd; color: #0d6efd; background: none; }
+        
+        /* Animations */
+        .results-table tbody tr { animation: fadeInUp 0.4s ease-out backwards; }
+        .results-table tbody tr:nth-child(1) { animation-delay: 0.05s; }
+        .results-table tbody tr:nth-child(2) { animation-delay: 0.1s; }
+        .results-table tbody tr:nth-child(3) { animation-delay: 0.15s; }
+        .results-table tbody tr:nth-child(4) { animation-delay: 0.2s; }
+        .results-table tbody tr:nth-child(5) { animation-delay: 0.25s; }
+        
+        @keyframes fadeInUp { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+        
+        /* Modal Enhancements */
+        .modal-content { border-radius: 12px; border: none; box-shadow: 0 10px 40px rgba(0, 0, 0, 0.15); }
+        .modal-header { border-top-left-radius: 12px; border-top-right-radius: 12px; padding: 1.25rem 1.5rem; }
+        .modal-body { padding: 1.5rem; }
+        .modal-footer { padding: 1rem 1.5rem; border-top: 1px solid #e5e7eb; }
     </style>
 </head>
 <body>
 
     <nav class="navbar navbar-dark bg-dark">
-        <div class="container-fluid d-flex align-items: center justify-content-between">
+        <div class="container-fluid d-flex align-items-center justify-content-between">
             <a class="navbar-brand d-flex align-items-center" href="sports_director_dashboard.php">
-                <img src="../imageslogo.png" alt="Logo" class="me-2" style="height: 50px; width: 48px; object-fit: contain;">
+                <img src="../imageslogo.png" alt="Logo" class="me-2 brand-logo" style="height: 50px; width: 48px; object-fit: contain;">
                 <div class="d-flex flex-column lh-sm">
                     <strong class="text-white" style="font-size: 1.25rem;">PIT SPORTS TALLYING</strong>
-                    <small class="text-light" style="font-size: 0.75rem;">Sports Director Panel</small>
+                    <small class="text-light" style="font-size: 0.75rem;">Director Panel</small>
                 </div>
             </a>
+            <button class="navbar-toggler d-lg-none" type="button" id="mobileToggle">
+                <span class="navbar-toggler-icon"></span>
+            </button>
             <div class="dropdown user-dropdown ms-auto me-2 me-lg-0">
                 <a href="#" class="dropdown-toggle" id="userDropdown" data-bs-toggle="dropdown" aria-expanded="false">
-                    <i class="fas fa-user-circle navbar-profile-icon"></i>
+                    <i class="fas fa-user-circle" style="font-size: 36px; margin-right: 10px; color: rgba(255,255,255,0.8);"></i>
                     <span class="user-name d-none d-lg-inline"><?= htmlspecialchars($name); ?></span>
                 </a>
                 <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="userDropdown">
-                    <li><a class="dropdown-item" href="../admin_profile.php"><i class="fas fa-user-circle"></i> Profile</a></li>
-                    <li><a class="dropdown-item" href="../Tournament_Manager_page.php" target="_blank"><i class="fas fa-globe"></i> View Public Site</a></li>
+                    <li><a class="dropdown-item" href="../admin_profile.php"><i class="fas fa-user-circle me-2"></i> Profile</a></li>
+                    <li><a class="dropdown-item" href="../Tournament_Manager_page.php" target="_blank"><i class="fas fa-globe me-2"></i> Public Site</a></li>
                     <li><hr class="dropdown-divider"></li>
-                    <li><a class="dropdown-item text-danger" href="../login.php"><i class="fas fa-sign-out-alt"></i> Logout</a></li>
+                    <li><a class="dropdown-item text-danger" href="../logout.php"><i class="fas fa-sign-out-alt me-2"></i> Logout</a></li>
                 </ul>
             </div>
         </div>
     </nav>
 
-    <?php if (isset($_SESSION['role']) && $_SESSION['role'] === 'Administrator'): ?>
-        <div class="sidebar" id="sidebar">
-            <ul class="nav flex-column sidebar-nav">
-                <li class="nav-item">
-                    <a class="nav-link <?php if ($current_page == 'admin_dashboard.php') echo 'active'; ?>" href="../admin_dashboard.php">
-                        <i class="fas fa-tachometer-alt me-2"></i> <span>Dashboard</span>
-                    </a>
-                </li>
-                <li class="nav-item">
-                    <a class="nav-link <?php if ($is_event_page) echo 'active'; ?>" data-bs-toggle="collapse" href="#eventsCollapse" role="button" aria-expanded="<?php echo $is_event_page ? 'true' : 'false'; ?>">
-                        <i class="fas fa-calendar-alt me-2"></i> <span>Manage Events</span> <i class="fas fa-chevron-down ms-auto sidebar-chevron"></i>
-                    </a>
-                    <div class="collapse <?php if ($is_event_page) echo 'show'; ?>" id="eventsCollapse">
-                        <ul class="sub-menu">
-                            <li><a class="nav-link <?php if ($current_page == 'Manage_Games.php') echo 'active'; ?>" href="../Manage_Games.php"><span>Games (L1)</span></a></li>
-                            <li><a class="nav-link <?php if ($current_page == 'Manage_Game_Events.php') echo 'active'; ?>" href="../Manage_Game_Events.php"><span>Game Events (L2)</span></a></li>
-                            <li><a class="nav-link <?php if ($current_page == 'Manage_Categories.php') echo 'active'; ?>" href="../Manage_Categories.php"><span>Categories (L3)</span></a></li>
-                        </ul>
-                    </div>
-                </li>
-                <li class="nav-item">
-                    <a class="nav-link <?php if ($is_management_page) echo 'active'; ?>" data-bs-toggle="collapse" href="#teamsCollapse" role="button" aria-expanded="<?php echo $is_management_page ? 'true' : 'false'; ?>">
-                        <i class="fas fa-users me-2"></i> <span>Manage Colleges</span> <i class="fas fa-chevron-down ms-auto sidebar-chevron"></i>
-                    </a>
-                    <div class="collapse <?php if ($is_management_page) echo 'show'; ?>" id="teamsCollapse">
-                        <ul class="sub-menu">
-                            <li class="text-muted" style="padding: 10px 25px 5px 60px;">Management</li>
-                            <li><a class="nav-link <?php if ($current_page == 'colleges.php') echo 'active'; ?>" href="colleges.php"><span>Manage Colleges</span></a></li>
-                            <li><a class="nav-link <?php if ($current_page == 'events.php') echo 'active'; ?>" href="events.php"><span>Manage Events (L1-L3)</span></a></li>
-                            <li class="nav-item">
-                            <a class="nav-link <?php if ($current_page == 'Manage_Matches.php') echo 'active'; ?>" href="Manage_Matches.php">
-                                <span>Manage Matches</span>
-                            </a>
-                        </li>
-                            <li class="text-muted" style="padding: 10px 25px 5px 60px;">Tallying</li>
-                            <li><a class="nav-link <?php if ($current_page == 'results.php') echo 'active'; ?>" href="results.php"><span>Approve Results</span></a></li>
-                            <li><a class="nav-link <?php if ($current_page == 'reports.php') echo 'active'; ?>" href="reports.php"><span>Medal Reports</span></a></li>
-                        </ul>
-                    </div>
-                </li>
-                <li class="nav-item">
-                    <a class="nav-link <?php if ($current_page == 'Manage_Users.php') echo 'active'; ?>" href="../Manage_Users.php">
-                        <i class="fas fa-users-cog me-2"></i> <span>Manage Users</span>
-                    </a>
-                </li>
-                <li class="nav-item">
-                <a class="nav-link <?php if ($current_page == 'Manage_medals.php') echo 'active'; ?>" href="Manage_medals.php">
-                    <i class="fas fa-medal me-2"></i> <span>Manage Medals</span>
+    <!-- UNIFIED SIDEBAR -->
+    <div class="sidebar" id="sidebar">
+        <ul class="nav flex-column sidebar-nav">
+            <li class="nav-item">
+                <a class="nav-link" href="sports_director_dashboard.php">
+                    <i class="fas fa-tachometer-alt me-2"></i> <span>Dashboard</span>
+                </a>
+            </li>
+            
+            <li class="nav-item mt-3"><span class="nav-title">Tournament Mgmt</span></li>
+            <li class="nav-item">
+                <a class="nav-link" href="colleges.php">
+                    <i class="fas fa-users me-2"></i> <span>Manage Teams</span>
                 </a>
             </li>
             <li class="nav-item">
-                <a class="nav-link <?php if ($current_page == 'Manage_Requests.php') echo 'active'; ?>" href="Manage_Requests.php">
+                <a class="nav-link" href="events.php">
+                    <i class="fas fa-calendar-alt me-2"></i> <span>Manage Events (L1-L3)</span>
+                </a>
+            </li>
+            <li class="nav-item">
+                <a class="nav-link" href="Manage_Matches.php">
+                    <i class="fas fa-trophy me-2"></i> <span>Manage Matches</span>
+                </a>
+            </li>
+
+            <li class="nav-item mt-3"><span class="nav-title">Administration</span></li>
+            <li class="nav-item">
+                <a class="nav-link" href="../Manage_Users.php">
+                    <i class="fas fa-users-cog me-2"></i> <span>Manage Users</span>
+                </a>
+            </li>
+            <li class="nav-item">
+                <a class="nav-link" href="../Manage_Requests.php">
                     <i class="fas fa-user-plus me-2"></i> <span>Account Requests</span>
+                    <?php if($pending_requests_count > 0): ?>
+                        <span class="badge bg-danger ms-auto rounded-pill"><?= $pending_requests_count ?></span>
+                    <?php endif; ?>
+                </a>
+            </li>
+             <li class="nav-item">
+                <a class="nav-link" href="../Manage_Viewreports.php">
+                    <i class="fas fa-file-alt me-2"></i> <span>View System Reports</span>
+                </a>
+            </li>
+
+            <li class="nav-item mt-3"><span class="nav-title">Tallying & Scoring</span></li>
+            <li class="nav-item">
+                <a class="nav-link active" href="results.php">
+                    <i class="fas fa-check-double me-2"></i> <span>Approve Results</span>
+                    <?php if($pending_results_count > 0): ?>
+                        <span class="badge bg-warning text-dark ms-auto rounded-pill"><?= $pending_results_count ?></span>
+                    <?php endif; ?>
                 </a>
             </li>
             <li class="nav-item">
-                <a class="nav-link <?php if ($current_page == 'Manage_Viewreports.php') echo 'active'; ?>" href="Manage_Viewreports.php">
-                    <i class="fas fa-chart-line me-2"></i> <span>View Reports</span>
+                <a class="nav-link" href="reports.php">
+                    <i class="fas fa-chart-line me-2"></i> <span>Medal Standings</span>
                 </a>
             </li>
-                <li class="nav-item mt-3">
-                    <a class="nav-link text-danger" href="../logout.php">
-                        <i class="fas fa-sign-out-alt me-2"></i> <span>Logout</span>
-                    </a>
-                </li>
-            </ul>
-        </div>
-        <?php else: ?>
-        <div class="sidebar" id="sidebar">
-            <ul class="nav flex-column sidebar-nav">
-                <li class="nav-item">
-                    <a class="nav-link <?php if ($current_page == 'sports_director_dashboard.php') echo 'active'; ?>" 
-                       href="sports_director_dashboard.php">
-                        <i class="fas fa-tachometer-alt me-2"></i> <span>Dashboard</span>
-                    </a>
-                </li>
-                <li class="nav-item mt-3"><span class="nav-title">Management</span></li>
-                <li class="nav-item">
-                    <a class="nav-link <?php if ($current_page == 'colleges.php') echo 'active'; ?>" href="colleges.php">
-                        <i class="fas fa-users me-2"></i> <span>Manage Colleges</span>
-                    </a>
-                </li>
-                <li class="nav-item">
-                    <a class="nav-link <?php if ($current_page == 'events.php') echo 'active'; ?>" href="events.php">
-                        <i class="fas fa-calendar-alt me-2"></i> <span>Manage Events (L1-L3)</span>
-                    </a>
-                </li>
-                <li class="nav-item">
-                    <a class="nav-link <?= ($current_page == 'view_all_matches.php') ? 'active' : '' ?>" href="view_all_matches.php">
-                        <i class="fas fa-trophy me-2"></i> <span>View All Matches</span>
-                    </a>
-                </li>
-                <li class="nav-item">
-                    <a class="nav-link <?php if ($current_page == 'Manage_Viewreports.php') echo 'active'; ?>" href="../Manage_Viewreports.php">
-                        <i class="fas fa-chart-line me-2"></i> <span>View Reports</span>
-                    </a>
-                </li>
-                
-                <li class="nav-item mt-3"><span class="nav-title">Tallying</span></li>
-                <li class="nav-item">
-                    <a class="nav-link <?php if ($current_page == 'results.php') echo 'active'; ?>" href="results.php">
-                        <i class="fas fa-check-double me-2"></i> <span>Approve Results</span>
-                    </a>
-                </li>
-                <li class="nav-item">
-                    <a class="nav-link <?php if ($current_page == 'reports.php') echo 'active'; ?>" href="reports.php">
-                        <i class="fas fa-chart-line me-2"></i> <span>Medal Reports</span>
-                    </a>
-                </li>
-                <li class="nav-item mt-auto">
-                    <a class="nav-link text-danger" href="../logout.php">
-                        <i class="fas fa-sign-out-alt me-2"></i> <span>Logout</span>
-                    </a>
-                </li>
-            </ul>
-        </div>
-    <?php endif; ?> 
+
+            <!-- NEW SECTION: SEASON MANAGEMENT -->
+            <li class="nav-item mt-3"><span class="nav-title">Season Management</span></li>
+            <li class="nav-item">
+                <a class="nav-link <?= ($current_page == 'manage_archives.php') ? 'active' : '' ?>" href="../manage_archives.php">
+                    <i class="fas fa-history me-2"></i> <span>Archives & Reset</span>
+                </a>
+            </li>
+            
+            <li class="nav-item mt-auto">
+                <a class="nav-link text-danger" href="../logout.php">
+                    <i class="fas fa-sign-out-alt me-2"></i> <span>Logout</span>
+                </a>
+            </li>
+        </ul>
+    </div>
     
     <div class="main-content">
         <div class="container-fluid">
             
+            <nav aria-label="breadcrumb" class="mb-4">
+              <ol class="breadcrumb">
+                <li class="breadcrumb-item"><a href="sports_director_dashboard.php">Dashboard</a></li>
+                <li class="breadcrumb-item active" aria-current="page">Approve Results</li>
+              </ol>
+            </nav>
+
             <h1 class="section-title mb-4">Approve Medal Results</h1>
             
             <?php if (!empty($alert_message)): ?>
@@ -415,16 +485,16 @@ if ($result_approved) {
             <?php endif; ?>
             
             <div class="card">
-                <div class="card-header">
+                <div class="card-header bg-white pt-3">
                     <ul class="nav nav-tabs card-header-tabs" id="resultsTab" role="tablist">
                         <li class="nav-item" role="presentation">
-                            <button class="nav-link active" id="pending-tab" data-bs-toggle="tab" data-bs-target="#pending" type="button" role="tab" aria-controls="pending" aria-selected="true">
+                            <button class="nav-link active" id="pending-tab" data-bs-toggle="tab" data-bs-target="#pending" type="button" role="tab">
                                 <i class="fas fa-hourglass-half me-1"></i> Pending Submissions
                                 <span class="badge bg-warning text-dark ms-1"><?php echo count($pending_results); ?></span>
                             </button>
                         </li>
                         <li class="nav-item" role="presentation">
-                            <button class="nav-link" id="approved-tab" data-bs-toggle="tab" data-bs-target="#approved" type="button" role="tab" aria-controls="approved" aria-selected="false">
+                            <button class="nav-link" id="approved-tab" data-bs-toggle="tab" data-bs-target="#approved" type="button" role="tab">
                                 <i class="fas fa-check-circle me-1"></i> Approved Results
                                 <span class="badge bg-success ms-1"><?php echo count($approved_results); ?></span>
                             </button>
@@ -434,234 +504,319 @@ if ($result_approved) {
                 
                 <div class="tab-content" id="resultsTabContent">
                     
-                    <div class="tab-pane fade show active" id="pending" role="tabpanel" aria-labelledby="pending-tab">
+                    <!-- Pending Tab -->
+                    <div class="tab-pane fade show active" id="pending" role="tabpanel">
                         <div class="card-body p-0">
-                            <div class="table-responsive">
-                                <table class="table table-hover align-middle mb-0">
-                                    <thead class="table-light">
+                            <div class="table-responsive results-table-container">
+                                <table class="table results-table table-hover align-middle mb-0">
+                                    <thead>
                                         <tr>
-                                            <th style="min-width: 250px;">Game / Event / Category</th>
-                                            <th>Type</th>
-                                            <th style="min-width: 280px;">Submitted Winners (Count)</th>
-                                            <th>Submission Details</th>
-                                            <th class="text-end">Actions</th>
+                                            <!-- RESIZED: Reduced from 280px to 200px -->
+                                            <th style="min-width: 200px;">Event Details</th>
+                                            
+                                            <!-- RESIZED: Reduced from 120px to 100px -->
+                                            <th style="min-width: 100px;">Type</th>
+                                            
+                                            <th style="min-width: 320px;">Submitted Winners</th>
+                                            
+                                            <!-- RESIZED: Reduced from 180px to 160px -->
+                                            <th style="min-width: 160px;">Submitted By</th>
+                                            
+                                            <!-- RESIZED: Reduced from 140px to 90px & Stacked -->
+                                            <th class="text-end sticky-col" style="min-width: 90px;">Actions</th>
                                         </tr>
                                     </thead>
                                     <tbody>
                                         <?php if (empty($pending_results)): ?>
                                             <tr>
-                                                <td colspan="5" class="text-center text-muted p-4">
-                                                    No pending results found.
+                                                <td colspan="5" class="p-0">
+                                                    <div class="empty-state">
+                                                        <i class="fas fa-inbox empty-state-icon"></i>
+                                                        <div class="empty-state-title">No Pending Submissions</div>
+                                                        <div class="empty-state-text">All results have been reviewed. New submissions will appear here.</div>
+                                                    </div>
                                                 </td>
                                             </tr>
                                         <?php endif; ?>
                                         
                                         <?php foreach ($pending_results as $row): ?>
                                             <tr>
-                                                <td>
-                                                    <div class="fw-bold"><?php echo htmlspecialchars($row['game_name']); ?></div>
-                                                    <div class="text-muted small"><?php echo htmlspecialchars($row['event_name']); ?></div>
-                                                    <strong><?php echo htmlspecialchars($row['category_name']); ?></strong>
+                                                <!-- Event Details Column -->
+                                                <td class="event-info-cell">
+                                                    <div class="event-game-name"><?php echo htmlspecialchars($row['game_name']); ?></div>
+                                                    <div class="event-event-name"><?php echo htmlspecialchars($row['event_name']); ?></div>
+                                                    <?php 
+                                                    if ($row['category_name'] === 'Main Event' || $row['category_name'] === 'Main Competition') {
+                                                        echo '<div class="event-no-category">(no category)</div>';
+                                                    } else {
+                                                        echo '<div class="event-category-name">' . htmlspecialchars($row['category_name']) . '</div>';
+                                                    }
+                                                    ?>
                                                 </td>
                                                 
+                                                <!-- Type Column -->
                                                 <td>
                                                     <?php if (strtolower($row['category_type']) == 'match'): ?>
-                                                        <span class="badge bg-purple"><i class="fas fa-trophy me-1"></i> Match</span>
+                                                        <span class="type-badge badge-match">
+                                                            <i class="fas fa-trophy"></i>
+                                                            Match
+                                                        </span>
                                                     <?php else: ?>
-                                                        <span class="badge bg-info text-dark"><i class="fas fa-medal me-1"></i> Medal</span>
+                                                        <span class="type-badge badge-medal">
+                                                            <i class="fas fa-medal"></i>
+                                                            Medal
+                                                        </span>
                                                     <?php endif; ?>
                                                 </td>
                                                 
+                                                <!-- Winners Column -->
                                                 <td>
-                                                    <div>
-                                                        <i class="fas fa-medal medal-icon gold"></i> 
-                                                        <?php echo getCollegeName($row['gold_winner_college_id'], $college_map); ?>
-                                                        ( <span class="winner-count"><?php echo $row['gold_count']; ?></span> )
-                                                    </div>
-                                                    <div>
-                                                        <i class="fas fa-medal medal-icon silver"></i> 
-                                                        <?php echo getCollegeName($row['silver_winner_college_id'], $college_map); ?>
-                                                        ( <span class="winner-count"><?php echo $row['silver_count']; ?></span> )
-                                                    </div>
-                                                    <div>
-                                                        <i class="fas fa-medal medal-icon bronze"></i> 
-                                                        <?php echo getCollegeName($row['bronze_winner_college_id'], $college_map); ?>
-                                                        ( <span class="winner-count"><?php echo $row['bronze_count']; ?></span> )
+                                                    <div class="winners-column">
+                                                        <div class="winner-row gold-winner">
+                                                            <i class="fas fa-medal medal-icon gold"></i>
+                                                            <span class="winner-college-name">
+                                                                <?php echo getCollegeName($row['gold_winner_college_id'], $college_map); ?>
+                                                            </span>
+                                                            <span class="winner-count"><?php echo (int)$row['gold_count']; ?></span>
+                                                        </div>
+                                                        <div class="winner-row silver-winner">
+                                                            <i class="fas fa-medal medal-icon silver"></i>
+                                                            <span class="winner-college-name">
+                                                                <?php echo getCollegeName($row['silver_winner_college_id'], $college_map); ?>
+                                                            </span>
+                                                            <span class="winner-count"><?php echo (int)$row['silver_count']; ?></span>
+                                                        </div>
+                                                        <div class="winner-row bronze-winner">
+                                                            <i class="fas fa-medal medal-icon bronze"></i>
+                                                            <span class="winner-college-name">
+                                                                <?php echo getCollegeName($row['bronze_winner_college_id'], $college_map); ?>
+                                                            </span>
+                                                            <span class="winner-count"><?php echo (int)$row['bronze_count']; ?></span>
+                                                        </div>
                                                     </div>
                                                 </td>
                                                 
+                                                <!-- Submitted By Column -->
                                                 <td>
-                                                    <div class="fw-bold"><?php echo htmlspecialchars($row['submitted_by'] ?? 'N/A'); ?></div>
-                                                    <small class="text-muted"><?php echo date('M d, Y h:i A', strtotime($row['submission_date'])); ?></small>
+                                                    <div class="submitter-info">
+                                                        <div class="submitter-name">
+                                                            <i class="fas fa-user-circle"></i>
+                                                            <?php echo htmlspecialchars($row['submitted_by'] ?? 'N/A'); ?>
+                                                        </div>
+                                                        <div class="submission-date">
+                                                            <i class="fas fa-clock"></i>
+                                                            <?php echo date('M d, h:i A', strtotime($row['submission_date'])); ?>
+                                                        </div>
+                                                    </div>
                                                 </td>
                                                 
-                                                <td class="text-end">
-                                                    <div style="display: flex; gap: 5px; justify-content: flex-end;">
-                                                        <form method="POST" action="results.php" style="display: inline-block;">
+                                                <!-- Actions Column: Stacked Layout -->
+                                                <td class="text-end sticky-col">
+                                                    <div class="action-stack">
+                                                        <form method="POST" action="results.php" class="w-100">
                                                             <input type="hidden" name="action" value="approve_result">
                                                             <input type="hidden" name="category_id" value="<?php echo $row['category_id']; ?>">
-                                                            <input type="hidden" name="event_name_for_log" value="<?php echo htmlspecialchars($row['event_name']); ?>">
                                                             <button type="submit" class="btn btn-success btn-sm" title="Approve">
-                                                                <i class="fas fa-check"></i>
+                                                                <i class="fas fa-check me-1"></i> Approve
                                                             </button>
                                                         </form>
-                                                        <button type="button" class="btn btn-danger btn-sm" title="Reject"
+                                                        <button type="button" class="btn btn-danger btn-sm w-100" title="Reject"
                                                                 data-bs-toggle="modal" data-bs-target="#rejectModal"
-                                                                data-category-id="<?php echo $row['category_id']; ?>"
-                                                                data-category-name="<?php echo htmlspecialchars($row['category_name']); ?>"
-                                                                data-event-name="<?php echo htmlspecialchars($row['event_name']); ?>">
-                                                            <i class="fas fa-times"></i>
+                                                                data-id="<?php echo $row['category_id']; ?>"
+                                                                data-name="<?php echo htmlspecialchars($row['category_name']); ?>">
+                                                            <i class="fas fa-times me-1"></i> Reject
                                                         </button>
                                                     </div>
                                                 </td>
                                             </tr>
                                         <?php endforeach; ?>
-                                        </tbody>
+                                    </tbody>
                                 </table>
                             </div>
                         </div>
                     </div>
                     
-                    <div class="tab-pane fade" id="approved" role="tabpanel" aria-labelledby="approved-tab">
-                    <div class="card-body p-0">
-                        <div class="table-responsive">
-                            <table class="table table-hover align-middle mb-0">
-                                <thead class="table-light">
-                                    <tr>
-                                        <th style="min-width: 250px;">Game / Event / Category</th>
-                                        <th>Type</th>
-                                        <th style="min-width: 280px;">Winners (Gold, Silver, Bronze)</th>
-                                        <th>Approval Details</th>
-                                        <th class="text-end">Actions</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    <?php if (empty($approved_results)): ?>
+                    <!-- Approved Tab -->
+                    <div class="tab-pane fade" id="approved" role="tabpanel">
+                        <div class="card-body p-0">
+                            <div class="table-responsive results-table-container">
+                                <table class="table results-table table-hover align-middle mb-0">
+                                    <thead>
                                         <tr>
-                                            <td colspan="5" class="text-center text-muted p-4">
-                                                No results have been approved yet.
-                                            </td>
+                                            <th style="min-width: 200px;">Event Details</th>
+                                            <th style="min-width: 100px;">Type</th>
+                                            <th style="min-width: 320px;">Winners</th>
+                                            <th style="min-width: 160px;">Approved By</th>
+                                            <th class="text-end sticky-col" style="min-width: 90px;">Actions</th>
                                         </tr>
-                                    <?php endif; ?>
-                                    
-                                    <?php foreach ($approved_results as $row): ?>
-                                        <tr>
-                                            <td>
-                                                <div class="fw-bold"><?php echo htmlspecialchars($row['game_name']); ?></div>
-                                                <div class="text-muted small"><?php echo htmlspecialchars($row['event_name']); ?></div>
-                                                <strong><?php echo htmlspecialchars($row['category_name']); ?></strong>
-                                            </td>
-                                            
-                                            <td>
-                                                <?php if (strtolower($row['category_type']) == 'match'): ?>
-                                                    <span class="badge bg-purple"><i class="fas fa-trophy me-1"></i> Match</span>
-                                                <?php else: ?>
-                                                    <span class="badge bg-info text-dark"><i class="fas fa-medal me-1"></i> Medal</span>
-                                                <?php endif; ?>
-                                            </td>
-                                            
-                                            <td>
-                                                <div>
-                                                    <i class="fas fa-medal medal-icon gold"></i> 
-                                                    <?php echo getCollegeName($row['gold_winner_college_id'], $college_map); ?>
-                                                    (<?php echo $row['gold_count']; ?>)
-                                                </div>
-                                                <div>
-                                                    <i class="fas fa-medal medal-icon silver"></i> 
-                                                    <?php echo getCollegeName($row['silver_winner_college_id'], $college_map); ?>
-                                                    (<?php echo $row['silver_count']; ?>)
-                                                </div>
-                                                <div>
-                                                    <i class="fas fa-medal medal-icon bronze"></i> 
-                                                    <?php echo getCollegeName($row['bronze_winner_college_id'], $college_map); ?>
-                                                    (<?php echo $row['bronze_count']; ?>)
-                                                </div>
-                                            </td>
-                                            
-                                            <td>
-                                                <div class="fw-bold"><?php echo htmlspecialchars($row['approved_by'] ?? 'N/A'); ?></div>
-                                                <small class="text-muted"><?php echo date('M d, Y h:i A', strtotime($row['approved_at'])); ?></small>
-                                            </td>
-                                            
-                                            <td class="text-end">
-                                                <button type="button" class="btn btn-danger btn-sm" title="Revoke Approval"
-                                                        data-bs-toggle="modal" data-bs-target="#revokeModal"
-                                                        data-category-id="<?php echo $row['category_id']; ?>"
-                                                        data-category-name="<?php echo htmlspecialchars($row['category_name']); ?>"
-                                                        data-event-name="<?php echo htmlspecialchars($row['event_name']); ?>">
-                                                    <i class="fas fa-undo me-1"></i> Revoke
-                                                </button>
-                                            </td>
-                                        </tr>
-                                    <?php endforeach; ?>
-                                </tbody>
-                            </table>
+                                    </thead>
+                                    <tbody>
+                                        <?php if (empty($approved_results)): ?>
+                                            <tr>
+                                                <td colspan="5" class="p-0">
+                                                    <div class="empty-state">
+                                                        <i class="fas fa-check-circle empty-state-icon"></i>
+                                                        <div class="empty-state-title">No Approved Results Yet</div>
+                                                        <div class="empty-state-text">Approved results will be displayed here for your review.</div>
+                                                    </div>
+                                                </td>
+                                            </tr>
+                                        <?php endif; ?>
+                                        
+                                        <?php foreach ($approved_results as $row): ?>
+                                            <tr>
+                                                <!-- Event Details Column -->
+                                                <td class="event-info-cell">
+                                                    <div class="event-game-name"><?php echo htmlspecialchars($row['game_name']); ?></div>
+                                                    <div class="event-event-name"><?php echo htmlspecialchars($row['event_name']); ?></div>
+                                                    <?php 
+                                                    if ($row['category_name'] === 'Main Event' || $row['category_name'] === 'Main Competition') {
+                                                        echo '<div class="event-no-category">(no category)</div>';
+                                                    } else {
+                                                        echo '<div class="event-category-name">' . htmlspecialchars($row['category_name']) . '</div>';
+                                                    }
+                                                    ?>
+                                                </td>
+                                                
+                                                <!-- Type Column -->
+                                                <td>
+                                                    <?php if (strtolower($row['category_type']) == 'match'): ?>
+                                                        <span class="type-badge badge-match">
+                                                            <i class="fas fa-trophy"></i>
+                                                            Match
+                                                        </span>
+                                                    <?php else: ?>
+                                                        <span class="type-badge badge-medal">
+                                                            <i class="fas fa-medal"></i>
+                                                            Medal
+                                                        </span>
+                                                    <?php endif; ?>
+                                                </td>
+                                                
+                                                <!-- Winners Column -->
+                                                <td>
+                                                    <div class="winners-column">
+                                                        <div class="winner-row gold-winner">
+                                                            <i class="fas fa-medal medal-icon gold"></i>
+                                                            <span class="winner-college-name">
+                                                                <?php echo getCollegeName($row['gold_winner_college_id'], $college_map); ?>
+                                                            </span>
+                                                            <span class="winner-count"><?php echo (int)$row['gold_count']; ?></span>
+                                                        </div>
+                                                        <div class="winner-row silver-winner">
+                                                            <i class="fas fa-medal medal-icon silver"></i>
+                                                            <span class="winner-college-name">
+                                                                <?php echo getCollegeName($row['silver_winner_college_id'], $college_map); ?>
+                                                            </span>
+                                                            <span class="winner-count"><?php echo (int)$row['silver_count']; ?></span>
+                                                        </div>
+                                                        <div class="winner-row bronze-winner">
+                                                            <i class="fas fa-medal medal-icon bronze"></i>
+                                                            <span class="winner-college-name">
+                                                                <?php echo getCollegeName($row['bronze_winner_college_id'], $college_map); ?>
+                                                            </span>
+                                                            <span class="winner-count"><?php echo (int)$row['bronze_count']; ?></span>
+                                                        </div>
+                                                    </div>
+                                                </td>
+                                                
+                                                <!-- Approved By Column -->
+                                                <td>
+                                                    <div class="submitter-info">
+                                                        <div class="submitter-name">
+                                                            <i class="fas fa-user-shield"></i>
+                                                            <?php echo htmlspecialchars($row['approved_by'] ?? 'N/A'); ?>
+                                                        </div>
+                                                        <div class="submission-date">
+                                                            <i class="fas fa-check-circle"></i>
+                                                            <?php echo date('M d, h:i A', strtotime($row['approved_at'])); ?>
+                                                        </div>
+                                                    </div>
+                                                </td>
+                                                
+                                                <!-- Actions Column: Stacked -->
+                                                <td class="text-end sticky-col">
+                                                    <div class="action-stack">
+                                                        <!-- FIXED: Removed data-bs-toggle="tooltip" to allow modal to work -->
+                                                        <button type="button" class="btn btn-warning btn-sm w-100" title="Revoke Approval" 
+                                                                data-bs-toggle="modal" data-bs-target="#revokeModal"
+                                                                data-id="<?php echo $row['category_id']; ?>"
+                                                                data-name="<?php echo htmlspecialchars($row['category_name']); ?>">
+                                                            <i class="fas fa-undo me-1"></i> Revoke
+                                                        </button>
+                                                    </div>
+                                                </td>
+                                            </tr>
+                                        <?php endforeach; ?>
+                                    </tbody>
+                                </table>
+                            </div>
                         </div>
                     </div>
-                </div>
+
                 </div>
             </div>
-
         </div>
-    </div> 
-    
-    <footer class="bg-dark text-white py-4" id="footer">
+    </div>
+
+    <footer class="bg-dark text-white py-4">
         <div class="text-center">
-            <small>&copy; <?php echo date("Y"); ?> PIT SPORTS TALLYING. All rights reserved.</small>
+            <small>&copy; <?php echo date("Y"); ?> PIT SPORTS TALLYING. All rights reserved.</small><br>
+            <small class="text-muted">Developed by Tsunayoshi Sawada</small>
         </div>
     </footer>
 
-    <div class="modal fade" id="rejectModal" tabindex="-1" aria-labelledby="rejectModalLabel" aria-hidden="true">
+    <!-- Reject Modal -->
+    <div class="modal fade" id="rejectModal" tabindex="-1">
         <div class="modal-dialog modal-dialog-centered">
             <div class="modal-content">
                 <form method="POST" action="results.php">
                     <input type="hidden" name="action" value="reject_result">
                     <input type="hidden" name="category_id" id="reject_category_id">
-                    <input type="hidden" name="event_name_for_log" id="reject_event_name">
                     
                     <div class="modal-header bg-danger text-white">
-                        <h5 class="modal-title" id="rejectModalLabel">Confirm Rejection</h5>
-                        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+                        <h5 class="modal-title">Reject Result</h5>
+                        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
                     </div>
                     <div class="modal-body">
-                        <p>Are you sure you want to reject the results for: <br><strong id="reject_category_name"></strong>?</p>
+                        <p>Reject result for: <strong id="reject_category_name"></strong>?</p>
                         <div class="mb-3">
-                            <label for="rejection_reason" class="form-label">Reason (Optional):</label>
-                            <textarea class="form-control" id="rejection_reason" name="rejection_reason" rows="3" placeholder="e.g., Incorrect winner submitted..."></textarea>
+                            <label class="form-label">Reason (Optional):</label>
+                            <textarea class="form-control" name="rejection_reason" rows="3"></textarea>
                         </div>
                     </div>
                     <div class="modal-footer">
                         <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-                        <button type="submit" class="btn btn-danger">Yes, Reject Results</button>
+                        <button type="submit" class="btn btn-danger">Reject</button>
                     </div>
                 </form>
             </div>
         </div>
     </div>
 
-    <div class="modal fade" id="revokeModal" tabindex="-1" aria-labelledby="revokeModalLabel" aria-hidden="true">
+    <!-- Revoke Modal -->
+    <div class="modal fade" id="revokeModal" tabindex="-1">
         <div class="modal-dialog modal-dialog-centered">
             <div class="modal-content">
                 <form method="POST" action="results.php">
                     <input type="hidden" name="action" value="revoke_result">
                     <input type="hidden" name="category_id" id="revoke_category_id">
-                    <input type="hidden" name="event_name_for_log" id="revoke_event_name">
                     
-                    <div class="modal-header bg-danger text-white">
-                        <h5 class="modal-title" id="revokeModalLabel">Confirm Approval Revocation</h5>
-                        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+                    <div class="modal-header bg-warning text-dark">
+                        <h5 class="modal-title">Revoke Approval</h5>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
                     </div>
                     <div class="modal-body">
-                        <p>Are you sure you want to **revoke** the approval for: <br><strong id="revoke_category_name"></strong>?</p>
-                        <p>This action will **unpublish** the results from the medal tally and send them back to the Event Manager as 'Rejected' for correction.</p>
+                        <p>Revoke approval for: <strong id="revoke_category_name"></strong>?</p>
+                        <p class="text-muted small">This will unpublish the result and send it back to pending.</p>
                         <div class="mb-3">
-                            <label for="revoke_reason" class="form-label">Reason for Revocation (Optional):</label>
-                            <textarea class="form-control" id="revoke_reason" name="revoke_reason" rows="3" placeholder="e.g., Mistake in medal count..."></textarea>
+                            <label class="form-label">Reason (Optional):</label>
+                            <textarea class="form-control" name="revoke_reason" rows="3"></textarea>
                         </div>
                     </div>
                     <div class="modal-footer">
                         <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-                        <button type="submit" class="btn btn-danger">Yes, Revoke Approval</button>
+                        <button type="submit" class="btn btn-warning">Revoke</button>
                     </div>
                 </form>
             </div>
@@ -669,86 +824,57 @@ if ($result_approved) {
     </div>
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
-    
     <script>
         document.addEventListener('DOMContentLoaded', function () {
-            // JS for Reject Modal
-            var rejectModal = document.getElementById('rejectModal');
+            // Reject Modal Data
+            const rejectModal = document.getElementById('rejectModal');
             if(rejectModal) {
                 rejectModal.addEventListener('show.bs.modal', function (event) {
-                    var button = event.relatedTarget;
-                    var categoryId = button.getAttribute('data-category-id');
-                    var categoryName = button.getAttribute('data-category-name');
-                    var eventName = button.getAttribute('data-event-name');
-                    
-                    rejectModal.querySelector('#reject_category_id').value = categoryId;
-                    rejectModal.querySelector('#reject_category_name').textContent = categoryName;
-                    rejectModal.querySelector('#reject_event_name').value = eventName;
+                    const button = event.relatedTarget;
+                    document.getElementById('reject_category_id').value = button.getAttribute('data-id');
+                    document.getElementById('reject_category_name').textContent = button.getAttribute('data-name');
                 });
             }
 
-            // ### NEW: JS for Revoke Modal ###
-            var revokeModal = document.getElementById('revokeModal');
+            // Revoke Modal Data
+            const revokeModal = document.getElementById('revokeModal');
             if(revokeModal) {
                 revokeModal.addEventListener('show.bs.modal', function (event) {
-                    var button = event.relatedTarget;
-                    var categoryId = button.getAttribute('data-category-id');
-                    var categoryName = button.getAttribute('data-category-name');
-                    var eventName = button.getAttribute('data-event-name');
-                    
-                    revokeModal.querySelector('#revoke_category_id').value = categoryId;
-                    revokeModal.querySelector('#revoke_category_name').textContent = categoryName;
-                    revokeModal.querySelector('#revoke_event_name').value = eventName;
+                    const button = event.relatedTarget;
+                    document.getElementById('revoke_category_id').value = button.getAttribute('data-id');
+                    document.getElementById('revoke_category_name').textContent = button.getAttribute('data-name');
                 });
             }
 
-            let resizeTimer;
-            window.addEventListener('resize', function() {
-                clearTimeout(resizeTimer);
-                resizeTimer = setTimeout(function() {
-                    if (window.innerWidth > 992) {
-                        sidebar.classList.remove('show');
-                        sidebarOverlay.classList.remove('show');
-                    }
-                }, 250);
-            });
-
-            // --- ### NEW: FIX SIDEBAR/FOOTER OVERLAP ### ---
+            // Sidebar Toggle
+            const mobileToggle = document.getElementById('mobileToggle');
+            if (mobileToggle) {
+                mobileToggle.addEventListener('click', function() {
+                    document.getElementById('sidebar').classList.toggle('show');
+                });
+            }
+            
+            // Dynamic Footer
             const footer = document.querySelector('footer');
+            const sidebar = document.getElementById('sidebar');
             const navbar = document.querySelector('.navbar');
-            const sidebar = document.getElementById('sidebar'); // Make sure sidebar is defined
 
             if (sidebar && footer && navbar) {
                 function adjustSidebarHeight() {
-                    // This logic should only apply to desktop view
                     if (window.innerWidth <= 992) {
-                        sidebar.style.height = ''; // Reset to CSS default for mobile
+                        sidebar.style.height = ''; 
                         return;
                     }
-
                     const navbarHeight = navbar.offsetHeight;
                     const footerTop = footer.getBoundingClientRect().top;
                     const viewportHeight = window.innerHeight;
-                    
-                    // 1. Calculate the max possible height (navbar top to viewport bottom)
                     const maxSidebarHeight = viewportHeight - navbarHeight;
-
-                    // 2. Calculate the available height (navbar top to footer top)
                     const availableHeight = footerTop - navbarHeight;
-
-                    // 3. Choose the smaller of the two heights, but never less than 0
                     const newHeight = Math.max(0, Math.min(maxSidebarHeight, availableHeight));
-                    
-                    // 4. Apply the new height as an inline style
                     sidebar.style.height = `${newHeight}px`;
                 }
-
-                // Add listeners for scroll and resize events
                 window.addEventListener('scroll', adjustSidebarHeight, { passive: true });
                 window.addEventListener('resize', adjustSidebarHeight);
-                
-                // Initial call to set the correct height on page load
-                // Small delay to ensure all elements are rendered
                 setTimeout(adjustSidebarHeight, 100);
             }
         });

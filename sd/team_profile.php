@@ -4,9 +4,8 @@ session_start();
 require_once '../db_connect.php'; 
 
 // 1. SECURITY & ACCESS CONTROL
-if (!isset($_SESSION['role']) || 
-    ($_SESSION['role'] !== 'Sports Director' && $_SESSION['role'] !== 'Administrator')
-) {
+// STRICT: Only 'Sports Director' is allowed (Acting as Administrator)
+if (!isset($_SESSION['role']) || $_SESSION['role'] !== 'Sports Director') {
     header('Location: ../login.php'); 
     exit();
 }
@@ -17,14 +16,8 @@ if (!isset($_SESSION['user_id'])) {
 }
 $current_user_id = $_SESSION['user_id'];
 $name = isset($_SESSION['username']) ? $_SESSION['username'] : 'Sports Director';
-$current_page = 'colleges.php'; // Keeps the 'Manage Teams' nav active
+$current_page = 'colleges.php'; // Keeps the 'Manage Teams' sidebar item active
 $default_logo = 'images/default_avatar.png';
-
-// Sidebar Logic
-$event_pages = ['Manage_Games.php', 'Manage_Game_Events.php', 'Manage_Categories.php'];
-$is_event_page = in_array($current_page, $event_pages);
-$management_pages = ['colleges.php', 'events.php', 'results.php', 'reports.php'];
-$is_management_page = in_array($current_page, $management_pages);
 
 // --- DATA FETCHING ---
 
@@ -38,7 +31,6 @@ if ($college_id === 0) {
 }
 
 // 2. Fetch Basic Team Details
-// Note: DB table is still 'colleges', but columns have changed
 $stmt = $conn->prepare("SELECT * FROM colleges WHERE college_id = ?");
 $stmt->bind_param("i", $college_id);
 $stmt->execute();
@@ -162,12 +154,8 @@ $stmt_game_breakdown->close();
 // 7. Process Top Performing Events
 $top_performing_events = $event_breakdown;
 usort($top_performing_events, function($a, $b) {
-    if ($a['GoldCount'] != $b['GoldCount']) {
-        return $b['GoldCount'] - $a['GoldCount'];
-    }
-    if ($a['SilverCount'] != $b['SilverCount']) {
-        return $b['SilverCount'] - $a['SilverCount'];
-    }
+    if ($a['GoldCount'] != $b['GoldCount']) return $b['GoldCount'] - $a['GoldCount'];
+    if ($a['SilverCount'] != $b['SilverCount']) return $b['SilverCount'] - $a['SilverCount'];
     return $b['BronzeCount'] - $a['BronzeCount'];
 });
 $top_performing_events = array_slice($top_performing_events, 0, 5);
@@ -243,6 +231,10 @@ while ($row = $result_upcoming->fetch_assoc()) {
 }
 $stmt_upcoming->close();
 
+// Count sidebar badges
+$pending_requests_count = $conn->query("SELECT COUNT(*) FROM account_requests WHERE status = 'pending'")->fetch_row()[0] ?? 0;
+$pending_results_count = $conn->query("SELECT COUNT(*) FROM categories WHERE status='Results Submitted'")->fetch_row()[0] ?? 0;
+
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -260,7 +252,7 @@ $stmt_upcoming->close();
         .navbar { background: linear-gradient(135deg, #1a1a1a 0%, #2d2d2d 100%) !important; box-shadow: 0 4px 20px rgba(0,0,0,0.15); padding: 1rem 1.5rem; height: var(--header-height); position: fixed; top: 0; left: 0; right: 0; z-index: 1050; }
         .user-dropdown .dropdown-toggle { color: white; display: flex; align-items: center; text-decoration: none; padding: 8px 12px; border-radius: 8px; }
         .user-dropdown .dropdown-toggle img { width: 36px; height: 36px; border-radius: 50%; object-fit: cover; margin-right: 10px; }
-        .sidebar { width: var(--sidebar-width); position: fixed; top: var(--header-height); left: 0; height: calc(100vh - var(--header-height)); background: #2c3e50; color: white; box-shadow: 5px 0 15px rgba(0,0,0,0.2); z-index: 1040; transition: width var(--transition); overflow-y: auto; overflow-x: hidden; }
+        .sidebar { width: var(--sidebar-width); position: fixed; top: var(--header-height); left: 0; height: calc(100vh - var(--header-height)); background: #2c3e50; color: white; box-shadow: 5px 0 15px rgba(0,0,0,0.2); z-index: 1040; transition: width var(--transition); overflow-y: auto; }
         .sidebar-nav { padding: 20px 0; }
         .sidebar-nav .nav-link { color: rgba(255, 255, 255, 0.7); font-size: 1.05rem; font-weight: 500; padding: 12px 25px; transition: var(--transition); border-left: 5px solid transparent; margin: 2px 0; display: flex; align-items: center; text-decoration: none; }
         .sidebar-nav .nav-link i { width: 30px; text-align: center; flex-shrink: 0; font-size: 0.95em; }
@@ -269,7 +261,7 @@ $stmt_upcoming->close();
         .sidebar-nav .nav-title { padding: 10px 25px; font-size: 0.75rem; font-weight: 600; color: rgba(255, 255, 255, 0.4); text-transform: uppercase; letter-spacing: 1px; }
         .main-content { flex: 1 0 auto; padding: 30px; margin-top: var(--header-height); margin-left: var(--sidebar-width); transition: margin-left var(--transition); min-height: calc(100vh - var(--header-height)); }
         footer { flex-shrink: 0; background: #2c3e50 !important; box-shadow: 0 -2px 10px rgba(0,0,0,0.1); margin-left: var(--sidebar-width); transition: margin-left var(--transition); position: relative; z-index: 1041; }
-        .sidebar.minimized ~ footer { margin-left: var(--sidebar-min-width); } /* Fixed Footer Logic */
+        .sidebar.minimized ~ footer { margin-left: var(--sidebar-min-width); } 
         
         .section-title { font-family: 'Poppins', sans-serif; font-weight: 600; color: #333; }
         .card { border: none; border-radius: 15px; box-shadow: var(--card-shadow); }
@@ -291,19 +283,11 @@ $stmt_upcoming->close();
 <body>
     <nav class="navbar navbar-dark bg-dark">
         <div class="container-fluid d-flex align-items-center justify-content-between">
-            <a class="navbar-brand d-flex align-items-center" href="dashboard.php">
+            <a class="navbar-brand d-flex align-items-center" href="sports_director_dashboard.php">
                 <img src="../imageslogo.png" alt="Logo" class="me-2" style="height: 50px; width: 48px; object-fit: contain;">
                 <div class="d-flex flex-column lh-sm">
                     <strong class="text-white" style="font-size: 1.25rem;">PIT SPORTS TALLYING</strong>
-                    <small class="text-light" style="font-size: 0.75rem;">
-                        <?php 
-                            if ($_SESSION['role'] === 'Administrator') {
-                                echo 'Administrator Panel';
-                            } else {
-                                echo 'Sports Director Panel';
-                            }
-                        ?>
-                    </small>
+                    <small class="text-light" style="font-size: 0.75rem;">Director Panel</small>
                 </div>
             </a>
             <div class="dropdown user-dropdown ms-auto me-2 me-lg-0">
@@ -321,101 +305,81 @@ $stmt_upcoming->close();
         </div>
     </nav>
     
-    <?php if (isset($_SESSION['role']) && $_SESSION['role'] === 'Administrator'): ?>
+    <!-- UNIFIED SUPER ADMIN SIDEBAR -->
     <div class="sidebar" id="sidebar">
-            <button id="sidebarToggle" title="Toggle Sidebar">
-                <i class="fas fa-bars"></i>
-            </button>
-            <ul class="nav flex-column sidebar-nav">
-                <li class="nav-item">
-                    <a class="nav-link <?php if ($current_page == 'admin_dashboard.php') echo 'active'; ?>" href="../admin_dashboard.php">
-                        <i class="fas fa-tachometer-alt me-2"></i> <span>Dashboard</span>
-                    </a>
-                </li>
-                <li class="nav-item">
-                    <a class="nav-link <?php if ($is_event_page) echo 'active'; ?>" data-bs-toggle="collapse" href="#eventsCollapse" role="button" aria-expanded="<?php echo $is_event_page ? 'true' : 'false'; ?>" aria-controls="eventsCollapse">
-                        <i class="fas fa-calendar-alt me-2"></i> <span>Manage Events</span> <i class="fas fa-chevron-down ms-auto sidebar-chevron"></i>
-                    </a>
-                    <div class="collapse <?php if ($is_event_page) echo 'show'; ?>" id="eventsCollapse">
-                        <ul class="sub-menu">
-                            <li><a class="nav-link <?php if ($current_page == 'Manage_Games.php') echo 'active'; ?>" href="../Manage_Games.php"><span>Games (L1)</span></a></li>
-                            <li><a class="nav-link <?php if ($current_page == 'Manage_Game_Events.php') echo 'active'; ?>" href="../Manage_Game_Events.php"><span>Game Events (L2)</span></a></li>
-                            <li><a class="nav-link <?php if ($current_page == 'Manage_Categories.php') echo 'active'; ?>" href="../Manage_Categories.php"><span>Categories (L3)</span></a></li>
-                        </ul>
-                    </div>
-                </li>
-                <li class="nav-item">
-                    <a class="nav-link <?php if ($is_management_page) echo 'active'; ?>" data-bs-toggle="collapse" href="#teamsCollapse" role="button" aria-expanded="<?php echo $is_management_page ? 'true' : 'false'; ?>" aria-controls="teamsCollapse">
-                        <i class="fas fa-users me-2"></i> <span>Manage Teams</span> <i class="fas fa-chevron-down ms-auto sidebar-chevron"></i>
-                    </a>
-                    <div class="collapse <?php if ($is_management_page) echo 'show'; ?>" id="teamsCollapse">
-                        <ul class="sub-menu">
-                            <li class="text-muted" style="padding: 10px 25px 5px 60px;">Management</li>
-                            <li><a class="nav-link <?php if ($current_page == 'colleges.php') echo 'active'; ?>" href="colleges.php"><span>Manage Teams</span></a></li>
-                            <li><a class="nav-link <?php if ($current_page == 'events.php') echo 'active'; ?>" href="events.php"><span>Manage Events (L1-L3)</span></a></li>
-                            <li class="text-muted" style="padding: 10px 25px 5px 60px;">Tallying</li>
-                            <li><a class="nav-link <?php if ($current_page == 'results.php') echo 'active'; ?>" href="results.php"><span>Approve Results</span></a></li>
-                            <li><a class="nav-link <?php if ($current_page == 'reports.php') echo 'active'; ?>" href="reports.php"><span>Medal Reports</span></a></li>
-                        </ul>
-                    </div>
-                </li>
-                <li class="nav-item">
-                    <a class="nav-link <?php if ($current_page == 'Manage_Users.php') echo 'active'; ?>" href="../Manage_Users.php">
-                        <i class="fas fa-users-cog me-2"></i> <span>Manage Users</span>
-                    </a>
-                </li>
-            </ul>
-        </div>
-        <?php else: ?>
-        <div class="sidebar" id="sidebar">
-            <ul class="nav flex-column sidebar-nav">
-                <li class="nav-item">
-                    <a class="nav-link <?php if ($current_page == 'sports_director_dashboard.php') echo 'active'; ?>" 
-                       href="sports_director_dashboard.php">
-                        <i class="fas fa-tachometer-alt me-2"></i> <span>Dashboard</span>
-                    </a>
-                </li>
-                <li class="nav-item mt-3"><span class="nav-title">Management</span></li>
-                <li class="nav-item">
-                    <a class="nav-link <?php if ($current_page == 'colleges.php') echo 'active'; ?>" href="colleges.php">
-                        <i class="fas fa-users me-2"></i> <span>Manage Teams</span>
-                    </a>
-                </li>
-                <li class="nav-item">
-                    <a class="nav-link <?php if ($current_page == 'events.php') echo 'active'; ?>" href="events.php">
-                        <i class="fas fa-calendar-alt me-2"></i> <span>Manage Events (L1-L3)</span>
-                    </a>
-                </li>
-                <li class="nav-item">
-                    <a class="nav-link <?= ($current_page == 'view_all_matches.php') ? 'active' : '' ?>" href="view_all_matches.php">
-                        <i class="fas fa-trophy me-2"></i> <span>View All Matches</span>
-                    </a>
-                </li>
-                <li class="nav-item mt-3"><span class="nav-title">Tallying</span></li>
-                <li class="nav-item">
-                    <a class="nav-link <?php if ($current_page == 'results.php') echo 'active'; ?>" href="results.php">
-                        <i class="fas fa-check-double me-2"></i> <span>Approve Results</span>
-                    </a>
-                </li>
-                <li class="nav-item">
-                    <a class="nav-link <?php if ($current_page == 'reports.php') echo 'active'; ?>" href="reports.php">
-                        <i class="fas fa-chart-line me-2"></i> <span>Medal Reports</span>
-                    </a>
-                </li>
-            </ul>
-        </div>
-    <?php endif; ?> 
+        <ul class="nav flex-column sidebar-nav">
+            <li class="nav-item">
+                <a class="nav-link" href="sports_director_dashboard.php">
+                    <i class="fas fa-tachometer-alt me-2"></i> <span>Dashboard</span>
+                </a>
+            </li>
+            
+            <li class="nav-item mt-3"><span class="nav-title">Tournament Mgmt</span></li>
+            <li class="nav-item">
+                <a class="nav-link active" href="colleges.php">
+                    <i class="fas fa-users me-2"></i> <span>Manage Teams</span>
+                </a>
+            </li>
+            <li class="nav-item">
+                <a class="nav-link" href="events.php">
+                    <i class="fas fa-calendar-alt me-2"></i> <span>Manage Events (L1-L3)</span>
+                </a>
+            </li>
+            <li class="nav-item">
+                <a class="nav-link" href="Manage_Matches.php">
+                    <i class="fas fa-trophy me-2"></i> <span>Manage Matches</span>
+                </a>
+            </li>
+
+            <li class="nav-item mt-3"><span class="nav-title">Administration</span></li>
+            <li class="nav-item">
+                <a class="nav-link" href="../Manage_Users.php">
+                    <i class="fas fa-users-cog me-2"></i> <span>Manage Users</span>
+                </a>
+            </li>
+            <li class="nav-item">
+                <a class="nav-link" href="../Manage_Requests.php">
+                    <i class="fas fa-user-plus me-2"></i> <span>Account Requests</span>
+                    <?php if($pending_requests_count > 0): ?>
+                        <span class="badge bg-danger ms-auto rounded-pill"><?= $pending_requests_count ?></span>
+                    <?php endif; ?>
+                </a>
+            </li>
+             <li class="nav-item">
+                <a class="nav-link" href="../Manage_Viewreports.php">
+                    <i class="fas fa-file-alt me-2"></i> <span>View System Reports</span>
+                </a>
+            </li>
+
+            <li class="nav-item mt-3"><span class="nav-title">Tallying & Scoring</span></li>
+            <li class="nav-item">
+                <a class="nav-link" href="results.php">
+                    <i class="fas fa-check-double me-2"></i> <span>Approve Results</span>
+                    <?php if($pending_results_count > 0): ?>
+                        <span class="badge bg-warning text-dark ms-auto rounded-pill"><?= $pending_results_count ?></span>
+                    <?php endif; ?>
+                </a>
+            </li>
+            <li class="nav-item">
+                <a class="nav-link" href="reports.php">
+                    <i class="fas fa-chart-line me-2"></i> <span>Medal Standings</span>
+                </a>
+            </li>
+            
+            <li class="nav-item mt-auto">
+                <a class="nav-link text-danger" href="../logout.php">
+                    <i class="fas fa-sign-out-alt me-2"></i> <span>Logout</span>
+                </a>
+            </li>
+        </ul>
+    </div>
 
     <div class="main-content">
         <div class="container-fluid">
             
             <nav aria-label="breadcrumb" class="mb-2">
               <ol class="breadcrumb">
-                <?php if ($_SESSION['role'] === 'Administrator'): ?>
-                    <li class="breadcrumb-item"><a href="../admin_dashboard.php">Dashboard</a></li>
-                <?php else: ?>
-                    <li class="breadcrumb-item"><a href="sports_director_dashboard.php">Dashboard</a></li>
-                <?php endif; ?>
+                <li class="breadcrumb-item"><a href="sports_director_dashboard.php">Dashboard</a></li>
                 <li class="breadcrumb-item"><a href="colleges.php">Manage Teams</a></li>
                 <li class="breadcrumb-item active" aria-current="page"><?= htmlspecialchars($college['college_name']) ?></li>
               </ol>
@@ -433,17 +397,19 @@ $stmt_upcoming->close();
                     <div class="col-md-9 col-lg-10 text-center text-md-start mt-3 mt-md-0">
                         <h1 class="section-title mb-1"><?= htmlspecialchars($college['college_name']) ?></h1>
                         
+                        <!-- Slogan (Replaced Description) -->
                         <?php if (!empty($college['slogan'])): ?>
                         <p class="text-muted fst-italic mb-2">
                             "<?= htmlspecialchars($college['slogan']) ?>"
                         </p>
                         <?php endif; ?>
 
+                        <!-- Team Manager (Replaced Dean) -->
                         <p class="text-muted fs-5 mb-0">
                             <i class="fas fa-user-tie me-2"></i>Team Manager: 
                             <strong><?= htmlspecialchars($college['team_manager'] ?? 'N/A') ?></strong>
                         </p>
-                        </div>
+                    </div>
                 </div>
                 <hr>
                 <div class="row g-3">
@@ -723,6 +689,7 @@ $stmt_upcoming->close();
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
     
+    <!-- Sidebar/Footer Adjust Script -->
     <script>
         document.addEventListener('DOMContentLoaded', function() {
             const sidebar = document.getElementById('sidebar');

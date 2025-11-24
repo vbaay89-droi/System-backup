@@ -2,80 +2,485 @@
 
 /**
  * ==================================================================
- * my_events_view.php
- * * This file contains all presentation logic for 'my_events.php'.
- * It is responsible for rendering the HTML for the assigned events list.
+ * my_events_view.php - REDESIGNED UI/UX VERSION (FIXED)
+ * Enhanced table design with modern, professional styling
+ * Includes Sticky Action Column for better visibility
  * ==================================================================
  */
 
 /**
  * Main function to render the entire list of assigned events.
- *
- * @param array $managed_data The structured array of games, events, and categories.
- * @param array $college_map  An associative array mapping college_id to college_name.
+ * UPDATED: Large UI + Sticky Action Column
  */
 function render_event_list($managed_data, $college_map)
 {
+    // Add custom CSS for enhanced table design
+    echo '<style>
+        /* Modern Table Design System - SCALED UP VERSION */
+        /* 1. Container for scrolling */
+        .events-table-container {
+            background: #ffffff;
+            border-radius: 16px;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
+            border: 1px solid #e9ecef;
+            margin-bottom: 2rem;
+            position: relative; 
+            
+            /* Keep overflow enabled for Sticky Columns to work */
+            overflow-x: auto; 
+            scroll-behavior: smooth;
+
+            /* NEW: Hide the scrollbar for Firefox & IE/Edge */
+            scrollbar-width: none; 
+            -ms-overflow-style: none; 
+        }
+
+        /* NEW: Hide the scrollbar for Chrome, Safari, and Opera */
+        .events-table-container::-webkit-scrollbar {
+            display: none;
+        }
+        
+        .events-table {
+            margin-bottom: 0;
+            font-size: 1.05rem;
+            border-collapse: separate; /* Required for sticky borders to work nicely */
+            border-spacing: 0;
+        }
+        
+        /* Enhanced Table Header */
+        .events-table thead th {
+            background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+            color: #1e293b;
+            font-weight: 700;
+            font-size: 0.95rem;
+            text-transform: uppercase;
+            letter-spacing: 0.7px;
+            padding: 1.25rem 1.5rem;
+            border-bottom: 2px solid #dee2e6;
+            white-space: nowrap;
+            vertical-align: middle;
+        }
+        
+        /* Table Body Cells */
+        .events-table tbody td {
+            padding: 1.5rem 1.5rem;
+            vertical-align: middle;
+            border-bottom: 1px solid #f1f3f5;
+            transition: background-color 0.2s ease;
+        }
+        
+        /* Row Hover Effect */
+        .events-table tbody tr {
+            transition: all 0.2s ease;
+        }
+        
+        .events-table tbody tr:hover {
+            background-color: #f8f9fa;
+            transform: scale(1.002);
+            position: relative;
+            z-index: 5; /* Ensure hovered row is above others */
+        }
+        
+        /* Category Column Styling */
+        .category-cell {
+            font-weight: 700;
+            color: #1e293b;
+            font-size: 1.15rem;
+        }
+        
+        /* Type Badge Styling */
+        .type-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+            padding: 0.5rem 1rem;
+            border-radius: 8px;
+            font-size: 0.9rem;
+            font-weight: 600;
+            text-transform: capitalize;
+        }
+        
+        .type-badge.badge-match {
+            background-color: #e0f2fe;
+            color: #0369a1;
+            border: 1px solid #bae6fd;
+        }
+        
+        .type-badge.badge-medal {
+            background-color: #fef3c7;
+            color: #b45309;
+            border: 1px solid #fde68a;
+        }
+        
+        /* Enhanced Status Badges */
+        .status-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+            padding: 0.5rem 1rem;
+            border-radius: 30px;
+            font-size: 0.85rem;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+            white-space: nowrap;
+        }
+        
+        .status-badge i {
+            font-size: 0.8rem;
+        }
+        
+        /* Winners Column Styling */
+        .winners-container {
+            display: flex;
+            flex-direction: column;
+            gap: 0.65rem;
+        }
+        
+        .winner-item-line {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            padding: 0.6rem 1rem;
+            border-radius: 8px;
+            font-size: 0.95rem;
+            transition: all 0.2s ease;
+            white-space: nowrap;
+        }
+        
+        .winner-item-line:hover {
+            transform: translateX(5px);
+        }
+        
+        .winner-item-line.gold {
+            background: linear-gradient(135deg, #fffbeb 0%, #fef3c7 100%);
+            border-left: 4px solid #f59e0b;
+        }
+        
+        .winner-item-line.silver {
+            background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%);
+            border-left: 4px solid #94a3b8;
+        }
+        
+        .winner-item-line.bronze {
+            background: linear-gradient(135deg, #fff7ed 0%, #fed7aa 100%);
+            border-left: 4px solid #ea580c;
+        }
+        
+        .winner-icon {
+            font-size: 1.1rem;
+        }
+        
+        .winner-item-line.gold .winner-icon { color: #f59e0b; }
+        .winner-item-line.silver .winner-icon { color: #64748b; }
+        .winner-item-line.bronze .winner-icon { color: #ea580c; }
+        
+        /* Action Buttons Enhancement - PROFESSIONAL FIT */
+        .action-cell {
+            white-space: nowrap;     /* Prevent text wrapping */
+            text-align: right;
+            width: 1%;               /* CRITICAL: Forces column to shrink to minimum content width */
+            vertical-align: middle;
+            padding: 0.75rem !important; 
+        }
+
+        /* The container for the buttons */
+        .action-btn-group {
+            display: inline-flex;
+            flex-direction: column; 
+            gap: 6px;                /* Standard gap between rows */
+            align-items: stretch;    /* Make buttons fill the container width */
+            min-width: 100px;        /* Minimum width to fit "View Results" comfortably */
+            width: auto;             /* Allow it to grow only if needed */
+        }
+        
+        /* The container for Edit/Delete icons */
+        .action-row-bottom {
+            display: flex;
+            gap: 6px;
+        }
+
+        /* Button Styling - PRO SIZE */
+        .action-btn-group .btn {
+            transition: all 0.2s ease;
+            font-weight: 600;
+            font-size: 0.95rem;      /* Increased from 0.85rem */
+            padding: 0.6rem 1.2rem;  /* Increased padding */
+            line-height: 1.5;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 8px;      /* Softer corners */
+            width: 100%;             
+            min-height: 42px;        /* Enforce professional height */
+        }
+        
+        /* Edit/Delete specific styling */
+        .action-row-bottom .btn {
+            flex: 1;                 
+            padding: 0.5rem 0;       /* Balanced vertical padding */
+            min-height: 40px;        /* Matches the top button height */
+        }
+        
+        /* Icon adjustments */
+        .action-btn-group .btn i {
+            font-size: 1rem;         
+        }
+        
+        /* Hover effects */
+        .action-btn-group .btn:hover:not(:disabled) {
+            transform: translateY(-1px);
+            box-shadow: 0 3px 6px rgba(0, 0, 0, 0.12);
+            z-index: 5;
+        }
+
+        /* Force Header to match column minimize */
+        .events-table thead th:last-child {
+            width: 1%;
+            white-space: nowrap;
+        }
+        
+        .action-btn-group .btn:hover:not(:disabled) {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15);
+            z-index: 105;
+        }
+        
+        /* Icon-only buttons */
+        .btn-icon-only {
+            width: 42px;
+            height: 42px;
+            padding: 0;
+            border-radius: 10px;
+            font-size: 1.1rem;
+        }
+        
+        /* Placeholder Text */
+        .placeholder-text {
+            font-size: 0.95rem;
+            color: #64748b;
+            font-style: italic;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            padding: 0.5rem 0;
+        }
+        
+        .placeholder-text i {
+            font-size: 1rem;
+            opacity: 0.7;
+        }
+        
+        /* Table Danger */
+        .table-danger-light { background-color: #fff5f5 !important; }
+        .table-danger-light:hover { background-color: #ffe3e3 !important; }
+        
+        /* Note Button */
+        .note-alert-btn {
+            margin-top: 0.5rem;
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+            padding: 0.4rem 0.8rem;
+            font-size: 0.8rem;
+            font-weight: 700;
+            border-radius: 6px;
+            animation: pulse-danger 2s ease-in-out infinite;
+        }
+        @keyframes pulse-danger {
+            0%, 100% { opacity: 1; transform: scale(1); }
+            50% { opacity: 0.9; transform: scale(1.02); }
+        }
+        
+        /* Headers */
+        .game-heading {
+            color: #1e293b;
+            font-weight: 800;
+            font-size: 2rem;
+            padding-bottom: 0.75rem;
+            border-bottom: 4px solid #0d6efd;
+            display: inline-block;
+            margin-bottom: 2rem;
+            margin-top: 1rem;
+        }
+        
+        .event-card-header {
+            background: linear-gradient(135deg, #ffffff 0%, #f8f9fa 100%);
+            border-bottom: 2px solid #e9ecef;
+            padding: 1.25rem 1.5rem !important;
+        }
+        
+        .event-title {
+            color: #1e293b;
+            font-size: 1.4rem;
+            font-weight: 800;
+            letter-spacing: 0.5px;
+        }
+        
+        /* --- STICKY COLUMN LOGIC --- */
+        /* 1. Enable scrolling on container */
+        .table-responsive {
+            border-radius: 16px;
+            overflow-x: auto;
+            -webkit-overflow-scrolling: touch;
+            padding-bottom: 5px;
+        }
+
+        /* 2. Sticky Header Cell */
+        .events-table thead th:last-child {
+            position: sticky;
+            right: 0;
+            z-index: 20; /* Higher than body cells */
+            background: #e9ecef; /* Match header gradient end */
+            border-left: 1px solid #dee2e6;
+            box-shadow: -5px 0 10px rgba(0,0,0,0.05);
+        }
+
+        /* 3. Sticky Body Cell */
+        .events-table tbody td:last-child {
+            position: sticky;
+            right: 0;
+            z-index: 15;
+            background-color: #ffffff; /* Default background */
+            border-left: 1px solid #f1f3f5;
+            box-shadow: -5px 0 10px rgba(0,0,0,0.05);
+        }
+
+        /* 4. Hover State Fix for Sticky Column */
+        .events-table tbody tr:hover td:last-child {
+            background-color: #f8f9fa; /* Match row hover color */
+        }
+        
+        /* 5. Danger Row Hover Fix */
+        .events-table tbody tr.table-danger-light td:last-child {
+            background-color: #fff5f5;
+        }
+        .events-table tbody tr.table-danger-light:hover td:last-child {
+            background-color: #ffe3e3;
+        }
+
+    </style>';
+
     // Check if any events are assigned
     if (empty($managed_data)) {
-        echo '<div class="card shadow-sm">';
+        echo '<div class="card shadow-sm border-0">';
         echo '  <div class="card-body text-center p-5">';
-        echo '    <i class="fas fa-calendar-times fa-3x text-muted mb-3"></i>';
-        echo '    <h5 class="card-title">No Events Assigned</h5>';
-        echo '    <p class="text-muted">You do not have any events assigned to you at this time.</p>';
+        echo '    <i class="fas fa-calendar-times fa-4x text-muted mb-4 opacity-50"></i>';
+        echo '    <h4 class="card-title fw-bold mb-2">No Events Assigned</h4>';
+        echo '    <p class="text-muted fs-5">You do not have any events assigned to you at this time.</p>';
         echo '  </div>';
         echo '</div>';
-        return; // Stop execution
+        return;
     }
 
-    // Loop through each Game (e.g., "Athletics", "Racket games")
+    // Loop through each Game
     foreach ($managed_data as $game_name => $events) {
         echo '<div class="mb-5">';
-        echo '  <h2 class="game-heading mb-3">' . htmlspecialchars($game_name) . '</h2>';
+        echo '  <h2 class="game-heading">' . htmlspecialchars($game_name) . '</h2>';
 
-        // Loop through each Event in that Game (e.g., "Throws and Jumps")
+        // Loop through each Event
         foreach ($events as $event) {
             $event_id = (int)$event['event_id'];
             $event_name = htmlspecialchars(strtoupper($event['event_name']));
+            $categories = $event['categories'];
+            
+            // Get the structure setting from Database
+            $structure_mode = $event['event_structure'] ?? 'Single Category'; 
 
-            echo '<div class="card shadow-sm mb-4">';
-            echo '  <div class="card-header bg-white d-flex justify-content-between align-items-center py-3">';
-            echo '        <h5 class="mb-0 fw-bold">' . $event_name . '</h5>';
-            echo '    <button class="btn btn-primary btn-sm" 
-                            data-bs-toggle="modal" 
-                            data-bs-target="#categoryModal" 
-                            data-action="add"
-                            data-event-id="' . $event_id . '" 
-                            data-event-name="' . $event_name . '">';
-            echo '      <i class="fas fa-plus me-1"></i> Add Category';
-            echo '    </button>';
+            // Smart logic for single mode
+            $is_single_mode = false;
+            if (count($categories) === 1) {
+                $first_cat_name = $categories[0]['category_name'];
+                if ($first_cat_name === 'Main Event' || $first_cat_name === 'Main Competition') {
+                    $is_single_mode = true;
+                }
+            }
+
+            echo '<div class="card shadow mb-5 border-0" style="border-radius: 16px;">';
+            echo '  <div class="card-header event-card-header d-flex justify-content-between align-items-center">';
+            echo '    <h5 class="mb-0 event-title">' . $event_name . '</h5>';
+            
+            if (!$is_single_mode) {
+                echo '    <button class="btn btn-primary shadow-sm" 
+                                style="padding: 0.5rem 1.25rem; font-weight: 600;"
+                                data-bs-toggle="modal" 
+                                data-bs-target="#categoryModal" 
+                                data-action="add"
+                                data-event-id="' . $event_id . '" 
+                                data-event-name="' . $event_name . '">';
+                echo '      <i class="fas fa-plus me-2"></i> Add Category';
+                echo '    </button>';
+            }
+            
             echo '  </div>';
 
-            // Check if this event has any categories
-            if (empty($event['categories'])) {
-                echo '<div class="card-body text-center p-4">';
-                echo '  <p class="text-muted mb-0">No categories have been added to this event yet.</p>';
+            // === EMPTY STATE LOGIC ===
+            if (empty($categories)) {
+                echo '<div class="card-body text-center p-5 bg-light" style="border-bottom-left-radius: 16px; border-bottom-right-radius: 16px;">';
+                echo '  <div class="d-flex flex-column align-items-center justify-content-center py-4">';
+                
+                if (stripos($structure_mode, 'Multiple') !== false) {
+                    // --- OPTION A: Multiple Categories ---
+                    echo '      <i class="fas fa-layer-group fa-4x text-primary mb-3 opacity-50"></i>';
+                    echo '      <h5 class="text-dark fw-bold">Multiple Categories Required</h5>';
+                    echo '      <p class="text-muted fs-5 mb-4" style="max-width: 500px;">
+                                    The Director set this as a multi-category event.<br>
+                                    Please use the <strong>"+ Add Category"</strong> button above to create divisions (e.g., Men, Women).
+                                </p>';
+                } else {
+                    // --- OPTION B: Single Category ---
+                    echo '      <i class="fas fa-clipboard-list fa-4x text-muted mb-3 opacity-50"></i>';
+                    echo '      <h5 class="text-dark fw-bold">Setup Required</h5>';
+                    echo '      <p class="text-muted fs-5 mb-4" style="max-width: 500px;">No categories found. Use the buttons below to initialize this event.</p>';
+                    
+                    echo '      <div class="d-flex gap-3">';
+                    echo '    <form method="POST" action="my_events.php">';
+                    echo '      <input type="hidden" name="action" value="save_category">';
+                    echo '      <input type="hidden" name="event_id" value="' . $event_id . '">';
+                    echo '      <input type="hidden" name="category_name" value="Main Event">'; 
+                    echo '      <input type="hidden" name="category_type" value="match">';
+                    echo '      <input type="hidden" name="status" value="Upcoming">';
+                    echo '      <button type="submit" class="btn btn-primary btn-lg px-4">';
+                    echo '          <i class="fas fa-basketball-ball me-2"></i> Auto-Create Match';
+                    echo '      </button>';
+                    echo '    </form>';
+
+                    echo '    <form method="POST" action="my_events.php">';
+                    echo '      <input type="hidden" name="action" value="save_category">';
+                    echo '      <input type="hidden" name="event_id" value="' . $event_id . '">';
+                    echo '      <input type="hidden" name="category_name" value="Main Competition">'; 
+                    echo '      <input type="hidden" name="category_type" value="medal">';
+                    echo '      <input type="hidden" name="status" value="Upcoming">';
+                    echo '      <button type="submit" class="btn btn-outline-secondary btn-lg px-4">';
+                    echo '          <i class="fas fa-medal me-2"></i> Auto-Create Medal';
+                    echo '      </button>';
+                    echo '    </form>';
+                    echo '      </div>';
+                }
+
+                echo '  </div>';
                 echo '</div>';
             } else {
-                // This event has categories, render the table
-                echo '<div class="table-responsive">';
-                echo '  <table class="table table-hover align-middle mb-0" style="font-size: 0.95rem;">';
-                echo '    <thead class="table-light">';
+                echo '<div class="table-responsive events-table-container">';
+                echo '  <table class="table events-table table-hover align-middle mb-0">';
+                echo '    <thead>';
                 echo '      <tr>';
-                echo '        <th scope="col" style="min-width: 150px;">Category</th>';
-                echo '        <th scope="col" style="min-width: 100px;">Type</th>';
-                echo '        <th scope="col" style="min-width: 120px;">Status</th>';
-                echo '        <th scope="col" style="min-width: 250px;">Approved Winners (Medal Count)</th>';
                 
-                // --- FIX APPLIED HERE ---
-                echo '        <th scope="col" class="text-end" style="min-width: 240px;">Actions</th>';
-                
+                if (!$is_single_mode) {
+                    echo '        <th scope="col" style="min-width: 220px;">Category</th>';
+                }
+
+                echo '        <th scope="col" style="min-width: 140px;">Type</th>';
+                echo '        <th scope="col" style="min-width: 160px;">Status</th>';
+                echo '        <th scope="col" style="min-width: 320px;">Approved Winners</th>';
+                echo '        <th scope="col" class="text-end" style="width: 1%; white-space: nowrap;">Actions</th>';
                 echo '      </tr>';
                 echo '    </thead>';
                 echo '    <tbody>';
 
-                // Loop through each Category for this Event
-                foreach ($event['categories'] as $category) {
+                foreach ($categories as $category) {
                     $category_status = $category['status'];
                     
                     $table_row_class = '';
@@ -84,47 +489,54 @@ function render_event_list($managed_data, $college_map)
                     }
 
                     echo '  <tr class="' . $table_row_class . '">';
-                    echo '    <td class="fw-bold">' . htmlspecialchars($category['category_name']) . '</td>';
-                    echo '    <td>' . htmlspecialchars(ucfirst($category['category_type'])) . '</td>';
-                    
+
+                    if (!$is_single_mode) {
+                        echo '    <td class="category-cell">' . htmlspecialchars($category['category_name']) . '</td>';
+                    }
+
+                    echo '    <td>' . render_type_badge($category['category_type']) . '</td>';
                     echo '    <td>' . get_status_badge($category['status'], $category['notes'], $category['category_id'], $category['category_name']) . '</td>';
-                    
                     echo '    <td>' . render_winner_list($category, $college_map) . '</td>';
-                    
-                    // --- FIX APPLIED HERE ---
-                    echo '    <td class="text-end">' . render_category_actions($category, $event_id, $event_name) . '</td>';
-                    
-                    echo '  </tr>';
+                    // Pass $is_single_mode to the function
+echo '    <td class="action-cell text-end">' . render_category_actions($category, $event_id, $event_name, $is_single_mode) . '</td>';
                 }
 
                 echo '    </tbody>';
                 echo '  </table>';
-                echo '</div>'; // end .table-responsive
+                echo '</div>';
             }
-            echo '</div>'; // end .card
+            echo '</div>';
         }
-        echo '</div>'; // end .mb-5 (game wrapper)
+        echo '</div>';
     }
 }
 
 /**
- * Generates the new action button group based on category status and type.
- *
- * @param array $category   The category data row.
- * @param int   $event_id   The parent event's ID.
- * @param string $event_name The parent event's name.
- * @return string HTML for the button group.
+ * Renders a styled type badge
  */
-function render_category_actions($category, $event_id, $event_name)
+function render_type_badge($type)
+{
+    $badge_class = $type === 'match' ? 'badge-match' : 'badge-medal';
+    $icon = $type === 'match' ? 'fa-basketball-ball' : 'fa-medal';
+    
+    return '<span class="type-badge ' . $badge_class . '">
+                <i class="fas ' . $icon . '"></i>
+                ' . htmlspecialchars(ucfirst($type)) . '
+            </span>';
+}
+
+/**
+ * Generates action buttons (Updated: Protects Single Event Mode)
+ */
+function render_category_actions($category, $event_id, $event_name, $is_single_mode = false)
 {
     $category_id = (int)$category['category_id'];
     $category_name_safe = htmlspecialchars($category['category_name']);
     $event_name_safe = htmlspecialchars($event_name);
     $status = $category['status'];
     $category_type = $category['category_type'];
-    $notes = $category['notes']; // Keep this here for the check, just in case
-
-    // --- Data attributes for Modals ---
+    
+    // --- DATA ATTRIBUTES SETUP ---
     $edit_data_attrs = "data-bs-toggle='modal' 
                             data-bs-target='#categoryModal' 
                             data-action='edit'
@@ -153,18 +565,15 @@ function render_category_actions($category, $event_id, $event_name)
                                 data-category-id='{$category_id}' 
                                 data-category-name='{$category_name_safe}'";
 
-    // --- Define Button States ---
+    // --- SMART BUTTON LOGIC ---
     $primary_btn_text = 'Manage';
     $primary_btn_class = 'btn-primary';
     $primary_btn_icon = 'fa-cog';
     $primary_btn_href = '#';
-    $primary_btn_attrs = ''; // Extra attributes for modal triggers
+    $primary_btn_attrs = ''; 
     $primary_btn_disabled = false;
 
-
-    // --- LOGIC FOR DIFFERENT CATEGORY TYPES ---
     if ($category_type === 'medal') {
-        
         $primary_btn_href = "submit_results.php?category_id={$category_id}";
         
         if ($status === 'Upcoming') {
@@ -182,7 +591,7 @@ function render_category_actions($category, $event_id, $event_name)
             $primary_btn_class = 'btn-primary';
             $primary_btn_icon = 'fa-pencil-alt';
         } elseif (in_array($status, ['Completed', 'Results Approved'])) {
-            $primary_btn_text = 'View Results';
+            $primary_btn_text = 'Results';
             $primary_btn_class = 'btn-outline-success';
             $primary_btn_icon = 'fa-chart-bar';
         } elseif ($status === 'Results Submitted') {
@@ -198,11 +607,10 @@ function render_category_actions($category, $event_id, $event_name)
         }
 
     } elseif ($category_type === 'match') {
-        
         $primary_btn_href = "event_manager_matches.php?category_id={$category_id}";
 
         if (in_array($status, ['Completed', 'Results Approved'])) {
-            $primary_btn_text = 'View Results';
+            $primary_btn_text = 'Results';
             $primary_btn_class = 'btn-outline-success';
             $primary_btn_icon = 'fa-chart-bar';
         } elseif ($status === 'Results Submitted') {
@@ -224,200 +632,171 @@ function render_category_actions($category, $event_id, $event_name)
         }
     }
 
-    // --- Edit Button (Universal Logic) ---
+    // --- EDIT/DELETE LOGIC ---
     $edit_btn_disabled = in_array($status, ['Ongoing', 'Completed', 'Results Approved', 'Results Submitted']);
-    $edit_tooltip = $edit_btn_disabled ? "data-bs-toggle='tooltip' title='Cannot edit an event that is in-progress or completed'" : '';
+    $edit_tooltip = $edit_btn_disabled ? "data-bs-toggle='tooltip' title='Cannot edit in-progress/completed events'" : '';
 
-    // --- Delete Button (Universal Logic) ---
-    $delete_btn_disabled = !in_array($status, ['Upcoming', 'Cancelled']);
-    $delete_tooltip = $delete_btn_disabled ? "data-BStoggle='tooltip' title='Can only delete &quot;Upcoming&quot; or &quot;Cancelled&quot; events'" : '';
+    // --- NEW LOGIC: PROTECT SINGLE CATEGORY EVENTS ---
+    if ($is_single_mode) {
+        // If this is the ONLY category, forbid deletion.
+        $delete_btn_disabled = true;
+        $delete_tooltip = "data-bs-toggle='tooltip' title='This is the Main Event. You cannot delete it. Contact Admin to remove the event.'";
+    } else {
+        // Normal logic for multi-category events
+        $delete_btn_disabled = !in_array($status, ['Upcoming', 'Cancelled']);
+        $delete_tooltip = $delete_btn_disabled ? "data-bs-toggle='tooltip' title='Can only delete Upcoming/Cancelled events'" : '';
+    }
 
-    // --- Build HTML Output ---
-    
-    // --- FIX APPLIED HERE ---
-    // 1. Replaced 'justify-content-between' with 'justify-content-end'
-    // 2. Added 'gap-1' to create the small space
-    // 3. Removed 'style="width: 100%;"'
-    //
-    $html = '<div class="d-flex justify-content-end align-items-center gap-1" role="group" aria-label="Category Actions">';
+    // --- BUILD HTML ---
+    $html = '<div class="action-btn-group" role="group" aria-label="Category Actions">';
 
-    // Button 1: Primary Action
+    // 1. Top Row: Smart Button
     if ($primary_btn_disabled) {
-        $html .= "<a href='#' class='btn btn-sm {$primary_btn_class} disabled' role='button' aria-disabled='true' style='white-space: nowrap;'>";
+        $html .= "<a href='#' class='btn {$primary_btn_class} disabled' role='button' aria-disabled='true'>";
         $html .= "  <i class='fas {$primary_btn_icon} me-1'></i> " . htmlspecialchars($primary_btn_text);
         $html .= "</a>";
     } elseif (!empty($primary_btn_attrs)) {
-        $html .= "<button type='button' class='btn btn-sm {$primary_btn_class}' {$primary_btn_attrs} style='white-space: nowrap;'>";
+        $html .= "<button type='button' class='btn {$primary_btn_class}' {$primary_btn_attrs}>";
         $html .= "  <i class='fas {$primary_btn_icon} me-1'></i> " . htmlspecialchars($primary_btn_text);
         $html .= "</button>";
     } else {
-        $html .= "<a href='{$primary_btn_href}' class='btn btn-sm {$primary_btn_class}' style='white-space: nowrap;'>";
+        $html .= "<a href='{$primary_btn_href}' class='btn {$primary_btn_class}'>";
         $html .= "  <i class='fas {$primary_btn_icon} me-1'></i> " . htmlspecialchars($primary_btn_text);
         $html .= "</a>";
     }
 
-    // --- FIX APPLIED HERE ---
-    // 2. Removed the extra wrapper <div> that was here
-    //
-
-    // Button 2: Edit
+    // 2. Bottom Row: Edit and Delete
+    $html .= '<div class="action-row-bottom">';
+    
+    // Edit Button
     $html .= "<button type='button' 
-                        class='btn btn-sm btn-outline-secondary' 
+                        class='btn btn-outline-secondary' 
                         {$edit_data_attrs} 
                         " . ($edit_btn_disabled ? 'disabled' : '') . "
                         {$edit_tooltip}>";
     $html .= "  <i class='fas fa-edit'></i>";
     $html .= "</button>";
 
-    // Button 3: Delete
+    // Delete Button (Protected)
     $html .= "<button type='button' 
-                        class='btn btn-sm btn-outline-danger' 
+                        class='btn btn-outline-danger' 
                         {$delete_data_attrs} 
                         " . ($delete_btn_disabled ? 'disabled' : '') . "
                         {$delete_tooltip}>";
     $html .= "  <i class='fas fa-trash-alt'></i>";
     $html .= "</button>";
 
-    // --- FIX APPLIED HERE ---
-    // 3. Removed the closing </div> for the extra wrapper
-    //
-    
-    $html .= '</div>'; // Close main d-flex container
+    $html .= '</div>'; 
+    $html .= '</div>'; 
 
     return $html;
 }
 
 /**
- * Renders the winner list for a category.
- *
- * @param array $category  The category data row.
- * @param array $college_map An associative array mapping college_id to college_name.
- * @return string HTML for the winner list, or a placeholder.
+ * Renders the winner list with enhanced styling
  */
 function render_winner_list($category, $college_map)
 {
-    $winners_html = []; // Use an array to build HTML strings
-    $status = $category['status']; // Get the status once
+    $winners_html = []; 
+    $status = $category['status']; 
 
     if ($status === 'Completed' || $status === 'Results Approved') {
         if (!empty($category['gold_winner_college_id'])) {
-            $winners_html[] = '<div class="winner-item-line gold"><i class="fas fa-medal winner-icon"></i> '
-                . '<strong>' . htmlspecialchars($college_map[$category['gold_winner_college_id']] ?? 'N/A') . '</strong>'
-                . '&nbsp;(' . (int)$category['gold_count'] . ')</div>';
+            $winners_html[] = '<div class="winner-item-line gold">
+                <i class="fas fa-medal winner-icon"></i>
+                <strong>' . htmlspecialchars($college_map[$category['gold_winner_college_id']] ?? 'N/A') . '</strong>
+                <span class="ms-auto">(' . (int)$category['gold_count'] . ')</span>
+            </div>';
         }
         if (!empty($category['silver_winner_college_id'])) {
-            $winners_html[] = '<div class="winner-item-line silver"><i class="fas fa-medal winner-icon"></i> '
-                . '<strong>' . htmlspecialchars($college_map[$category['silver_winner_college_id']] ?? 'N/A') . '</strong>'
-                . '&nbsp;(' . (int)$category['silver_count'] . ')</div>';
+            $winners_html[] = '<div class="winner-item-line silver">
+                <i class="fas fa-medal winner-icon"></i>
+                <strong>' . htmlspecialchars($college_map[$category['silver_winner_college_id']] ?? 'N/A') . '</strong>
+                <span class="ms-auto">(' . (int)$category['silver_count'] . ')</span>
+            </div>';
         }
         if (!empty($category['bronze_winner_college_id'])) {
-            $winners_html[] = '<div class="winner-item-line bronze"><i class="fas fa-medal winner-icon"></i> '
-                . '<strong>' . htmlspecialchars($college_map[$category['bronze_winner_college_id']] ?? 'N/A') . '</strong>'
-                . '&nbsp;(' . (int)$category['bronze_count'] . ')</div>';
+            $winners_html[] = '<div class="winner-item-line bronze">
+                <i class="fas fa-medal winner-icon"></i>
+                <strong>' . htmlspecialchars($college_map[$category['bronze_winner_college_id']] ?? 'N/A') . '</strong>
+                <span class="ms-auto">(' . (int)$category['bronze_count'] . ')</span>
+            </div>';
         }
     }
 
     if (!empty($winners_html)) {
-        return implode('', $winners_html);
+        return '<div class="winners-container">' . implode('', $winners_html) . '</div>';
     }
 
-    switch ($status) {
-        case 'Upcoming':
-            return '<small class="text-muted fst-italic">Event has not started.</small>';
-            
-        case 'Ongoing':
-            return '<small class="text-muted fst-italic">Event is in progress...</small>';
-            
-        case 'Completed (Pending Results)':
-            return '<small class="text-muted fst-italic">Awaiting admin approval...</small>';
+    $placeholder_messages = [
+        'Upcoming' => ['icon' => 'fa-clock', 'text' => 'Event has not started.'],
+        'Ongoing' => ['icon' => 'fa-spinner', 'text' => 'Event is in progress...'],
+        'Completed (Pending Results)' => ['icon' => 'fa-hourglass-half', 'text' => 'Awaiting admin approval...'],
+        'Results Rejected' => ['icon' => 'fa-times-circle', 'text' => 'Results were rejected.', 'class' => 'text-danger'],
+        'Results Submitted' => ['icon' => 'fa-hourglass-half', 'text' => 'Awaiting admin approval...'],
+        'Completed' => ['icon' => 'fa-info-circle', 'text' => 'No winners recorded.'],
+        'Results Approved' => ['icon' => 'fa-info-circle', 'text' => 'No winners recorded.'],
+        'Postponed' => ['icon' => 'fa-pause-circle', 'text' => 'Event is postponed.'],
+        'Cancelled' => ['icon' => 'fa-ban', 'text' => 'Event was cancelled.']
+    ];
 
-        case 'Results Rejected':
-            return '<small class="text-danger fst-italic">Results were rejected.</small>';
-            
-        case 'Results Submitted':
-            return '<small class="text-muted fst-italic">Awaiting admin approval...</small>';
-            
-        case 'Completed':
-        case 'Results Approved':
-            return '<small class="text-muted fst-italic">No winners recorded.</small>';
-            
-        case 'Postponed':
-            return '<small class="text-muted fst-italic">Event is postponed.</small>';
-            
-        case 'Cancelled':
-            return '<small classD="text-muted fst-italic">Event was cancelled.</small>';
-            
-        default:
-            return '<small class="text-muted fst-italic">No results available.</small>';
-    }
+    $msg = $placeholder_messages[$status] ?? ['icon' => 'fa-question-circle', 'text' => 'No results available.'];
+    $class = $msg['class'] ?? 'text-muted';
+    
+    return '<span class="placeholder-text ' . $class . '">
+                <i class="fas ' . $msg['icon'] . '"></i>
+                ' . $msg['text'] . '
+            </span>';
 }
 
 /**
- * Returns a Bootstrap badge based on the category status.
- *
- * @param string $status The status text.
- * @param string|null $notes Optional notes, used for rejection.
- * @param int|null $category_id
- * @param string|null $category_name
- * @return string HTML for the badge.
+ * Returns enhanced status badge
  */
 function get_status_badge($status, $notes = null, $category_id = null, $category_name = null)
 {
-    $class = 'text-bg-secondary'; // Default
-    $display_status = $status;
+    $badge_configs = [
+        'Upcoming' => ['class' => 'text-bg-primary', 'icon' => 'fa-calendar-alt', 'text' => 'Upcoming'],
+        'Ongoing' => ['class' => 'text-bg-success', 'icon' => 'fa-play-circle', 'text' => 'Ongoing'],
+        'Completed (Pending Results)' => ['class' => 'text-bg-warning', 'icon' => 'fa-hourglass-half', 'text' => 'Pending Approval'],
+        'Results Submitted' => ['class' => 'text-bg-warning', 'icon' => 'fa-paper-plane', 'text' => 'Submitted'],
+        'Completed' => ['class' => 'text-bg-info', 'icon' => 'fa-check-circle', 'text' => 'Completed'],
+        'Results Approved' => ['class' => 'text-bg-info', 'icon' => 'fa-check-circle', 'text' => 'Completed'],
+        'Postponed' => ['class' => 'text-bg-dark', 'icon' => 'fa-pause', 'text' => 'Postponed'],
+        'Cancelled' => ['class' => 'text-bg-danger', 'icon' => 'fa-ban', 'text' => 'Cancelled']
+    ];
     
-    switch ($status) {
-        case 'Upcoming':
-            $class = 'text-bg-primary';
-            break;
-        case 'Ongoing':
-            $class = 'text-bg-success';
-            break;
-        case 'Completed (Pending Results)':
-            $class = 'text-bg-warning';
-            $display_status = 'Pending Approval'; // Shorter text
-            break;
-        case 'Results Submitted':
-            $class = 'text-bg-warning';
-            $display_status = 'Submitted'; // Shorter text
-            break;
-        case 'Completed':
-        case 'Results Approved':
-            $class = 'text-bg-info';
-            $display_status = 'Completed'; // Standardize
-            break;
-        case 'Postponed':
-            $class = 'text-bg-dark';
-            break;
+    // Special handling for Results Rejected
+    if ($status === 'Results Rejected') {
+        $badge = '<span class="status-badge text-bg-danger">
+                    <i class="fas fa-exclamation-circle"></i>
+                    Results Rejected
+                  </span>';
         
-        case 'Results Rejected':
-            $class = 'text-bg-danger';
-            $badge = '<span class="badge ' . $class . ' text-uppercase" style="font-size: 0.7rem; letter-spacing: 0.5px;">' . htmlspecialchars($status) . '</span>';
+        $note_button_html = '';
+        if (!empty($notes)) {
+            $note_data_attrs = "data-bs-toggle='modal' 
+                                data-bs-target='#noteModal' 
+                                data-category-name='" . htmlspecialchars($category_name, ENT_QUOTES) . "' 
+                                data-note='" . htmlspecialchars($notes, ENT_QUOTES) . "'";
             
-            $note_button_html = '';
-            if (!empty($notes)) {
-                $note_data_attrs = "data-bs-toggle='modal' 
-                                    data-bs-target='#noteModal' 
-                                    data-category-name='" . htmlspecialchars($category_name, ENT_QUOTES) . "' 
-                                    data-note='" . htmlspecialchars($notes, ENT_QUOTES) . "'";
-                
-                $note_button_html = '
-                    <button type="button" 
-                            class="btn btn-sm btn-outline-danger mt-1 py-0 px-1" 
-                            ' . $note_data_attrs . ' 
-                            data-bs-toggle="tooltip" title="View Rejection Note"
-                            style="font-size: 2 rem; line-height: 1">
-                        <i class="fas fa-exclamation-triangle"> NOTE!</i>
-                    </button>';
-            }
-            
-            return '<div>' . $badge . $note_button_html . '</div>';
-
-        case 'Cancelled':
-            $class = 'text-bg-danger';
-            break;
+            $note_button_html = '
+                <button type="button" 
+                        class="btn btn-sm btn-outline-danger note-alert-btn" 
+                        ' . $note_data_attrs . ' 
+                        data-bs-toggle="tooltip" title="View Rejection Note">
+                    <i class="fas fa-exclamation-triangle"></i> NOTE!
+                </button>';
+        }
+        
+        return '<div>' . $badge . $note_button_html . '</div>';
     }
     
-    return '<span class="badge ' . $class . ' text-uppercase" style="font-size: 0.7rem; letter-spacing: 0.5px;">' . htmlspecialchars($display_status) . '</span>';
+    // Default badge rendering
+    $config = $badge_configs[$status] ?? ['class' => 'text-bg-secondary', 'icon' => 'fa-circle', 'text' => $status];
+    
+    return '<span class="status-badge ' . $config['class'] . '">
+                <i class="fas ' . $config['icon'] . '"></i>
+                ' . htmlspecialchars($config['text']) . '
+            </span>';
 }
 ?>

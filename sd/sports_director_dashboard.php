@@ -1,11 +1,12 @@
 <?php
 session_start();
-// Use a relative path to your main db_connect.php
+// Adjust path if necessary: assuming this file is in a subfolder (e.g., /sd/)
 require_once '../db_connect.php'; 
 
-// 1. SECURITY & ACCESS CONTROL
+// --- 1. SECURITY & ACCESS CONTROL ---
+// STRICT: Only 'Sports Director' is allowed.
 if (!isset($_SESSION['role']) || $_SESSION['role'] !== 'Sports Director') {
-    header('Location: ../login.php'); // Redirect to main login page
+    header('Location: ../login.php'); 
     exit();
 }
 
@@ -13,425 +14,187 @@ if (!isset($_SESSION['role']) || $_SESSION['role'] !== 'Sports Director') {
 if (!isset($_SESSION['user_id'])) {
     die("Session error: User ID is not set. Please log in again.");
 }
-$user_id = $_SESSION['user_id']; // We need this for the logs
-$name = isset($_SESSION['username']) ? $_SESSION['username'] : 'Sports Director';
+$user_id = $_SESSION['user_id']; 
+
+// --- FETCH USER FULL NAME ---
+// We query the DB specifically to get the full_name to avoid showing the email/username
+$stmt_name = $conn->prepare("SELECT full_name, username FROM users WHERE id = ?");
+$stmt_name->bind_param("i", $user_id);
+$stmt_name->execute();
+$user_data = $stmt_name->get_result()->fetch_assoc();
+$stmt_name->close();
+
+// Use full_name if available, otherwise fallback to username, then default text
+$name = !empty($user_data['full_name']) ? $user_data['full_name'] : ($user_data['username'] ?? 'Sports Director');
+
 $current_page = basename($_SERVER['PHP_SELF']);
 
-// --- Page Specific PHP ---
-// ### MODIFIED: Fixed Stat Card Queries ###
-$total_events = $conn->query("SELECT COUNT(*) FROM game_events")->fetch_column();
-$total_teams = $conn->query("SELECT COUNT(*) FROM colleges")->fetch_column();
-// This now correctly reads from the 'categories' table
-$pending_results = $conn->query("SELECT COUNT(*) FROM categories WHERE status='Results Submitted'")->fetch_column();
-// This now correctly SUMS the medal counts from the 'categories' table
-$total_gold = $conn->query("SELECT SUM(gold_count) FROM categories WHERE status='Results Approved'")->fetch_column();
-$total_gold = $total_gold ?? 0; // Ensure it's 0 if NULL
-
-
-// --- NEW LOG PROCESSING FUNCTIONS ---
+// --- 2. DATA FETCHING & LOGIC ---
 
 /**
- * Fetches a user's display name by their ID.
- * Prioritizes 'full_name', then 'username'.
- * Uses a static cache.
+ * Helper: Fetch a single count value safely
+ */
+function fetchCount($conn, $query) {
+    $result = $conn->query($query);
+    return ($result) ? $result->fetch_row()[0] : 0;
+}
+
+// A. SYSTEM STATISTICS
+// Aggregating data from across the entire database
+$stats = [
+    // Tournament Data
+    'events'          => fetchCount($conn, "SELECT COUNT(*) FROM game_events"), // L2 Events
+    'categories'      => fetchCount($conn, "SELECT COUNT(*) FROM categories"),  // L3 Categories (Specifics)
+    'teams'           => fetchCount($conn, "SELECT COUNT(*) FROM colleges"),
+    
+    // Match Data
+    'total_matches'   => fetchCount($conn, "SELECT COUNT(*) FROM matches"),
+    'ongoing_matches' => fetchCount($conn, "SELECT COUNT(*) FROM matches WHERE status = 'Ongoing'"),
+    
+    // Administrative Data
+    'users'           => fetchCount($conn, "SELECT COUNT(*) FROM users"),
+    'pending_requests'=> fetchCount($conn, "SELECT COUNT(*) FROM account_requests WHERE status = 'pending'"),
+    
+    // Tallying Data
+    'pending_results' => fetchCount($conn, "SELECT COUNT(*) FROM categories WHERE status='Results Submitted'"),
+    'total_gold'      => fetchCount($conn, "SELECT SUM(gold_count) FROM categories WHERE status='Results Approved'")
+];
+$stats['total_gold'] = $stats['total_gold'] ?? 0; // Handle null
+
+// B. LOGGING SYSTEM LOGIC
+
+/**
+ * Get User Name (Cached)
  */
 function getUserNameById($conn, $id) {
-    static $user_cache = [];
-    if (isset($user_cache[$id])) {
-        return $user_cache[$id];
-    }
+    static $cache = [];
+    if (isset($cache[$id])) return $cache[$id];
     
-    // Select 'full_name' AND 'username' to get the best display name
     $stmt = $conn->prepare("SELECT full_name, username FROM users WHERE id = ?"); 
     $stmt->bind_param("i", $id);
     $stmt->execute();
-    $result = $stmt->get_result();
-    
-    if ($row = $result->fetch_assoc()) {
-        $name = "Unknown User (ID: $id)"; // Default fallback
-        
-        if (!empty($row['full_name'])) {
-            $name = $row['full_name'];
-        } 
-        else if (!empty($row['username'])) {
-            $name = $row['username'];
-        } 
-        
-        $user_cache[$id] = $name;
-        return $name;
-    }
-    
-    return "Unknown User (ID: $id)";
-}
-
-
-/**
- * Fetches an event's name by its ID.
- * Uses a static cache.
- */
-function getEventNameById($conn, $id) {
-    static $event_cache = [];
-    if (isset($event_cache[$id])) {
-        return $event_cache[$id];
-    }
-
-    $stmt = $conn->prepare("SELECT event_name FROM game_events WHERE event_id = ?"); 
-    $stmt->bind_param("i", $id);
-    $stmt->execute();
-    $result = $stmt->get_result();
-    if ($row = $result->fetch_assoc()) {
-        $event_cache[$id] = $row['event_name'];
-        return $row['event_name'];
-    }
-    return "Unknown Event (ID: $id)";
+    $res = $stmt->get_result()->fetch_assoc();
+    return $cache[$id] = ($res['full_name'] ?? $res['username'] ?? "Unknown User");
 }
 
 /**
- * Formats a raw log entry into a human-readable array.
+ * Format Log Entries for Display
  */
 function formatLogEntry($conn, $log, $current_user_id) {
-    // Determine who did the action
-    $actor_name = "<strong>Unknown User</strong>";
-    if ($log['actor_user_id']) {
-         $actor_name = ($log['actor_user_id'] == $current_user_id) ? "<strong>You</strong>" : "<strong>" . htmlspecialchars(getUserNameById($conn, $log['actor_user_id'])) . "</strong>";
-    }
-   
-    // Decode the saved context
-    $context = json_decode($log['log_context'], true) ?? [];
-    
-    $message = "";
-    $icon = "fas fa-info-circle text-muted"; // Default icon
-    $time = date('M d, h:i A', strtotime($log['created_at']));
+    $actor = ($log['actor_user_id'] == $current_user_id) ? "<strong>You</strong>" : "<strong>" . htmlspecialchars(getUserNameById($conn, $log['actor_user_id'])) . "</strong>";
+    $ctx = json_decode($log['log_context'], true) ?? [];
+    $action = trim($log['action_type']);
+    $msg = "Action performed.";
+    $icon = "fas fa-info-circle text-muted";
 
-    // --- THIS IS THE FIX ---
-    switch (trim($log['action_type'])) {
+    switch ($action) {
+        // Game/Event Actions
+        case 'CREATED_GAME': $msg = "$actor created game <strong>" . htmlspecialchars($ctx['game_name']??'') . "</strong>."; $icon="fas fa-plus-circle text-success"; break;
+        case 'CREATED_EVENT': $msg = "$actor created event <strong>" . htmlspecialchars($ctx['event_name']??'') . "</strong>."; $icon="fas fa-calendar-plus text-success"; break;
         
-        // --- GAME (L1) ACTIONS ---
-        case 'CREATED_GAME':
-            $game_name = htmlspecialchars($context['game_name'] ?? 'a new game');
-            $message = "$actor_name created the game <strong>\"$game_name\"</strong>.";
-            $icon = "fas fa-plus-circle text-success";
-            break;
-        case 'UPDATED_GAME':
-            $game_name = htmlspecialchars($context['new_game_name'] ?? 'a game');
-            $message = "$actor_name updated the game <strong>\"$game_name\"</strong>.";
-            $icon = "fas fa-pencil-alt text-info";
-            break;
-        case 'DELETED_GAME':
-            $game_name = htmlspecialchars($context['deleted_game_name'] ?? 'a game');
-            $message = "$actor_name deleted the game <strong>\"$game_name\"</strong>.";
-            $icon = "fas fa-trash-alt text-danger";
-            break;
-
-        // --- EVENT (L2) ACTIONS ---
-        case 'CREATED_EVENT':
-            $event_name = htmlspecialchars($context['event_name'] ?? 'a new event');
-            $game_name = htmlspecialchars($context['parent_game_name'] ?? 'a game');
-            $message = "$actor_name created the event <strong>\"$event_name\"</strong> inside \"$game_name\".";
-            $icon = "fas fa-plus-circle text-success";
-            break;
-        case 'UPDATED_EVENT':
-            $event_name = htmlspecialchars($context['new_event_name'] ?? 'an event');
-            $message = "$actor_name updated the event <strong>\"$event_name\"</strong>.";
-            $icon = "fas fa-pencil-alt text-info";
-            break;
-        case 'DELETED_EVENT':
-            $event_name = htmlspecialchars($context['deleted_event_name'] ?? 'an event');
-            $message = "$actor_name deleted the event <strong>\"$event_name\"</strong>.";
-            $icon = "fas fa-trash-alt text-danger";
-            break;
-
-        // --- CATEGORY (L3) ACTIONS ---
-        case 'CREATED_CATEGORY':
-            $cat_name = htmlspecialchars($context['category_name'] ?? 'a new category');
-            $event_name = htmlspecialchars($context['parent_event_name'] ?? 'an event');
-            $message = "$actor_name created the category <strong>\"$cat_name\"</strong> for \"$event_name\".";
-            $icon = "fas fa-plus-circle text-success";
-            break;
-        case 'UPDATED_CATEGORY':
-            $cat_name = htmlspecialchars($context['new_category_name'] ?? 'a category');
-            $message = "$actor_name updated the category <strong>\"$cat_name\"</strong>.";
-            $icon = "fas fa-pencil-alt text-info";
-            break;
-        case 'DELETED_CATEGORY':
-            $cat_name = htmlspecialchars($context['deleted_category_name'] ?? 'a category');
-            $message = "$actor_name deleted the category <strong>\"$cat_name\"</strong>.";
-            $icon = "fas fa-trash-alt text-danger";
-            break;
-            
-        // ### NEWLY ADDED BLOCK TO FIX YOUR PROBLEM ###
-        // --- COLLEGE ACTIONS ---
-        case 'CREATED_COLLEGE':
-            $college_name = htmlspecialchars($context['college_name'] ?? 'a new college');
-            $message = "$actor_name created the college <strong>\"$college_name\"</strong>.";
-            $icon = "fas fa-university text-success";
-            break;
-        case 'UPDATED_COLLEGE':
-            $college_name = htmlspecialchars($context['college_name'] ?? 'a college');
-            $message = "$actor_name updated the college <strong>\"$college_name\"</strong>.";
-            $icon = "fas fa-pencil-alt text-info";
-            break;
-        case 'DELETED_COLLEGE':
-            $college_name = htmlspecialchars($context['deleted_college_name'] ?? 'a college');
-            $message = "$actor_name deleted the college <strong>\"$college_name\"</strong>.";
-            $icon = "fas fa-trash-alt text-danger";
-            break;
-        // ### END OF NEW BLOCK ###
-
-        // --- MANAGER ASSIGNMENT ACTIONS ---
-        case 'ASSIGNED_MANAGER':
-            $manager_name = htmlspecialchars($context['manager_name'] ?? 'a manager');
-            $event_name = htmlspecialchars($context['event_name'] ?? 'an event');
-            $message = "$actor_name assigned <strong>\"$manager_name\"</strong> to the event \"$event_name\".";
-            $icon = "fas fa-user-plus text-primary";
-            break;
-        case 'UNASSIGNED_MANAGER':
-            $event_name = htmlspecialchars($context['event_name'] ?? 'an event');
-            $message = "$actor_name unassigned the manager from <strong>\"$event_name\"</strong>.";
-            $icon = "fas fa-user-minus text-warning";
-            break;
-
-        // --- RESULT ACTIONS ---
-        case 'APPROVED_RESULT':
-            $event_name = htmlspecialchars($context['event_name'] ?? 'an event');
-            $message = "$actor_name approved the results for <strong>\"$event_name\"</strong>.";
-            $icon = "fas fa-check-double text-success";
-            break;
-        case 'REJECTED_RESULT':
-            $event_name = htmlspecialchars($context['event_name'] ?? 'an event');
-            $message = "$actor_name rejected the results for <strong>\"$event_name\"</strong>.";
-            $icon = "fas fa-times-circle text-warning";
-            break;
+        // Team Actions
+        case 'CREATED_COLLEGE': $msg = "$actor added team <strong>" . htmlspecialchars($ctx['college_name']??'') . "</strong>."; $icon="fas fa-users text-info"; break;
+        case 'UPDATED_COLLEGE': $msg = "$actor updated team info for <strong>" . htmlspecialchars($ctx['college_name']??'') . "</strong>."; $icon="fas fa-pen text-info"; break;
         
-        // ### NEW: Added the Revoke action ###
-        case 'REVOKED_RESULT':
-            $event_name = htmlspecialchars($context['event_name'] ?? 'an event');
-            $message = "$actor_name **revoked** the approval for <strong>\"$event_name\"</strong>.";
-            $icon = "fas fa-undo text-danger";
-            break;
+        // Result Actions
+        case 'APPROVED_RESULT': $msg = "$actor approved results for <strong>" . htmlspecialchars($ctx['event_name']??'') . "</strong>."; $icon="fas fa-check-double text-success"; break;
+        case 'REVOKED_RESULT': $msg = "$actor **revoked** results for <strong>" . htmlspecialchars($ctx['event_name']??'') . "</strong>."; $icon="fas fa-undo text-danger"; break;
+        case 'REJECTED_RESULT': $msg = "$actor rejected results for <strong>" . htmlspecialchars($ctx['event_name']??'') . "</strong>."; $icon="fas fa-times-circle text-warning"; break;
 
-        // --- FALLBACKS ---
-        default:
-            if (!empty($log['log_message']) && empty($log['action_type'])) {
-                 $message = htmlspecialchars($log['log_message']);
-                 $icon = "fas fa-archive text-muted";
-            } 
-            else if (!empty($log['action_type'])) {
-                 $message = "Action: <b>" . htmlspecialchars(trim($log['action_type'])) . "</b> by $actor_name";
-                 $icon = "fas fa-exclamation-triangle text-warning";
-            }
-            else {
-                 $message = "An unknown action was performed.";
-                 $icon = "fas fa-question-circle text-muted";
-            }
-            break;
+        // Admin Actions
+        case 'UPDATED_USER': $msg = "$actor updated a user profile."; $icon="fas fa-user-edit text-warning"; break;
+        case 'APPROVED_REQUEST': $msg = "$actor approved an account request."; $icon="fas fa-user-check text-success"; break;
+        
+        // Archive Actions
+        case 'ARCHIVED_SEASON': $msg = "$actor archived the season and reset the system."; $icon="fas fa-archive text-primary"; break;
+
+        default: $msg = "$actor performed <strong>$action</strong>."; break;
     }
-
-    return [
-        'icon' => $icon,
-        'message' => $message,
-        'time' => $time
-    ];
+    return ['icon' => $icon, 'message' => $msg, 'time' => date('M d, h:i A', strtotime($log['created_at']))];
 }
 
-
-// --- Fetch Recent Activity (New Version) ---
-$logs = [];
+// Fetch Recent Logs
 $processed_logs = [];
-$current_user_id = $user_id; 
-
-$result_logs = $conn->query("SELECT * FROM system_logs ORDER BY created_at DESC LIMIT 5");
-if ($result_logs) {
-    $logs = $result_logs->fetch_all(MYSQLI_ASSOC);
-    foreach ($logs as $log) {
-        // Process each log into a human-readable format
-        $processed_logs[] = formatLogEntry($conn, $log, $current_user_id);
+$log_res = $conn->query("SELECT * FROM system_logs ORDER BY created_at DESC LIMIT 6");
+if ($log_res) {
+    while ($row = $log_res->fetch_assoc()) {
+        $processed_logs[] = formatLogEntry($conn, $row, $user_id);
     }
 }
+
 ?>
 <!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>SD Dashboard - PIT Sports Tallying</title>
+    <title>Director Dashboard - PIT Sports</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" rel="stylesheet">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=Poppins:wght@400;500;600;700;800&display=swap" rel="stylesheet">
     <style>
+        /* --- Unified & Modern CSS --- */
         :root { 
             --sidebar-width: 260px; 
             --header-height: 82px; 
             --transition: all 0.3s ease; 
             --card-shadow: 0 5px 20px rgba(0, 0, 0, 0.08); 
             --bg-light: #F8F9FA; 
+            --primary-gradient: linear-gradient(135deg, #2c3e50 0%, #4ca1af 100%);
+            --accent-color: #1abc9c;
         }
-        body { 
-            background-color: var(--bg-light); 
-            margin: 0; 
-            padding: 0; 
-            min-height: 100vh; 
-            font-family: 'Inter', sans-serif; 
-            display: flex; 
-            flex-direction: column; 
-        }
-        .navbar { 
-            background: linear-gradient(135deg, #1a1a1a 0%, #2d2d2d 100%) !important; 
-            box-shadow: 0 4px 20px rgba(0,0,0,0.15); 
-            padding: 1rem 1.5rem; 
-            height: var(--header-height); 
-            position: fixed; 
-            top: 0; 
-            left: 0; 
-            right: 0; 
-            z-index: 1050; 
-        }
-        .user-dropdown .dropdown-toggle { 
-            color: white; 
-            display: flex; 
-            align-items: center; 
-            text-decoration: none; 
-            padding: 8px 12px; 
-            border-radius: 8px; 
-        }
-        .user-dropdown .dropdown-toggle img { 
-            width: 36px; 
-            height: 36px; 
-            border-radius: 50%; 
-            object-fit: cover; 
-            margin-right: 10px; 
-        }
-        .sidebar { 
-            width: var(--sidebar-width); 
-            position: fixed; 
-            top: var(--header-height); 
-            left: 0; 
-            height: calc(100vh - var(--header-height)); 
-            background: #2c3e50; 
-            color: white; 
-            box-shadow: 5px 0 15px rgba(0,0,0,0.2); 
-            z-index: 1040; 
-            transition: width var(--transition); 
-            overflow-y: auto; 
-            overflow-x: hidden; 
-        }
+        body { background-color: var(--bg-light); margin: 0; padding: 0; min-height: 100vh; font-family: 'Inter', sans-serif; display: flex; flex-direction: column; }
+        
+        /* Navbar */
+        .navbar { background: linear-gradient(135deg, #1a1a1a 0%, #2d2d2d 100%) !important; box-shadow: 0 4px 20px rgba(0,0,0,0.15); padding: 1rem 1.5rem; height: var(--header-height); position: fixed; top: 0; left: 0; right: 0; z-index: 1050; }
+        .user-dropdown .dropdown-toggle { color: white; display: flex; align-items: center; text-decoration: none; padding: 8px 12px; border-radius: 8px; transition: var(--transition); }
+        .user-dropdown .dropdown-toggle:hover { background-color: rgba(255, 255, 255, 0.1); }
+        .user-dropdown .dropdown-toggle img { width: 36px; height: 36px; border-radius: 50%; object-fit: cover; margin-right: 10px; }
+        
+        /* Sidebar */
+        .sidebar { width: var(--sidebar-width); position: fixed; top: var(--header-height); left: 0; height: calc(100vh - var(--header-height)); background: #2c3e50; color: white; box-shadow: 5px 0 15px rgba(0,0,0,0.2); z-index: 1040; transition: width var(--transition); overflow-y: auto; }
         .sidebar-nav { padding: 20px 0; }
-        .sidebar-nav .nav-link { 
-            color: rgba(255, 255, 255, 0.7); 
-            font-size: 1.05rem; 
-            font-weight: 500; 
-            padding: 12px 25px; 
-            transition: var(--transition); 
-            border-left: 5px solid transparent; 
-            margin: 2px 0; 
-            display: flex; 
-            align-items: center; 
-            text-decoration: none; 
+        .sidebar-nav .nav-link { color: rgba(255, 255, 255, 0.7); font-size: 1.05rem; font-weight: 500; padding: 12px 25px; transition: var(--transition); border-left: 5px solid transparent; margin: 2px 0; display: flex; align-items: center; text-decoration: none; }
+        .sidebar-nav .nav-link i { width: 30px; text-align: center; flex-shrink: 0; font-size: 0.95em; }
+        .sidebar-nav .nav-link:hover { color: white; background: rgba(255, 255, 255, 0.05); border-left-color: var(--accent-color); }
+        .sidebar-nav .nav-link.active { color: white; background: rgba(255, 255, 255, 0.1); border-left-color: #3498db; font-weight: 600; }
+        .sidebar-nav .nav-title { padding: 15px 25px 5px; font-size: 0.75rem; font-weight: 700; color: rgba(255, 255, 255, 0.4); text-transform: uppercase; letter-spacing: 1px; }
+
+        .main-content { flex: 1 0 auto; padding: 30px; margin-top: var(--header-height); margin-left: var(--sidebar-width); transition: margin-left var(--transition); min-height: calc(100vh - var(--header-height)); }
+        /* Footer */
+        footer {
+            flex-shrink: 0;
+            background: #2c3e50 !important;
+            box-shadow: 0 -2px 10px rgba(0,0,0,0.1);
+            padding-left: var(--sidebar-width);
+            transition: padding-left var(--transition);
+            position: relative;
+            z-index: 1041;
         }
-        .sidebar-nav .nav-link i { 
-            width: 30px; 
-            text-align: center; 
-            flex-shrink: 0; 
-            font-size: 0.95em; 
+        .sidebar.minimized ~ footer {
+            padding-left: var(--sidebar-min-width);
         }
-        .sidebar-nav .nav-link:hover { 
-            color: white; 
-            background: rgba(255, 255, 255, 0.05); 
-            border-left-color: #1abc9c; 
-        }
-        .sidebar-nav .nav-link.active { 
-            color: white; 
-            background: rgba(255, 255, 255, 0.1); 
-            border-left-color: #3498db; 
-            font-weight: 600; 
-        }
-        .sidebar-nav .nav-title { 
-            padding: 10px 25px; 
-            font-size: 0.75rem; 
-            font-weight: 600; 
-            color: rgba(255, 255, 255, 0.4); 
-            text-transform: uppercase; 
-            letter-spacing: 1px; 
-        }
-        .main-content { 
-            flex: 1 0 auto; 
-            padding: 30px; 
-            margin-top: var(--header-height); 
-            margin-left: var(--sidebar-width); 
-            transition: margin-left var(--transition); 
-            min-height: calc(100vh - var(--header-height)); 
-        }
-        footer { 
-            flex-shrink: 0; 
-            background: #2c3e50 !important; 
-            box-shadow: 0 -2px 10px rgba(0,0,0,0.1); 
-            margin-left: var(--sidebar-width); 
-            transition: margin-left var(--transition); 
-            position: relative; 
-            z-index: 1041; 
-        }
-        .section-title { 
-            font-family: 'Poppins', sans-serif; 
-            font-weight: 600; 
-            color: #333; 
-        }
-        .card { 
-            border: none; 
-            border-radius: 15px; 
-            box-shadow: var(--card-shadow); 
-        }
-        .stat-card { 
-            background: white; 
-            border-radius: 15px; 
-            padding: 20px; 
-            box-shadow: var(--card-shadow); 
-            transition: all 0.3s ease; 
-        }
-        .stat-card:hover { 
-            transform: translateY(-5px); 
-            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1); 
-        }
-        .stat-icon { 
-            width: 60px; 
-            height: 60px; 
-            border-radius: 50%; 
-            display: flex; 
-            align-items: center; 
-            justify-content: center; 
-            color: white; 
-            font-size: 1.5rem; 
-            margin-right: 15px; 
-        }
-        .stat-count { 
-            font-size: 2.5rem; 
-            font-weight: 700; 
-            line-height: 1; 
-        }
-        .user-dropdown .dropdown-toggle { 
-            color: white; 
-            display: flex; 
-            align-items: center; 
-            text-decoration: none; /* This removed the underline */
-            padding: 8px 12px; 
-            border-radius: 8px; 
-            transition: var(--transition); 
-        }
-        .user-dropdown .dropdown-toggle:hover { 
-            background-color: rgba(255, 255, 255, 0.1); 
-        }
-        .user-dropdown .dropdown-toggle .user-name { 
-            font-weight: 600; 
-            font-size: 0.95rem; 
-        }
-        .navbar-profile-icon {
-            width: 36px; 
-            height: 36px; 
-            font-size: 36px; 
-            text-align: center;
-            line-height: 1;
-            border-radius: 50%; 
-            margin-right: 10px; 
-            color: rgba(255,255,255,0.8);
+        /* Hero */
+        .hero-section { background: var(--primary-gradient); color: white; padding: 40px; border-radius: 15px; margin-bottom: 30px; box-shadow: var(--card-shadow); position: relative; overflow: hidden; }
+        .welcome-badge { background: rgba(255,255,255,0.2); padding: 6px 16px; border-radius: 30px; font-size: 0.85rem; font-weight: 600; display: inline-block; backdrop-filter: blur(5px); letter-spacing: 0.5px; }
+        
+        /* Cards */
+        .stat-card { background: white; border: none; border-radius: 15px; padding: 20px; box-shadow: var(--card-shadow); transition: transform 0.3s; height: 100%; border-left: 5px solid transparent; }
+        .stat-card:hover { transform: translateY(-5px); }
+        .stat-icon { width: 50px; height: 50px; border-radius: 12px; display: flex; align-items: center; justify-content: center; color: white; font-size: 1.5rem; margin-right: 15px; flex-shrink: 0; }
+        .stat-count { font-size: 2.2rem; font-weight: 700; line-height: 1; font-family: 'Poppins', sans-serif; color: #2c3e50; }
+        .section-title { font-family: 'Poppins', sans-serif; font-weight: 600; color: #333; margin-bottom: 20px; }
+
+        /* Quick Actions */
+        .quick-action-card { text-align: center; padding: 20px; background: white; border-radius: 15px; box-shadow: var(--card-shadow); transition: all 0.3s; text-decoration: none; color: #333; display: block; height: 100%; border: 1px solid rgba(0,0,0,0.05); }
+        .quick-action-card:hover { transform: translateY(-5px); border-color: var(--accent-color); background: #fcfcfc; color: var(--accent-color); }
+        .quick-icon { font-size: 2.5rem; margin-bottom: 15px; display: block; transition: color 0.3s; }
+
+        
+        @media (max-width: 992px) {
+            .sidebar { left: -260px; }
+            .sidebar.show { left: 0; }
+            .main-content, footer { margin-left: 0; }
         }
     </style>
 </head>
@@ -442,19 +205,22 @@ if ($result_logs) {
                 <img src="../imageslogo.png" alt="Logo" class="me-2" style="height: 50px; width: 48px; object-fit: contain;">
                 <div class="d-flex flex-column lh-sm">
                     <strong class="text-white" style="font-size: 1.25rem;">PIT SPORTS TALLYING</strong>
-                    <small class="text-light" style="font-size: 0.75rem;">Sports Director Panel</small>
+                    <small class="text-light" style="font-size: 0.75rem;">Director Panel</small>
                 </div>
             </a>
+            <button class="navbar-toggler d-lg-none" type="button" id="mobileToggle">
+                <span class="navbar-toggler-icon"></span>
+            </button>
             <div class="dropdown user-dropdown ms-auto me-2 me-lg-0">
                 <a href="#" class="dropdown-toggle" id="userDropdown" data-bs-toggle="dropdown" aria-expanded="false">
-                    <i class="fas fa-user-circle navbar-profile-icon"></i>
+                    <i class="fas fa-user-circle" style="font-size: 36px; margin-right: 10px;"></i>
                     <span class="user-name d-none d-lg-inline"><?= htmlspecialchars($name); ?></span>
                 </a>
                 <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="userDropdown">
-                    <li><a class="dropdown-item" href="../admin_profile.php"><i class="fas fa-user-circle"></i> Profile</a></li>
-                    <li><a class="dropdown-item" href="../Tournament_Manager_page.php" target="_blank"><i class="fas fa-globe"></i> View Public Site</a></li>
+                    <li><a class="dropdown-item" href="../admin_profile.php"><i class="fas fa-user-circle me-2"></i> Profile</a></li>
+                    <li><a class="dropdown-item" href="../Tournament_Manager_page.php" target="_blank"><i class="fas fa-globe me-2"></i> Public Site</a></li>
                     <li><hr class="dropdown-divider"></li>
-                    <li><a class="dropdown-item text-danger" href="../logout.php"><i class="fas fa-sign-out-alt"></i> Logout</a></li>
+                    <li><a class="dropdown-item text-danger" href="../logout.php"><i class="fas fa-sign-out-alt me-2"></i> Logout</a></li>
                 </ul>
             </div>
         </div>
@@ -467,10 +233,11 @@ if ($result_logs) {
                     <i class="fas fa-tachometer-alt me-2"></i> <span>Dashboard</span>
                 </a>
             </li>
-            <li class="nav-item mt-3"><span class="nav-title">Management</span></li>
+            
+            <li class="nav-item mt-3"><span class="nav-title">Tournament Mgmt</span></li>
             <li class="nav-item">
                 <a class="nav-link <?= ($current_page == 'colleges.php') ? 'active' : '' ?>" href="colleges.php">
-                    <i class="fas fa-users me-2"></i> <span>Manage Colleges</span>
+                    <i class="fas fa-users me-2"></i> <span>Manage Teams</span>
                 </a>
             </li>
             <li class="nav-item">
@@ -478,28 +245,52 @@ if ($result_logs) {
                     <i class="fas fa-calendar-alt me-2"></i> <span>Manage Events (L1-L3)</span>
                 </a>
             </li>
-            
             <li class="nav-item">
-                <a class="nav-link <?= ($current_page == 'view_all_matches.php') ? 'active' : '' ?>" href="view_all_matches.php">
-                    <i class="fas fa-trophy me-2"></i> <span>View All Matches</span>
+                <a class="nav-link <?= ($current_page == 'Manage_Matches.php') ? 'active' : '' ?>" href="Manage_Matches.php">
+                    <i class="fas fa-trophy me-2"></i> <span>Manage Matches</span>
+                </a>
+            </li>
+
+            <li class="nav-item mt-3"><span class="nav-title">Administration</span></li>
+            <li class="nav-item">
+                <a class="nav-link" href="../Manage_Users.php">
+                    <i class="fas fa-users-cog me-2"></i> <span>Manage Users</span>
                 </a>
             </li>
             <li class="nav-item">
-                <a class="nav-link <?php if ($current_page == 'Manage_Viewreports.php') echo 'active'; ?>" href="../Manage_Viewreports.php">
-                    <i class="fas fa-chart-line me-2"></i> <span>View Reports</span>
+                <a class="nav-link" href="../Manage_Requests.php">
+                    <i class="fas fa-user-plus me-2"></i> <span>Account Requests</span>
+                    <?php if($stats['pending_requests'] > 0): ?>
+                        <span class="badge bg-danger ms-auto rounded-pill"><?= $stats['pending_requests'] ?></span>
+                    <?php endif; ?>
                 </a>
             </li>
-             
-            
-            <li class="nav-item mt-3"><span class="nav-title">Tallying</span></li>
+             <li class="nav-item">
+                <a class="nav-link" href="../Manage_Viewreports.php">
+                    <i class="fas fa-file-alt me-2"></i> <span>View System Reports</span>
+                </a>
+            </li>
+
+            <li class="nav-item mt-3"><span class="nav-title">Tallying & Scoring</span></li>
             <li class="nav-item">
                 <a class="nav-link <?= ($current_page == 'results.php') ? 'active' : '' ?>" href="results.php">
                     <i class="fas fa-check-double me-2"></i> <span>Approve Results</span>
+                    <?php if($stats['pending_results'] > 0): ?>
+                        <span class="badge bg-warning text-dark ms-auto rounded-pill"><?= $stats['pending_results'] ?></span>
+                    <?php endif; ?>
                 </a>
             </li>
             <li class="nav-item">
                 <a class="nav-link <?= ($current_page == 'reports.php') ? 'active' : '' ?>" href="reports.php">
-                    <i class="fas fa-chart-line me-2"></i> <span>Medal Reports</span>
+                    <i class="fas fa-chart-line me-2"></i> <span>Medal Standings</span>
+                </a>
+            </li>
+
+            <!-- NEW SECTION: SEASON MANAGEMENT -->
+            <li class="nav-item mt-3"><span class="nav-title">Season Management</span></li>
+            <li class="nav-item">
+                <a class="nav-link <?= ($current_page == 'manage_archives.php') ? 'active' : '' ?>" href="../manage_archives.php">
+                    <i class="fas fa-history me-2"></i> <span>Archives & Reset</span>
                 </a>
             </li>
             
@@ -512,104 +303,203 @@ if ($result_logs) {
     </div>
 
     <div class="main-content">
-        
         <div class="container-fluid">
-            <h1 class="section-title mb-4">Sports Director Dashboard</h1>
             
-            <div class="row g-4 mb-5">
-                <div class="col-lg-3 col-md-6">
-                    <div class="stat-card">
+            <!-- Hero Section (PROFESSIONAL WELCOME BOARD) -->
+            <div class="hero-section">
+                <div class="row align-items-center">
+                    <div class="col-lg-9">
+                        <div class="welcome-badge mb-3"><i class="fas fa-crown me-1"></i> Head Administrator</div>
+                        
+                        <h1 class="fw-bold mb-1">Welcome to SmartScore</h1>
+                        <h5 class="fw-light mb-3 text-white-50">A Web-Based Scoring and Medal Tally Platform for Siglakas Events</h5>
+                        
+                        <hr class="my-4" style="border-color: rgba(255,255,255,0.15); width: 60%;">
+                        
+                        <p class="lead fs-6 opacity-90 mb-0" style="line-height: 1.7; font-weight: 400;">
+                            Good day, <strong><?= htmlspecialchars($name) ?></strong>. You are now accessing the central command unit for the Siglakas tournament. 
+                            As the Sports Director, this dashboard empowers you with the tools to oversee event progression, validate official results, and maintain the integrity of the medal tally. 
+                            Please utilize the modules below to manage competition data effectively.
+                        </p>
+                    </div>
+                    <div class="col-lg-3 text-end d-none d-lg-block">
+                        <!-- Icon representing Data/Tallying/Growth -->
+                        <i class="fas fa-chart-pie fa-6x opacity-25" style="transform: rotate(-10deg);"></i>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Row 1: Key Tournament Counts --> 
+            <h5 class="section-title">Tournament Overview</h5>
+            <div class="row g-4 mb-4">
+                <div class="col-md-6 col-lg-3">
+                    <div class="stat-card" style="border-left-color: #007bff;">
                         <div class="d-flex align-items-center">
-                            <div class="stat-icon bg-primary"><i class="fas fa-calendar-alt"></i></div>
+                            <div class="stat-icon bg-primary"><i class="fas fa-calendar-day"></i></div>
                             <div>
-                                <div class="stat-count text-primary"><?= $total_events ?></div>
-                                <small class="text-muted">Total Events (L2)</small>
+                                <div class="stat-count"><?= $stats['events'] ?></div>
+                                <small class="text-muted">Main Events (L2)</small>
                             </div>
                         </div>
                     </div>
                 </div>
-                <div class="col-lg-3 col-md-6">
-                    <div class="stat-card">
+                <div class="col-md-6 col-lg-3">
+                    <div class="stat-card" style="border-left-color: #198754;">
                         <div class="d-flex align-items-center">
                             <div class="stat-icon bg-success"><i class="fas fa-users"></i></div>
                             <div>
-                                <div class="stat-count text-success"><?= $total_teams ?></div>
-                                <small class="text-muted">Participating Teams</small>
+                                <div class="stat-count"><?= $stats['teams'] ?></div>
+                                <small class="text-muted">Teams Registered</small>
                             </div>
                         </div>
                     </div>
                 </div>
-                <div class="col-lg-3 col-md-6">
-                    <div class="stat-card">
+                <div class="col-md-6 col-lg-3">
+                    <div class="stat-card" style="border-left-color: #0dcaf0;">
                         <div class="d-flex align-items-center">
-                            <div class="stat-icon bg-warning"><i class="fas fa-gavel"></i></div>
+                            <div class="stat-icon bg-info text-white"><i class="fas fa-layer-group"></i></div>
                             <div>
-                                <div class="stat-count text-warning"><?= $pending_results ?></div>
-                                <small class="text-muted">Pending Results</small>
+                                <div class="stat-count"><?= $stats['categories'] ?></div>
+                                <small class="text-muted">Total Categories (L3)</small>
                             </div>
                         </div>
                     </div>
                 </div>
-                <div class="col-lg-3 col-md-6">
-                    <div class="stat-card">
+                 <div class="col-md-6 col-lg-3">
+                    <div class="stat-card" style="border-left-color: #ffc107;">
                         <div class="d-flex align-items-center">
-                            <div class="stat-icon" style="background-color: #FFD700;"><i class="fas fa-medal"></i></div>
+                            <div class="stat-icon bg-warning text-dark"><i class="fas fa-medal"></i></div>
                             <div>
-                                <div class="stat-count text-warning"><?= $total_gold ?></div>
-                                <small class="text-muted">Approved Gold Medals</small>
+                                <div class="stat-count"><?= $stats['total_gold'] ?></div>
+                                <small class="text-muted">Gold Medals Awarded</small>
                             </div>
                         </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Row 2: Management & Results -->
+            <h5 class="section-title">Live Status</h5>
+            <div class="row g-4 mb-5">
+                <div class="col-lg-4">
+                    <div class="stat-card">
+                        <div class="d-flex justify-content-between align-items-center">
+                            <div>
+                                <h6 class="text-muted text-uppercase mb-2">Matches</h6>
+                                <h2 class="mb-0 fw-bold text-primary"><?= $stats['total_matches'] ?></h2>
+                            </div>
+                            <div class="text-end">
+                                <i class="fas fa-trophy fa-2x text-muted opacity-25 mb-2"></i>
+                                <div class="badge bg-success d-block"><?= $stats['ongoing_matches'] ?> Ongoing</div>
+                            </div>
+                        </div>
+                        <hr class="my-3 opacity-10">
+                         <a href="Manage_Matches.php" class="btn btn-outline-primary btn-sm w-100 rounded-pill">Manage Matches</a>
+                    </div>
+                </div>
+                
+                <div class="col-lg-4">
+                    <div class="stat-card">
+                        <div class="d-flex justify-content-between align-items-center">
+                            <div>
+                                <h6 class="text-muted text-uppercase mb-2">Result Approvals</h6>
+                                <h2 class="mb-0 fw-bold text-danger"><?= $stats['pending_results'] ?></h2>
+                            </div>
+                            <div class="text-end">
+                                <i class="fas fa-gavel fa-2x text-muted opacity-25 mb-2"></i>
+                                <div class="badge bg-danger d-block">Action Needed</div>
+                            </div>
+                        </div>
+                         <hr class="my-3 opacity-10">
+                         <a href="results.php" class="btn btn-outline-danger btn-sm w-100 rounded-pill">Review Pending Results</a>
+                    </div>
+                </div> 
+
+                <div class="col-lg-4">
+                     <div class="stat-card">
+                        <div class="d-flex justify-content-between align-items-center">
+                            <div>
+                                <h6 class="text-muted text-uppercase mb-2">Account Requests</h6>
+                                <h2 class="mb-0 fw-bold text-warning"><?= $stats['pending_requests'] ?></h2>
+                            </div>
+                            <div class="text-end">
+                                <i class="fas fa-user-plus fa-2x text-muted opacity-25 mb-2"></i>
+                                <div class="badge bg-warning text-dark d-block">Pending</div>
+                            </div>
+                        </div>
+                         <hr class="my-3 opacity-10">
+                         <a href="../Manage_Requests.php" class="btn btn-outline-warning text-dark btn-sm w-100 rounded-pill">Manage Requests</a>
                     </div>
                 </div>
             </div>
             
+            <!-- Row 3: Quick Actions & Logs -->
             <div class="row g-4">
-                <div class="col-lg-6">
-                    <div class="card h-100">
-                        <div class="card-header"><h5 class="mb-0">Quick Navigation</h5></div>
-                        <div class="card-body">
-                            <div class="list-group">
-                                <a href="results.php" class="list-group-item list-group-item-action list-group-item-warning d-flex justify-content-between align-items-center">
-                                    <strong>Approve Medal Results</strong>
-                                    <span class="badge bg-warning text-dark"><?= $pending_results ?> Pending</span>
-                                </a>
-                                <a href="events.php" class="list-group-item list-group-item-action">Manage Events & Assignments</a>
-                                <a href="colleges.php" class="list-group-item list-group-item-action">Manage Colleges</a>
-                                <a href="reports.php" class="list-group-item list-group-item-action">View Medal Standings</a>
-                            </div>
+                <div class="col-lg-4">
+                    <h5 class="section-title">Quick Actions</h5>
+                    <div class="row g-3">
+                        <div class="col-6">
+                            <a href="colleges.php" class="quick-action-card">
+                                <i class="fas fa-users quick-icon text-success"></i>
+                                <div class="fw-bold">Teams</div>
+                            </a>
+                        </div>
+                        <div class="col-6">
+                             <a href="../Manage_Users.php" class="quick-action-card">
+                                <i class="fas fa-users-cog quick-icon text-info"></i>
+                                <div class="fw-bold">Users</div>
+                            </a>
+                        </div>
+                        <div class="col-6">
+                             <a href="reports.php" class="quick-action-card">
+                                <i class="fas fa-print quick-icon text-secondary"></i>
+                                <div class="fw-bold">Reports</div>
+                            </a>
+                        </div>
+                         <div class="col-6">
+                             <a href="events.php" class="quick-action-card">
+                                <i class="fas fa-calendar-alt quick-icon text-primary"></i>
+                                <div class="fw-bold">Events</div>
+                            </a>
                         </div>
                     </div>
                 </div>
-                
-                <div class="col-lg-6">
-                    <div class="card h-100">
-                        <div class="card-header"><h5 class="mb-0">Recent Activity</h5></div>
-                        <div class="card-body">
-                            <ul class="list-group list-group-flush">
+
+                <div class="col-lg-8">
+                    <h5 class="section-title">Recent System Activity</h5>
+                    <div class="card shadow-sm border-0 rounded-4">
+                        <div class="card-body p-0">
+                            <div class="list-group list-group-flush rounded-4">
                                 <?php if (empty($processed_logs)): ?>
-                                    <li class="list-group-item text-muted">No recent activity.</li>
-                                <?php endif; ?>
-                                
-                                <?php foreach ($processed_logs as $log_entry): ?>
-                                    <li class="list-group-item d-flex align-items-start py-3">
-                                        <i class="<?= $log_entry['icon'] ?> me-3 mt-1" style="width: 20px; text-align: center; font-size: 1.1rem;"></i>
-                                        
-                                        <div class="flex-grow-1">
-                                            <?= $log_entry['message'] ?> 
-                                            <br>
-                                            <small class="text-muted"><?= $log_entry['time'] ?></small> 
+                                    <div class="p-5 text-center text-muted">
+                                        <i class="fas fa-history fa-2x mb-3"></i><br>No recent activity logs found.
+                                    </div>
+                                <?php else: ?>
+                                    <?php foreach ($processed_logs as $log): ?>
+                                        <div class="list-group-item d-flex align-items-center py-3 px-4 border-bottom-0 border-top">
+                                            <div class="me-3">
+                                                <i class="<?= $log['icon'] ?> fa-lg"></i>
+                                            </div>
+                                            <div class="flex-grow-1">
+                                                <div class="mb-0 text-dark"><?= $log['message'] ?></div>
+                                                <small class="text-muted"><i class="far fa-clock me-1"></i> <?= $log['time'] ?></small>
+                                            </div>
                                         </div>
-                                    </li>
-                                <?php endforeach; ?>
-                            </ul>
+                                    <?php endforeach; ?>
+                                <?php endif; ?>
+                            </div>
+                        </div>
+                        <div class="card-footer bg-white text-center py-3 border-top rounded-bottom-4">
+                            <a href="../Manage_Viewreports.php" class="btn btn-sm btn-light text-muted rounded-pill px-4">View All Logs</a>
                         </div>
                     </div>
                 </div>
             </div>
+
         </div>
     </div> 
     
-    <footer class="bg-dark text-white py-4" style="margin-left: var(--sidebar-width);">
+    <footer class="bg-dark text-white py-4">
         <div class="text-center">
             <small>&copy; <?php echo date("Y"); ?> PIT SPORTS TALLYING. All rights reserved.</small><br>
             <small class="text-muted">Developed by Tsunayoshi Sawada</small>
@@ -617,5 +507,60 @@ if ($result_logs) {
     </footer>
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        document.getElementById('mobileToggle').addEventListener('click', function() {
+            document.getElementById('sidebar').classList.toggle('show');
+        });
+
+        let resizeTimer;
+            window.addEventListener('resize', function() {
+                clearTimeout(resizeTimer);
+                resizeTimer = setTimeout(function() {
+                    if (window.innerWidth > 992) {
+                        sidebar.classList.remove('show');
+                        sidebarOverlay.classList.remove('show');
+                    }
+                }, 250);
+            });
+
+            // --- ### NEW: FIX SIDEBAR/FOOTER OVERLAP ### ---
+            const sidebar = document.getElementById('sidebar'); // Ensure sidebar variable is defined
+            const footer = document.querySelector('footer');
+            const navbar = document.querySelector('.navbar');
+
+            if (sidebar && footer && navbar) {
+                function adjustSidebarHeight() {
+                    // This logic should only apply to desktop view
+                    if (window.innerWidth <= 992) {
+                        sidebar.style.height = ''; // Reset to CSS default for mobile
+                        return;
+                    }
+
+                    const navbarHeight = navbar.offsetHeight;
+                    const footerTop = footer.getBoundingClientRect().top;
+                    const viewportHeight = window.innerHeight;
+                    
+                    // 1. Calculate the max possible height (navbar top to viewport bottom)
+                    const maxSidebarHeight = viewportHeight - navbarHeight;
+
+                    // 2. Calculate the available height (navbar top to footer top)
+                    const availableHeight = footerTop - navbarHeight;
+
+                    // 3. Choose the smaller of the two heights, but never less than 0
+                    const newHeight = Math.max(0, Math.min(maxSidebarHeight, availableHeight));
+                    
+                    // 4. Apply the new height as an inline style
+                    sidebar.style.height = `${newHeight}px`;
+                }
+
+                // Add listeners for scroll and resize events
+                window.addEventListener('scroll', adjustSidebarHeight, { passive: true });
+                window.addEventListener('resize', adjustSidebarHeight);
+                
+                // Initial call to set the correct height on page load
+                // Small delay to ensure all elements are rendered
+                setTimeout(adjustSidebarHeight, 100);
+            }
+    </script>
 </body>
 </html>
