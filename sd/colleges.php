@@ -1,7 +1,7 @@
 <?php
 session_start();
 // Use a relative path to your main db_connect.php
-require_once '../db_connect.php'; 
+require_once '../config.php'; 
 
 // 1. SECURITY & ACCESS CONTROL
 // STRICT: Only 'Sports Director' is allowed
@@ -220,8 +220,10 @@ if (isset($_SESSION['message'])) {
 }
 
 // Count pending requests for sidebar badge (To match Dashboard)
-$pending_requests_count = $conn->query("SELECT COUNT(*) FROM account_requests WHERE status = 'pending'")->fetch_row()[0] ?? 0;
+// Count pending requests for sidebar badge (Fixed: Counts unapproved users)
+$pending_requests_count = $conn->query("SELECT COUNT(*) FROM users WHERE is_approved = 0")->fetch_row()[0] ?? 0;
 $pending_results_count = $conn->query("SELECT COUNT(*) FROM categories WHERE status='Results Submitted'")->fetch_row()[0] ?? 0;
+
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -335,11 +337,6 @@ $pending_results_count = $conn->query("SELECT COUNT(*) FROM categories WHERE sta
             <li class="nav-item">
                 <a class="nav-link" href="events.php">
                     <i class="fas fa-calendar-alt me-2"></i> <span>Manage Events (L1-L3)</span>
-                </a>
-            </li>
-            <li class="nav-item">
-                <a class="nav-link" href="Manage_Matches.php">
-                    <i class="fas fa-trophy me-2"></i> <span>Manage Matches</span>
                 </a>
             </li>
 

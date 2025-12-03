@@ -242,7 +242,7 @@ try {
                     <span class="user-name d-none d-lg-inline"><?= htmlspecialchars($display_name); ?></span>
                 </a>
                 <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="userDropdown">
-                    <li><a class="dropdown-item" href="../admin_profile.php"><i class="fas fa-user-circle me-2"></i> Profile</a></li>
+                    <li><a class="dropdown-item" href="admin_profile.php"><i class="fas fa-user-circle me-2"></i> Profile</a></li>
                     <li><a class="dropdown-item" href="../Tournament_Manager_page.php" target="_blank"><i class="fas fa-globe me-2"></i> Public Site</a></li>
                     <li><hr class="dropdown-divider"></li>
                     <li><a class="dropdown-item text-danger" href="../logout.php"><i class="fas fa-sign-out-alt me-2"></i> Logout</a></li>
@@ -264,7 +264,7 @@ try {
                 </a>
             </li>
             <li class="nav-item">
-                <a class="nav-link" href="Event.php" target="_blank">
+                <a class="nav-link" href="Eventpage.php" target="_blank">
                     <i class="fas fa-globe me-2"></i> <span>View Public Events</span>
                 </a>
             </li>

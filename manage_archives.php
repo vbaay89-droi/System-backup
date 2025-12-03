@@ -1,6 +1,6 @@
 <?php
 session_start();
-require_once 'db_connect.php'; 
+require_once 'config.php'; 
 
 // 1. SECURITY & ACCESS CONTROL
 if (!isset($_SESSION['role']) || $_SESSION['role'] !== 'Sports Director') {
@@ -127,15 +127,29 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
         }
 
         // --- ACTION B: RESET (Delete Only) ---
+        // --- ACTION B: RESET (Delete Only) ---
         elseif ($_POST['action'] === 'reset_system') {
             $conn->begin_transaction();
             try {
+                // 1. Delete Matches (Lowest Level)
                 $conn->query("DELETE FROM matches");
-                $conn->query("DELETE FROM event_manager_assignments");
-                $conn->query("UPDATE categories SET status='Upcoming', event_date=NULL, event_time=NULL, venue=NULL, gold_winner_college_id=NULL, gold_count=0, silver_winner_college_id=NULL, silver_count=0, bronze_winner_college_id=NULL, bronze_count=0, approved_by_user_id=NULL, approved_at=NULL, notes=NULL");
 
+                // 2. Delete Event Assignments (Remove Managers from Events)
+                $conn->query("DELETE FROM event_manager_assignments");
+
+                // 3. Delete Categories (e.g., Men's Basketball, Women's Basketball)
+                $conn->query("DELETE FROM categories");
+
+                // 4. Delete Events (e.g., Basketball, Volleyball)
+                $conn->query("DELETE FROM game_events");
+
+                // 5. Delete Games (e.g., Sports definitions)
+                $conn->query("DELETE FROM games");
+
+                // Note: We usually KEEP the 'colleges' (Teams) and 'users' for the next season.
+                
                 $conn->commit();
-                $alert_message = "SUCCESS: System has been reset for the new season.";
+                $alert_message = "SUCCESS: System has been fully reset. All events and matches are deleted.";
                 $alert_type = "warning";
             } catch (Exception $e) {
                 $conn->rollback();
@@ -151,6 +165,9 @@ $archives = [];
 $res_arch = $conn->query("SELECT * FROM archived_seasons ORDER BY archived_at DESC");
 if($res_arch) $archives = $res_arch->fetch_all(MYSQLI_ASSOC);
 
+// Count pending requests for sidebar badge (Fixed: Counts unapproved users)
+$pending_requests_count = $conn->query("SELECT COUNT(*) FROM users WHERE is_approved = 0")->fetch_row()[0] ?? 0;
+$pending_results_count = $conn->query("SELECT COUNT(*) FROM categories WHERE status='Results Submitted'")->fetch_row()[0] ?? 0;
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -323,11 +340,6 @@ if($res_arch) $archives = $res_arch->fetch_all(MYSQLI_ASSOC);
                     <i class="fas fa-calendar-alt me-2"></i> <span>Manage Events (L1-L3)</span>
                 </a>
             </li>
-            <li class="nav-item">
-                <a class="nav-link" href="sd/Manage_Matches.php">
-                    <i class="fas fa-trophy me-2"></i> <span>Manage Matches</span>
-                </a>
-            </li>
 
             <li class="nav-item mt-3"><span class="nav-title">Administration</span></li>
             <li class="nav-item">
@@ -338,6 +350,9 @@ if($res_arch) $archives = $res_arch->fetch_all(MYSQLI_ASSOC);
             <li class="nav-item">
                 <a class="nav-link" href="Manage_Requests.php">
                     <i class="fas fa-user-plus me-2"></i> <span>Account Requests</span>
+                    <?php if($pending_requests_count > 0): ?>
+                        <span class="badge bg-danger ms-auto rounded-pill"><?= $pending_requests_count ?></span>
+                    <?php endif; ?>
                 </a>
             </li>
              <li class="nav-item">
@@ -350,6 +365,9 @@ if($res_arch) $archives = $res_arch->fetch_all(MYSQLI_ASSOC);
             <li class="nav-item">
                 <a class="nav-link" href="sd/results.php">
                     <i class="fas fa-check-double me-2"></i> <span>Approve Results</span>
+                    <?php if($pending_results_count > 0): ?>
+                        <span class="badge bg-warning text-dark ms-auto rounded-pill"><?= $pending_results_count ?></span>
+                    <?php endif; ?>
                 </a>
             </li>
             <li class="nav-item">
@@ -524,7 +542,7 @@ if($res_arch) $archives = $res_arch->fetch_all(MYSQLI_ASSOC);
                                 <i class="fas fa-trash-restore-alt action-icon text-danger"></i>
                                 <h3 class="text-danger">Reset System Data</h3>
                                 <p>
-                                    <strong>⚠️ Critical Action:</strong> This will permanently delete all matches, assignments, 
+                                    <strong>⚠️ Critical Action:</strong> This will permanently delete all matches, assignments, events 
                                     and reset all results and medals. This operation is irreversible and should only be used 
                                     when starting a completely new season.
                                 </p>

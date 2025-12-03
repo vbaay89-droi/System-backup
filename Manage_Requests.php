@@ -1,6 +1,6 @@
 <?php
 session_start();
-require_once 'db_connect.php'; // DB connection (Root directory)
+require_once 'config.php'; // DB connection (Root directory)
 
 // --- Load PHPMailer ---
 require __DIR__ . '/PHPMailer-master/src/Exception.php';
@@ -304,11 +304,6 @@ $pending_results_count = $conn->query("SELECT COUNT(*) FROM categories WHERE sta
             <li class="nav-item">
                 <a class="nav-link" href="sd/events.php">
                     <i class="fas fa-calendar-alt me-2"></i> <span>Manage Events (L1-L3)</span>
-                </a>
-            </li>
-            <li class="nav-item">
-                <a class="nav-link" href="sd/Manage_Matches.php">
-                    <i class="fas fa-trophy me-2"></i> <span>Manage Matches</span>
                 </a>
             </li>
 

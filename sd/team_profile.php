@@ -1,7 +1,7 @@
 <?php
 session_start();
 // Use a relative path to your main db_connect.php
-require_once '../db_connect.php'; 
+require_once '../config.php'; 
 
 // 1. SECURITY & ACCESS CONTROL
 // STRICT: Only 'Sports Director' is allowed (Acting as Administrator)
@@ -160,79 +160,45 @@ usort($top_performing_events, function($a, $b) {
 });
 $top_performing_events = array_slice($top_performing_events, 0, 5);
 
-// 8. Get Approved Match Results
-$match_results = [];
-$stmt_matches = $conn->prepare("
+// 8. [NEW] GET VICTORY GALLERY PHOTOS (Gold Wins Only)
+$gallery_photos = [];
+$stmt_gallery = $conn->prepare("
     SELECT
-      g.game_name,
-      ge.event_name,
-      c.category_name,
-      c.gold_winner_college_id AS winner_gold_college_id,
-      c.silver_winner_college_id AS winner_silver_college_id,
-      c.bronze_winner_college_id AS winner_bronze_college_id,
-      wg.college_name AS gold_winner_name,
-      ws.college_name AS silver_winner_name,
-      wb.college_name AS bronze_winner_name
+        c.podium_photo_url,
+        ge.event_name,
+        g.game_name,
+        c.category_name,
+        c.approved_at
     FROM categories c
     JOIN game_events ge ON c.event_id = ge.event_id
     JOIN games g ON ge.game_id = g.game_id
-    LEFT JOIN colleges wg ON c.gold_winner_college_id = wg.college_id
-    LEFT JOIN colleges ws ON c.silver_winner_college_id = ws.college_id
-    LEFT JOIN colleges wb ON c.bronze_winner_college_id = wb.college_id
     WHERE c.status = 'Results Approved'
-    AND (
-      c.gold_winner_college_id = ?
-      OR c.silver_winner_college_id = ?
-      OR c.bronze_winner_college_id = ?
-    )
-    ORDER BY g.game_name, ge.event_name, c.category_name
+    AND c.gold_winner_college_id = ?
+    AND c.podium_photo_url IS NOT NULL
+    AND c.podium_photo_url != ''
+    ORDER BY c.approved_at DESC
 ");
-$stmt_matches->bind_param("iii", $college_id, $college_id, $college_id);
-$stmt_matches->execute();
-$result_matches = $stmt_matches->get_result();
-while ($row = $result_matches->fetch_assoc()) {
-    $match_results[] = $row;
+$stmt_gallery->bind_param("i", $college_id);
+$stmt_gallery->execute();
+$result_gallery = $stmt_gallery->get_result();
+while ($row = $result_gallery->fetch_assoc()) {
+    // Ensure clean path for display (prepend ../ because we are in /sd/ folder)
+    // DB usually stores 'uploads/evidence/...', so we need '../uploads/evidence/...'
+    $cleanPath = str_replace('../', '', $row['podium_photo_url']);
+    $row['display_url'] = '../' . $cleanPath; 
+    
+    // Clean up category name
+    if ($row['category_name'] == 'Single Division' || $row['category_name'] == '.') {
+        $row['category_name'] = 'Open';
+    }
+    
+    $gallery_photos[] = $row;
 }
-$stmt_matches->close(); 
+$stmt_gallery->close();
 
-// 9. Get Upcoming Matches
-$upcoming_matches = [];
-$stmt_upcoming = $conn->prepare("
-    SELECT
-        m.match_date,
-        m.match_time,
-        m.venue,
-        m.status,
-        g.game_name,
-        ge.event_name,
-        c.category_name,
-        CASE
-            WHEN m.team1_id = ? THEN t2.college_name
-            ELSE t1.college_name
-        END AS opponent_name
-    FROM matches m
-    JOIN categories c ON m.category_id = c.category_id
-    JOIN game_events ge ON c.event_id = ge.event_id
-    JOIN games g ON ge.game_id = g.game_id
-    LEFT JOIN colleges t1 ON m.team1_id = t1.college_id
-    LEFT JOIN colleges t2 ON m.team2_id = t2.college_id
-    WHERE
-        (m.team1_id = ? OR m.team2_id = ?)
-        AND m.status IN ('Upcoming', 'Ongoing')
-        AND c.category_type = 'Match'
-    ORDER BY
-        m.match_date ASC, m.match_time ASC
-");
-$stmt_upcoming->bind_param("iii", $college_id, $college_id, $college_id);
-$stmt_upcoming->execute();
-$result_upcoming = $stmt_upcoming->get_result();
-while ($row = $result_upcoming->fetch_assoc()) {
-    $upcoming_matches[] = $row;
-}
-$stmt_upcoming->close();
 
 // Count sidebar badges
-$pending_requests_count = $conn->query("SELECT COUNT(*) FROM account_requests WHERE status = 'pending'")->fetch_row()[0] ?? 0;
+$pending_requests_count = $conn->query("SELECT COUNT(*) FROM users WHERE is_approved = 0")->fetch_row()[0] ?? 0;
 $pending_results_count = $conn->query("SELECT COUNT(*) FROM categories WHERE status='Results Submitted'")->fetch_row()[0] ?? 0;
 
 ?>
@@ -278,6 +244,14 @@ $pending_results_count = $conn->query("SELECT COUNT(*) FROM categories WHERE sta
         .stat-gold .count { color: #ffc107; }
         .stat-silver .count { color: #6c757d; }
         .stat-bronze .count { color: #cd7f32; }
+
+        /* GALLERY STYLES */
+        .gallery-card { transition: transform 0.3s ease; border-radius: 12px; overflow: hidden; border: 0; box-shadow: 0 4px 10px rgba(0,0,0,0.05); }
+        .gallery-card:hover { transform: translateY(-5px); box-shadow: 0 10px 20px rgba(0,0,0,0.1); }
+        .gallery-img-wrapper { position: relative; height: 200px; overflow: hidden; }
+        .gallery-img { width: 100%; height: 100%; object-fit: cover; transition: transform 0.5s ease; }
+        .gallery-card:hover .gallery-img { transform: scale(1.05); }
+        .gallery-badge { position: absolute; top: 10px; right: 10px; background: rgba(255, 215, 0, 0.9); color: #000; font-weight: 700; padding: 5px 10px; border-radius: 50px; font-size: 0.8rem; box-shadow: 0 2px 5px rgba(0,0,0,0.2); }
     </style>
 </head>
 <body>
@@ -305,7 +279,6 @@ $pending_results_count = $conn->query("SELECT COUNT(*) FROM categories WHERE sta
         </div>
     </nav>
     
-    <!-- UNIFIED SUPER ADMIN SIDEBAR -->
     <div class="sidebar" id="sidebar">
         <ul class="nav flex-column sidebar-nav">
             <li class="nav-item">
@@ -325,20 +298,16 @@ $pending_results_count = $conn->query("SELECT COUNT(*) FROM categories WHERE sta
                     <i class="fas fa-calendar-alt me-2"></i> <span>Manage Events (L1-L3)</span>
                 </a>
             </li>
-            <li class="nav-item">
-                <a class="nav-link" href="Manage_Matches.php">
-                    <i class="fas fa-trophy me-2"></i> <span>Manage Matches</span>
-                </a>
-            </li>
+            
 
             <li class="nav-item mt-3"><span class="nav-title">Administration</span></li>
             <li class="nav-item">
-                <a class="nav-link" href="../Manage_Users.php">
+                <a class="nav-link" href="Manage_Users.php">
                     <i class="fas fa-users-cog me-2"></i> <span>Manage Users</span>
                 </a>
             </li>
             <li class="nav-item">
-                <a class="nav-link" href="../Manage_Requests.php">
+                <a class="nav-link" href="Manage_Requests.php">
                     <i class="fas fa-user-plus me-2"></i> <span>Account Requests</span>
                     <?php if($pending_requests_count > 0): ?>
                         <span class="badge bg-danger ms-auto rounded-pill"><?= $pending_requests_count ?></span>
@@ -346,7 +315,7 @@ $pending_results_count = $conn->query("SELECT COUNT(*) FROM categories WHERE sta
                 </a>
             </li>
              <li class="nav-item">
-                <a class="nav-link" href="../Manage_Viewreports.php">
+                <a class="nav-link" href="Manage_Viewreports.php">
                     <i class="fas fa-file-alt me-2"></i> <span>View System Reports</span>
                 </a>
             </li>
@@ -366,6 +335,13 @@ $pending_results_count = $conn->query("SELECT COUNT(*) FROM categories WHERE sta
                 </a>
             </li>
             
+            <li class="nav-item mt-3"><span class="nav-title">Season Management</span></li>
+            <li class="nav-item">
+                <a class="nav-link" href="manage_archives.php">
+                    <i class="fas fa-history me-2"></i> <span>Archives & Reset</span>
+                </a>
+            </li>
+
             <li class="nav-item mt-auto">
                 <a class="nav-link text-danger" href="../logout.php">
                     <i class="fas fa-sign-out-alt me-2"></i> <span>Logout</span>
@@ -397,14 +373,12 @@ $pending_results_count = $conn->query("SELECT COUNT(*) FROM categories WHERE sta
                     <div class="col-md-9 col-lg-10 text-center text-md-start mt-3 mt-md-0">
                         <h1 class="section-title mb-1"><?= htmlspecialchars($college['college_name']) ?></h1>
                         
-                        <!-- Slogan (Replaced Description) -->
                         <?php if (!empty($college['slogan'])): ?>
                         <p class="text-muted fst-italic mb-2">
                             "<?= htmlspecialchars($college['slogan']) ?>"
                         </p>
                         <?php endif; ?>
 
-                        <!-- Team Manager (Replaced Dean) -->
                         <p class="text-muted fs-5 mb-0">
                             <i class="fas fa-user-tie me-2"></i>Team Manager: 
                             <strong><?= htmlspecialchars($college['team_manager'] ?? 'N/A') ?></strong>
@@ -448,19 +422,16 @@ $pending_results_count = $conn->query("SELECT COUNT(*) FROM categories WHERE sta
                         <i class="fas fa-chart-pie me-2"></i>Overview & Medals
                     </button>
                 </li>
-                <li class="nav-item" role="presentation">
-                    <button class="nav-link" id="results-tab" data-bs-toggle="tab" data-bs-target="#results" type="button" role="tab" aria-controls="results" aria-selected="false">
-                        <i class="fas fa-trophy me-2"></i>Match Results
-                    </button>
-                </li>
-                <li class="nav-item" role="presentation">
-                    <button class="nav-link" id="upcoming-tab" data-bs-toggle="tab" data-bs-target="#upcoming" type="button" role="tab" aria-controls="upcoming" aria-selected="false">
-                        <i class="fas fa-calendar-alt me-2"></i>Upcoming Matches
-                    </button>
-                </li>
+                
                 <li class="nav-item" role="presentation">
                     <button class="nav-link" id="strengths-tab" data-bs-toggle="tab" data-bs-target="#strengths" type="button" role="tab" aria-controls="strengths" aria-selected="false">
                         <i class="fas fa-chart-bar me-2"></i>Strengths & Participation
+                    </button>
+                </li>
+
+                <li class="nav-item" role="presentation">
+                    <button class="nav-link" id="gallery-tab" data-bs-toggle="tab" data-bs-target="#gallery" type="button" role="tab" aria-controls="gallery" aria-selected="false">
+                        <i class="fas fa-images me-2"></i>Victory Gallery
                     </button>
                 </li>
             </ul>
@@ -507,114 +478,7 @@ $pending_results_count = $conn->query("SELECT COUNT(*) FROM categories WHERE sta
                         </div>
                     </div>
                 </div>
-                <div class="tab-pane fade" id="results" role="tabpanel" aria-labelledby="results-tab">
-                    <div class="card">
-                        <div class="card-header">
-                            <h5 class="mb-0">Approved Match Results</h5>
-                        </div>
-                        <div class="card-body">
-                            <div class="table-responsive">
-                                <table class="table table-hover align-middle">
-                                    <thead class="table-light">
-                                        <tr>
-                                            <th>Game</th>
-                                            <th>Event</th>
-                                            <th>Category</th>
-                                            <th>Gold Winner <i class="fas fa-medal" style="color: #ffc107;"></i></th>
-                                            <th>Silver Winner <i class="fas fa-medal" style="color: #6c757d;"></i></th>
-                                            <th>Bronze Winner <i class="fas fa-medal" style="color: #cd7f32;"></i></th>
-                                        </tr>
-                                    </thead>
-                                    <tbody>
-                                        <?php if (empty($match_results)): ?>
-                                            <tr>
-                                                <td colspan="6" class="text-center text-muted p-4">No approved results found involving this team.</td>
-                                            </tr>
-                                        <?php endif; ?>
-                                        <?php foreach ($match_results as $match): ?>
-                                        <tr>
-                                            <td><?= htmlspecialchars($match['game_name']) ?></td>
-                                            <td><?= htmlspecialchars($match['event_name']) ?></td>
-                                            <td><?= htmlspecialchars($match['category_name']) ?></td>
-                                            <td>
-                                                <strong><?= htmlspecialchars($match['gold_winner_name'] ?? 'N/A') ?></strong>
-                                            </td>
-                                            <td>
-                                                <strong><?= htmlspecialchars($match['silver_winner_name'] ?? 'N/A') ?></strong>
-                                            </td>
-                                            <td>
-                                                <strong><?= htmlspecialchars($match['bronze_winner_name'] ?? 'N/A') ?></strong>
-                                            </td>
-                                        </tr>
-                                        <?php endforeach; ?>
-                                    </tbody>
-                                </table>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-                <div class="tab-pane fade" id="upcoming" role="tabpanel" aria-labelledby="upcoming-tab">
-                    <div class="card">
-                        <div class="card-header">
-                            <h5 class="mb-0">Upcoming Matches</h5>
-                        </div>
-                        <div class="card-body">
-                            <div class="table-responsive">
-                                <table class="table table-hover align-middle">
-                                    <thead class="table-light">
-                                        <tr>
-                                            <th>Game</th>
-                                            <th>Event</th>
-                                            <th>Category</th>
-                                            <th>Opponent</th>
-                                            <th>Date/Time</th>
-                                            <th>Venue</th>
-                                            <th>Status</th>
-                                        </tr>
-                                        </thead>
-                                    <tbody>
-                                        <?php if (empty($upcoming_matches)): ?>
-                                            <tr>
-                                                <td colspan="7" class="text-center text-muted p-4">
-                                                    <p class="mb-0">No upcoming matches scheduled for this team.</p>
-                                                </td>
-                                            </tr>
-                                        <?php else: ?>
-                                            <?php foreach ($upcoming_matches as $match): ?>
-                                                <tr>
-                                                    <td><?= htmlspecialchars($match['game_name']) ?></td>
-                                                    <td><?= htmlspecialchars($match['event_name']) ?></td>
-                                                    <td><?= htmlspecialchars($match['category_name']) ?></td>
-                                                    <td><strong><?= htmlspecialchars($match['opponent_name']) ?></strong></td>
-                                                    <td>
-                                                        <?= $match['match_date'] ? htmlspecialchars(date('M d, Y', strtotime($match['match_date']))) : 'TBA' ?>
-                                                        <small class="text-muted d-block">
-                                                            <?= $match['match_time'] ? htmlspecialchars(date('g:i A', strtotime($match['match_time']))) : '' ?>
-                                                        </small>
-                                                    </td>
-                                                    <td><?= htmlspecialchars($match['venue']) ?></td>
-                                                    <td>
-                                                        <?php 
-                                                        $badge_class = 'bg-secondary';
-                                                        $status_lower = strtolower($match['status']);
-                                                        if ($status_lower == 'upcoming') {
-                                                            $badge_class = 'bg-info';
-                                                        } elseif ($status_lower == 'ongoing') {
-                                                            $badge_class = 'bg-primary';
-                                                        }
-                                                        ?>
-                                                        <span class="badge <?= $badge_class ?>"><?= htmlspecialchars($match['status']) ?></span>
-                                                    </td>
-                                                </tr>
-                                            <?php endforeach; ?>
-                                        <?php endif; ?>
-                                        </tbody>
-                                </table>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-
+                
                 <div class="tab-pane fade" id="strengths" role="tabpanel" aria-labelledby="strengths-tab">
                     <div class="row g-4">
                         
@@ -677,6 +541,45 @@ $pending_results_count = $conn->query("SELECT COUNT(*) FROM categories WHERE sta
 
                     </div>
                 </div> 
+
+                <div class="tab-pane fade" id="gallery" role="tabpanel" aria-labelledby="gallery-tab">
+                    <div class="card">
+                        <div class="card-header">
+                            <h5 class="mb-0">Victory Moments (Gold Medal Wins)</h5>
+                        </div>
+                        <div class="card-body bg-light">
+                            <?php if (empty($gallery_photos)): ?>
+                                <div class="text-center p-5">
+                                    <i class="fas fa-camera fa-4x text-muted mb-3 opacity-50"></i>
+                                    <h5 class="text-muted">No podium photos available yet.</h5>
+                                    <p class="text-secondary small">Photos are added when Event Managers submit Gold Medal results.</p>
+                                </div>
+                            <?php else: ?>
+                                <div class="row g-4">
+                                    <?php foreach ($gallery_photos as $photo): ?>
+                                        <div class="col-md-6 col-lg-4">
+                                            <div class="card gallery-card h-100 border-0">
+                                                <div class="gallery-img-wrapper">
+                                                    <img src="<?= htmlspecialchars($photo['display_url']) ?>" class="gallery-img" alt="Podium Photo">
+                                                    <div class="gallery-badge"><i class="fas fa-trophy me-1"></i>Gold</div>
+                                                </div>
+                                                <div class="card-body text-center p-3">
+                                                    <h6 class="fw-bold mb-1"><?= htmlspecialchars($photo['event_name']) ?></h6>
+                                                    <p class="text-muted small mb-1">
+                                                        <?= htmlspecialchars($photo['game_name']) ?> • <?= htmlspecialchars($photo['category_name']) ?>
+                                                    </p>
+                                                    <small class="text-secondary fst-italic" style="font-size: 0.75rem;">
+                                                        <?= date('F d, Y', strtotime($photo['approved_at'])) ?>
+                                                    </small>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    <?php endforeach; ?>
+                                </div>
+                            <?php endif; ?>
+                        </div>
+                    </div>
+                </div>
             
             </div> </div> </div> 
     
@@ -689,7 +592,6 @@ $pending_results_count = $conn->query("SELECT COUNT(*) FROM categories WHERE sta
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
     
-    <!-- Sidebar/Footer Adjust Script -->
     <script>
         document.addEventListener('DOMContentLoaded', function() {
             const sidebar = document.getElementById('sidebar');

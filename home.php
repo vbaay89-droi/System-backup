@@ -7,8 +7,26 @@ $current_page = basename($_SERVER['PHP_SELF']);
 $name = isset($_SESSION['username']) ? $_SESSION['username'] : 'User'; 
 $default_logo = 'images/default_avatar.png'; 
 
-// --- FETCH MEDAL STANDINGS ---
-$medal_tally = [];
+// --- FETCH RECENT WINNERS FOR TICKER ---
+$recent_winners = [];
+// Logic: Get the 5 most recently approved categories
+$sql_ticker = "
+    SELECT 
+        ge.event_name, 
+        c.category_name, 
+        cg.college_name AS gold_winner,
+        c.approved_at
+    FROM categories c
+    JOIN game_events ge ON c.event_id = ge.event_id
+    LEFT JOIN colleges cg ON c.gold_winner_college_id = cg.college_id
+    WHERE c.status = 'Results Approved' 
+    ORDER BY c.approved_at DESC 
+    LIMIT 5";
+
+$res_ticker = $conn->query($sql_ticker);
+if ($res_ticker) {
+    $recent_winners = $res_ticker->fetch_all(MYSQLI_ASSOC);
+}
 
 $sql = "SELECT 
             C.college_name, C.logo_url,
@@ -69,8 +87,9 @@ function getRankMeta(int $rank): array {
             return ['<img src="4.png" alt="3rd Runner-up" style="width: 50px; height: 50px;">', '3rd Runner-up'];
         case 5:
             return ['<img src="5htplace.svg" alt="4th Runner-up" style="width: 50px; height: 50px;">', '4th Runner-up'];
-        default:
-            return [(string)$rank, ($rank) . 'th Place'];
+        default: 
+    $runnerUpCount = $rank - 1;
+    return [(string)$rank, $runnerUpCount . 'th Runner-up'];
     }
 }
 
@@ -420,6 +439,98 @@ $conn->close();
             .right { gap: 0.75rem; }
             .medal-count { font-size: 1.4rem; }
         }
+
+        /* --- NEWS TICKER STYLES (FIXED VISIBILITY) --- */
+        .news-ticker-box {
+            background-color: #212529 !important; /* Force Dark Background */
+            color: #ffffff !important;           /* Force White Text */
+            height: 50px;                        /* Slightly taller */
+            display: flex;
+            align-items: center;
+            border-radius: 12px;
+            overflow: hidden;
+            box-shadow: 0 8px 20px rgba(0,0,0,0.3); /* Stronger shadow */
+            border: 1px solid #343a40;
+            
+            /* CRITICAL FIXES FOR VISIBILITY */
+            position: relative; 
+            z-index: 10000; /* Must be higher than Confetti (9998) */
+            margin-bottom: 1.5rem; /* Push the header down */
+        }
+        
+        .ticker-label {
+            background: #dc3545;
+            color: white;
+            padding: 0 25px;
+            height: 100%;
+            display: flex;
+            align-items: center;
+            font-weight: 800;
+            font-size: 0.9rem;
+            letter-spacing: 1px;
+            text-transform: uppercase;
+            position: relative;
+            z-index: 10001; /* Sit above the scrolling text */
+            white-space: nowrap;
+        }
+        
+        /* The Arrow Shape */
+        .ticker-label::after {
+            content: '';
+            position: absolute;
+            right: -12px; /* Adjusted for new height */
+            top: 0;
+            width: 0;
+            height: 0;
+            border-top: 50px solid #dc3545; /* Match container height */
+            border-right: 12px solid transparent;
+            z-index: 2;
+        }
+
+        .ticker-wrap {
+            flex-grow: 1;
+            overflow: hidden;
+            white-space: nowrap;
+            position: relative;
+            /* Add a fade effect on the sides to look premium */
+            mask-image: linear-gradient(to right, transparent, black 2%, black 98%, transparent);
+            -webkit-mask-image: linear-gradient(to right, transparent, black 2%, black 98%, transparent);
+        }
+
+        .ticker-move {
+            display: inline-block;
+            white-space: nowrap;
+            padding-right: 100%; 
+            animation: ticker 25s linear infinite; 
+        }
+        
+        .ticker-wrap:hover .ticker-move {
+            animation-play-state: paused;
+        }
+
+        .ticker-item {
+            display: inline-block;
+            padding: 0 40px; /* More space between items */
+            font-size: 1rem;
+            position: relative;
+            vertical-align: middle;
+        }
+        
+        /* Separator Dot */
+        .ticker-item::after {
+            content: '•';
+            position: absolute;
+            right: 0;
+            color: #6c757d;
+            font-size: 1.2rem;
+            top: 50%;
+            transform: translateY(-50%);
+        }
+
+        @keyframes ticker {
+            0% { transform: translate3d(0, 0, 0); }
+            100% { transform: translate3d(-100%, 0, 0); }
+        }
 </style>
 </head>
 <body>
@@ -447,7 +558,7 @@ $conn->close();
                         <a class="nav-link <?= ($current_page == 'Eventpage.php') ? 'active' : '' ?>" href="Eventpage.php">Events</a>
                     </li>
                     <li class="nav-item">
-                        <a class="nav-link <?= ($current_page == 'college_team.php') ? 'active' : '' ?>" href="college_team.php">Colleges</a>
+                        <a class="nav-link <?= ($current_page == 'college_team.php') ? 'active' : '' ?>" href="college_team.php">Teams</a>
                     </li>
                     <li class="nav-item">
                         <?php if (isset($_SESSION['email'])): ?>
@@ -464,6 +575,23 @@ $conn->close();
     <div class="main-content">
         <div class="container">
             <div class="hero-section">
+                <?php if (!empty($recent_winners)): ?>
+                <div class="news-ticker-box mb-4">
+                    <div class="ticker-label">JUST IN</div>
+                    <div class="ticker-wrap">
+                        <div class="ticker-move">
+                            <?php foreach ($recent_winners as $winner): ?>
+                                <div class="ticker-item">
+                                    <i class="fas fa-trophy text-warning me-1"></i>
+                                    <span class="fw-bold text-white"><?= htmlspecialchars($winner['gold_winner']) ?></span> 
+                                    <span class="text-white-50 ms-1">wins Gold in</span>
+                                    <span class="text-info ms-1"><?= htmlspecialchars($winner['event_name']) ?> - <?= htmlspecialchars($winner['category_name']) ?></span>
+                                </div>
+                            <?php endforeach; ?>
+                        </div>
+                    </div>
+                </div>
+                <?php endif; ?>
                 <div class="hero-header">
                     <div class="hero-title-group">
                         <img src="images/SIGLAKASTEST.png" alt="Logo">

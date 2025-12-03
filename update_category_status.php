@@ -1,7 +1,7 @@
 <?php
 session_start();
 require_once 'config.php'; // Your DB connection
-require_once 'db_connect.php'; // Your logger function
+ // Your logger function
 
 // 1. SECURITY & ACCESS CONTROL
 if (!isset($_SESSION['logged_in']) || $_SESSION['logged_in'] !== true || !isset($_SESSION['role']) || $_SESSION['role'] !== 'Event Manager') {

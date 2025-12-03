@@ -1,7 +1,7 @@
 <?php
 session_start();
 // Adjust path if necessary: assuming this file is in a subfolder (e.g., /sd/)
-require_once '../db_connect.php'; 
+require_once '../config.php'; 
 
 // --- 1. SECURITY & ACCESS CONTROL ---
 // STRICT: Only 'Sports Director' is allowed.
@@ -41,19 +41,17 @@ function fetchCount($conn, $query) {
 
 // A. SYSTEM STATISTICS
 // Aggregating data from across the entire database
+// A. SYSTEM STATISTICS
+// Aggregating data from across the entire database
 $stats = [
     // Tournament Data
     'events'          => fetchCount($conn, "SELECT COUNT(*) FROM game_events"), // L2 Events
     'categories'      => fetchCount($conn, "SELECT COUNT(*) FROM categories"),  // L3 Categories (Specifics)
     'teams'           => fetchCount($conn, "SELECT COUNT(*) FROM colleges"),
     
-    // Match Data
-    'total_matches'   => fetchCount($conn, "SELECT COUNT(*) FROM matches"),
-    'ongoing_matches' => fetchCount($conn, "SELECT COUNT(*) FROM matches WHERE status = 'Ongoing'"),
-    
     // Administrative Data
     'users'           => fetchCount($conn, "SELECT COUNT(*) FROM users"),
-    'pending_requests'=> fetchCount($conn, "SELECT COUNT(*) FROM account_requests WHERE status = 'pending'"),
+    'pending_requests'=> fetchCount($conn, "SELECT COUNT(*) FROM users WHERE is_approved = 0"),
     
     // Tallying Data
     'pending_results' => fetchCount($conn, "SELECT COUNT(*) FROM categories WHERE status='Results Submitted'"),
@@ -245,11 +243,6 @@ if ($log_res) {
                     <i class="fas fa-calendar-alt me-2"></i> <span>Manage Events (L1-L3)</span>
                 </a>
             </li>
-            <li class="nav-item">
-                <a class="nav-link <?= ($current_page == 'Manage_Matches.php') ? 'active' : '' ?>" href="Manage_Matches.php">
-                    <i class="fas fa-trophy me-2"></i> <span>Manage Matches</span>
-                </a>
-            </li>
 
             <li class="nav-item mt-3"><span class="nav-title">Administration</span></li>
             <li class="nav-item">
@@ -381,22 +374,7 @@ if ($log_res) {
             <!-- Row 2: Management & Results -->
             <h5 class="section-title">Live Status</h5>
             <div class="row g-4 mb-5">
-                <div class="col-lg-4">
-                    <div class="stat-card">
-                        <div class="d-flex justify-content-between align-items-center">
-                            <div>
-                                <h6 class="text-muted text-uppercase mb-2">Matches</h6>
-                                <h2 class="mb-0 fw-bold text-primary"><?= $stats['total_matches'] ?></h2>
-                            </div>
-                            <div class="text-end">
-                                <i class="fas fa-trophy fa-2x text-muted opacity-25 mb-2"></i>
-                                <div class="badge bg-success d-block"><?= $stats['ongoing_matches'] ?> Ongoing</div>
-                            </div>
-                        </div>
-                        <hr class="my-3 opacity-10">
-                         <a href="Manage_Matches.php" class="btn btn-outline-primary btn-sm w-100 rounded-pill">Manage Matches</a>
-                    </div>
-                </div>
+                
                 
                 <div class="col-lg-4">
                     <div class="stat-card">

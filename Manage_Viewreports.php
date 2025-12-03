@@ -49,7 +49,6 @@ $valid_sorts = [
 ];
 
 // FIX: Changed default from 'total' to 'gold'
-// This ensures the table loads with Gold-based ranking by default.
 $sort_key = isset($_GET['sort']) && array_key_exists($_GET['sort'], $valid_sorts) ? $_GET['sort'] : 'gold';
 
 $order_by_sql = $valid_sorts[$sort_key];
@@ -81,38 +80,6 @@ if ($stmt_medals) {
         $medal_tally = $result->fetch_all(MYSQLI_ASSOC);
     }
     $stmt_medals->close();
-}
-
-// --- Query 2: Match Results Report ---
-$match_results = [];
-$sql_matches = "SELECT 
-                    CONCAT(t1.college_name, ' vs ', t2.college_name) AS matchup,
-                    CONCAT(m.score1, ' - ', m.score2) AS scores,
-                    w.college_name AS winner_name,
-                    CASE 
-                        WHEN c.status = 'Results Rejected' THEN 'Results Rejected'
-                        ELSE m.status 
-                    END AS status,
-                    DATE_FORMAT(m.match_date, '%M %d, %Y') AS date_formatted,
-                    DATE_FORMAT(m.match_time, '%h:%i %p') AS time_formatted,
-                    m.venue,
-                    ge.event_name, 
-                    c.category_name,
-                    g.game_name
-                FROM matches m
-                LEFT JOIN categories c ON m.category_id = c.category_id
-                LEFT JOIN game_events ge ON c.event_id = ge.event_id
-                LEFT JOIN games g ON ge.game_id = g.game_id
-                LEFT JOIN colleges t1 ON m.team1_id = t1.college_id
-                LEFT JOIN colleges t2 ON m.team2_id = t2.college_id
-                LEFT JOIN colleges w ON m.winner_team_id = w.college_id
-                HAVING status = 'Completed'
-                ORDER BY m.match_date DESC, m.match_time DESC
-                LIMIT 50";
-
-$result_matches = $conn->query($sql_matches);
-if ($result_matches) {
-    $match_results = $result_matches->fetch_all(MYSQLI_ASSOC);
 }
 
 // --- Query 3: Event Results Report ---
@@ -170,7 +137,8 @@ $pie_labels = json_encode(array_column($sport_distribution, 'event_name'));
 $pie_data = json_encode(array_column($sport_distribution, 'category_count'));
 
 // Fetch Sidebar Counts
-$pending_requests_count = $conn->query("SELECT COUNT(*) FROM account_requests WHERE status = 'pending'")->fetch_row()[0] ?? 0;
+// Count pending requests for sidebar badge (Fixed: Counts unapproved users)
+$pending_requests_count = $conn->query("SELECT COUNT(*) FROM users WHERE is_approved = 0")->fetch_row()[0] ?? 0;
 $pending_results_count = $conn->query("SELECT COUNT(*) FROM categories WHERE status='Results Submitted'")->fetch_row()[0] ?? 0;
 
 $conn->close();
@@ -496,7 +464,6 @@ function getStatusBadge($status) {
                 </a>
             </li>
 
-            <!-- NEW SECTION: SEASON MANAGEMENT -->
             <li class="nav-item mt-3"><span class="nav-title">Season Management</span></li>
             <li class="nav-item">
                 <a class="nav-link <?= ($current_page == 'manage_archives.php') ? 'active' : '' ?>" href="manage_archives.php">
@@ -535,11 +502,7 @@ function getStatusBadge($status) {
                         <i class="fas fa-medal me-2 text-warning"></i> Overall Medal Summary
                     </button>
                 </li>
-                <li class="nav-item" role="presentation">
-                    <button class="nav-link" id="matches-tab" data-bs-toggle="tab" data-bs-target="#matches" type="button" role="tab" aria-controls="matches" aria-selected="false">
-                        <i class="fas fa-bullseye me-2 text-muted"></i> Match Results
-                    </button>
-                </li>
+                
                 <li class="nav-item" role="presentation">
                     <button class="nav-link" id="events-tab" data-bs-toggle="tab" data-bs-target="#events" type="button" role="tab" aria-controls="events" aria-selected="false">
                         <i class="fas fa-list-check me-2 text-primary"></i> Event Results
@@ -622,68 +585,6 @@ function getStatusBadge($status) {
                     </div>
                 </div>
 
-                <div class="tab-pane fade" id="matches" role="tabpanel" aria-labelledby="matches-tab">
-                     <div class="card">
-                        <div class="card-header">
-                            <h5 class="mb-0"><i class="fas fa-futbol text-primary me-2"></i> Match Results Report</h5>
-                        </div>
-                        <div class="card-body p-0">
-                            <div class="report-table-container">
-                                <table class="table report-table table-hover align-middle" id="matchResultsTable">
-                                    <thead>
-                                        <tr>
-                                            <th style="min-width: 200px;">Event Details</th>
-                                            <th style="min-width: 150px;">Matchup</th>
-                                            <th class="text-center">Score</th>
-                                            <th style="min-width: 150px;">Winner</th>
-                                            <th style="min-width: 120px;">Status</th>
-                                            <th style="min-width: 180px;">Venue Details</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody>
-                                        <?php foreach ($match_results as $match): ?>
-                                            <tr>
-                                                <td>
-                                                    <div class="fw-bold text-dark"><?= htmlspecialchars($match['game_name'] ?? 'N/A') ?></div>
-                                                    <div class="small text-muted"><?= htmlspecialchars($match['event_name'] ?? 'N/A') ?></div>
-                                                    <?php 
-                                                    if ($match['category_name'] !== 'Main Event' && $match['category_name'] !== 'Main Competition') {
-                                                        echo '<div class="small text-primary">' . htmlspecialchars($match['category_name']) . '</div>';
-                                                    }
-                                                    ?>
-                                                </td>
-                                                <td class="fw-semibold"><?= htmlspecialchars($match['matchup'] ?? 'Invalid Matchup') ?></td>
-                                                <td class="text-center fw-bold text-dark"><?= htmlspecialchars($match['scores'] ?? 'N/A') ?></td>
-                                                <td class="fw-bold text-success">
-                                                    <i class="fas fa-trophy me-1 small"></i>
-                                                    <?= htmlspecialchars($match['winner_name'] ?? 'N/A') ?>
-                                                </td>
-                                                
-                                                <td><?= getStatusBadge($match['status']) ?></td>
-                                                
-                                                <td>
-                                                    <div class="fw-bold text-dark mb-1">
-                                                        <i class="fas fa-map-marker-alt me-1 text-danger"></i> 
-                                                        <?= htmlspecialchars($match['venue'] ?? 'N/A') ?>
-                                                    </div>
-                                                    <div class="small text-muted">
-                                                        <i class="far fa-calendar-alt me-1"></i> 
-                                                        <?= htmlspecialchars($match['date_formatted']) ?>
-                                                    </div>
-                                                    <div class="small text-muted">
-                                                        <i class="far fa-clock me-1"></i> 
-                                                        <?= htmlspecialchars($match['time_formatted']) ?>
-                                                    </div>
-                                                </td>
-                                            </tr>
-                                        <?php endforeach; ?>
-                                    </tbody>
-                                </table>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-
                 <div class="tab-pane fade" id="events" role="tabpanel" aria-labelledby="events-tab">
                     <div class="card">
                         <div class="card-header">
@@ -695,7 +596,6 @@ function getStatusBadge($status) {
                                     <thead>
                                         <tr>
                                             <th style="min-width: 200px;">Event Details</th>
-                                            <th style="min-width: 100px;">Type</th>
                                             <th style="min-width: 180px;">Date & Time</th>
                                             <th style="min-width: 160px;"><i class="fas fa-medal gold-text"></i> Gold</th>
                                             <th style="min-width: 160px;"><i class="fas fa-medal silver-text"></i> Silver</th>
@@ -715,14 +615,6 @@ function getStatusBadge($status) {
                                                         echo '<div class="fw-semibold text-primary">' . htmlspecialchars($event['category_name']) . '</div>';
                                                     }
                                                     ?>
-                                                </td>
-                                                
-                                                <td>
-                                                    <?php if (strtolower($event['category_type']) == 'match'): ?>
-                                                        <span class="type-badge badge-match"><i class="fas fa-basketball-ball"></i> Match</span>
-                                                    <?php else: ?>
-                                                        <span class="type-badge badge-medal"><i class="fas fa-medal"></i> Medal</span>
-                                                    <?php endif; ?>
                                                 </td>
                                                 
                                                 <td>
@@ -878,17 +770,45 @@ function getStatusBadge($status) {
                 options: { responsive: true, maintainAspectRatio: false }
             });
 
-            // Pie Chart
+            // Pie Chart (Updated with Percentages)
             new Chart(document.getElementById('sportPieChart'), {
                 type: 'doughnut',
                 data: {
                     labels: <?= $pie_labels; ?>,
                     datasets: [{
                         data: <?= $pie_data; ?>,
-                        backgroundColor: ['#3498db', '#e74c3c', '#2ecc71', '#f1c40f', '#9b59b6', '#34495e']
+                        backgroundColor: ['#3498db', '#e74c3c', '#2ecc71', '#f1c40f', '#9b59b6', '#34495e'],
+                        hoverOffset: 4
                     }]
                 },
-                options: { responsive: true, maintainAspectRatio: false }
+                options: { 
+                    responsive: true, 
+                    maintainAspectRatio: false,
+                    plugins: {
+                        tooltip: {
+                            callbacks: {
+                                label: function(context) {
+                                    // 1. Get the current value and the dataset
+                                    let value = context.raw;
+                                    let total = context.chart._metasets[context.datasetIndex].total;
+                                    
+                                    // 2. Calculate Percentage
+                                    let percentage = Math.round((value / total) * 100) + "%";
+                                    
+                                    // 3. Return the formatted string (e.g., "Basketball: 25%")
+                                    return context.label + ': ' + percentage;
+                                }
+                            }
+                        },
+                        legend: {
+                            position: 'bottom',
+                            labels: {
+                                boxWidth: 12,
+                                padding: 20
+                            }
+                        }
+                    }
+                }
             });
         }
     </script>

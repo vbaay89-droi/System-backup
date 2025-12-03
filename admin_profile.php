@@ -1,6 +1,6 @@
 <?php
 session_start();
-require_once 'db_connect.php'; 
+require_once 'config.php'; 
 require_once 'profile_email_sender.php'; 
 
 // Strict Role-Based Access Control

@@ -2,15 +2,17 @@
 
 /**
  * ==================================================================
- * my_events_view.php - REDESIGNED UI/UX VERSION (FIXED)
- * Enhanced table design with modern, professional styling
- * Includes Sticky Action Column for better visibility
+ * my_events_view.php - FINAL REDESIGN & LOGIC FIX
+ * * Updates:
+ * 1. "Main Event" renamed to "Single Division" based on user preference.
+ * 2. Logic Fix: Auto-create buttons now correctly set the category type.
+ * 3. "Add Category" button is ALWAYS visible.
+ * 4. Category Column is ALWAYS visible.
  * ==================================================================
  */
 
 /**
  * Main function to render the entire list of assigned events.
- * UPDATED: Large UI + Sticky Action Column
  */
 function render_event_list($managed_data, $college_map)
 {
@@ -389,76 +391,46 @@ function render_event_list($managed_data, $college_map)
             // Get the structure setting from Database
             $structure_mode = $event['event_structure'] ?? 'Single Category'; 
 
-            // Smart logic for single mode
-            $is_single_mode = false;
-            if (count($categories) === 1) {
-                $first_cat_name = $categories[0]['category_name'];
-                if ($first_cat_name === 'Main Event' || $first_cat_name === 'Main Competition') {
-                    $is_single_mode = true;
-                }
-            }
-
             echo '<div class="card shadow mb-5 border-0" style="border-radius: 16px;">';
             echo '  <div class="card-header event-card-header d-flex justify-content-between align-items-center">';
             echo '    <h5 class="mb-0 event-title">' . $event_name . '</h5>';
             
-            if (!$is_single_mode) {
-                echo '    <button class="btn btn-primary shadow-sm" 
-                                style="padding: 0.5rem 1.25rem; font-weight: 600;"
-                                data-bs-toggle="modal" 
-                                data-bs-target="#categoryModal" 
-                                data-action="add"
-                                data-event-id="' . $event_id . '" 
-                                data-event-name="' . $event_name . '">';
-                echo '      <i class="fas fa-plus me-2"></i> Add Category';
-                echo '    </button>';
-            }
+            // BUTTON ALWAYS VISIBLE: Allows adding sub-categories (Women's, Men's, etc.)
+            echo '    <button class="btn btn-primary shadow-sm" 
+                            style="padding: 0.5rem 1.25rem; font-weight: 600;"
+                            data-bs-toggle="modal" 
+                            data-bs-target="#categoryModal" 
+                            data-action="add"
+                            data-event-id="' . $event_id . '" 
+                            data-event-name="' . $event_name . '">';
+            echo '      <i class="fas fa-plus me-2"></i> Add Category';
+            echo '    </button>';
             
             echo '  </div>';
 
             // === EMPTY STATE LOGIC ===
+            // === SIMPLIFIED EMPTY STATE (TALLY ONLY) ===
             if (empty($categories)) {
                 echo '<div class="card-body text-center p-5 bg-light" style="border-bottom-left-radius: 16px; border-bottom-right-radius: 16px;">';
                 echo '  <div class="d-flex flex-column align-items-center justify-content-center py-4">';
                 
-                if (stripos($structure_mode, 'Multiple') !== false) {
-                    // --- OPTION A: Multiple Categories ---
-                    echo '      <i class="fas fa-layer-group fa-4x text-primary mb-3 opacity-50"></i>';
-                    echo '      <h5 class="text-dark fw-bold">Multiple Categories Required</h5>';
-                    echo '      <p class="text-muted fs-5 mb-4" style="max-width: 500px;">
-                                    The Director set this as a multi-category event.<br>
-                                    Please use the <strong>"+ Add Category"</strong> button above to create divisions (e.g., Men, Women).
-                                </p>';
-                } else {
-                    // --- OPTION B: Single Category ---
-                    echo '      <i class="fas fa-clipboard-list fa-4x text-muted mb-3 opacity-50"></i>';
-                    echo '      <h5 class="text-dark fw-bold">Setup Required</h5>';
-                    echo '      <p class="text-muted fs-5 mb-4" style="max-width: 500px;">No categories found. Use the buttons below to initialize this event.</p>';
-                    
-                    echo '      <div class="d-flex gap-3">';
-                    echo '    <form method="POST" action="my_events.php">';
-                    echo '      <input type="hidden" name="action" value="save_category">';
-                    echo '      <input type="hidden" name="event_id" value="' . $event_id . '">';
-                    echo '      <input type="hidden" name="category_name" value="Main Event">'; 
-                    echo '      <input type="hidden" name="category_type" value="match">';
-                    echo '      <input type="hidden" name="status" value="Upcoming">';
-                    echo '      <button type="submit" class="btn btn-primary btn-lg px-4">';
-                    echo '          <i class="fas fa-basketball-ball me-2"></i> Auto-Create Match';
-                    echo '      </button>';
-                    echo '    </form>';
-
-                    echo '    <form method="POST" action="my_events.php">';
-                    echo '      <input type="hidden" name="action" value="save_category">';
-                    echo '      <input type="hidden" name="event_id" value="' . $event_id . '">';
-                    echo '      <input type="hidden" name="category_name" value="Main Competition">'; 
-                    echo '      <input type="hidden" name="category_type" value="medal">';
-                    echo '      <input type="hidden" name="status" value="Upcoming">';
-                    echo '      <button type="submit" class="btn btn-outline-secondary btn-lg px-4">';
-                    echo '          <i class="fas fa-medal me-2"></i> Auto-Create Medal';
-                    echo '      </button>';
-                    echo '    </form>';
-                    echo '      </div>';
-                }
+                echo '      <i class="fas fa-clipboard-list fa-3x text-muted mb-3 opacity-50"></i>';
+                echo '      <h5 class="text-dark fw-bold">Ready to Initialize</h5>';
+                echo '      <p class="text-muted fs-5 mb-4" style="max-width: 600px;">
+                                This event is ready for setup. Initialize the results form to start tallying the medals.
+                            </p>';
+                
+                // SINGLE BUTTON: Initialize Standard Form
+                echo '    <form method="POST" action="my_events.php">';
+                echo '      <input type="hidden" name="action" value="save_category">';
+                echo '      <input type="hidden" name="event_id" value="' . $event_id . '">';
+                echo '      <input type="hidden" name="category_name" value="Single Division">'; 
+                echo '      <input type="hidden" name="category_type" value="medal">'; // Force Medal Type
+                echo '      <input type="hidden" name="status" value="Upcoming">';
+                echo '      <button type="submit" class="btn btn-primary btn-lg px-4 shadow-sm">';
+                echo '          <i class="fas fa-magic me-2"></i> Initialize Results Form';
+                echo '      </button>';
+                echo '    </form>';
 
                 echo '  </div>';
                 echo '</div>';
@@ -468,14 +440,13 @@ function render_event_list($managed_data, $college_map)
                 echo '    <thead>';
                 echo '      <tr>';
                 
-                if (!$is_single_mode) {
-                    echo '        <th scope="col" style="min-width: 220px;">Category</th>';
-                }
-
-                echo '        <th scope="col" style="min-width: 140px;">Type</th>';
-                echo '        <th scope="col" style="min-width: 160px;">Status</th>';
-                echo '        <th scope="col" style="min-width: 320px;">Approved Winners</th>';
-                echo '        <th scope="col" class="text-end" style="width: 1%; white-space: nowrap;">Actions</th>';
+                // COLUMN ALWAYS VISIBLE
+                // Added 'text-center' class to all lines
+echo '        <th scope="col" class="text-center" style="min-width: 220px;">Category / Division</th>';
+echo '        <th scope="col" class="text-center" style="min-width: 160px;">Status</th>';
+echo '        <th scope="col" class="text-center" style="min-width: 320px;">Approved Winners</th>';
+// Changed 'text-end' to 'text-center'
+echo '        <th scope="col" class="text-center" style="width: 1%; white-space: nowrap;">Actions</th>';
                 echo '      </tr>';
                 echo '    </thead>';
                 echo '    <tbody>';
@@ -490,15 +461,12 @@ function render_event_list($managed_data, $college_map)
 
                     echo '  <tr class="' . $table_row_class . '">';
 
-                    if (!$is_single_mode) {
-                        echo '    <td class="category-cell">' . htmlspecialchars($category['category_name']) . '</td>';
-                    }
+                    // CELL ALWAYS VISIBLE
+                    echo '    <td class="category-cell">' . htmlspecialchars($category['category_name']) . '</td>';
 
-                    echo '    <td>' . render_type_badge($category['category_type']) . '</td>';
                     echo '    <td>' . get_status_badge($category['status'], $category['notes'], $category['category_id'], $category['category_name']) . '</td>';
                     echo '    <td>' . render_winner_list($category, $college_map) . '</td>';
-                    // Pass $is_single_mode to the function
-echo '    <td class="action-cell text-end">' . render_category_actions($category, $event_id, $event_name, $is_single_mode) . '</td>';
+                    echo '    <td class="action-cell text-end">' . render_category_actions($category, $event_id, $event_name) . '</td>';
                 }
 
                 echo '    </tbody>';
@@ -511,186 +479,7 @@ echo '    <td class="action-cell text-end">' . render_category_actions($category
     }
 }
 
-/**
- * Renders a styled type badge
- */
-function render_type_badge($type)
-{
-    $badge_class = $type === 'match' ? 'badge-match' : 'badge-medal';
-    $icon = $type === 'match' ? 'fa-basketball-ball' : 'fa-medal';
-    
-    return '<span class="type-badge ' . $badge_class . '">
-                <i class="fas ' . $icon . '"></i>
-                ' . htmlspecialchars(ucfirst($type)) . '
-            </span>';
-}
 
-/**
- * Generates action buttons (Updated: Protects Single Event Mode)
- */
-function render_category_actions($category, $event_id, $event_name, $is_single_mode = false)
-{
-    $category_id = (int)$category['category_id'];
-    $category_name_safe = htmlspecialchars($category['category_name']);
-    $event_name_safe = htmlspecialchars($event_name);
-    $status = $category['status'];
-    $category_type = $category['category_type'];
-    
-    // --- DATA ATTRIBUTES SETUP ---
-    $edit_data_attrs = "data-bs-toggle='modal' 
-                            data-bs-target='#categoryModal' 
-                            data-action='edit'
-                            data-event-id='{$event_id}' 
-                            data-event-name='{$event_name_safe}' 
-                            data-category-id='{$category_id}' 
-                            data-category-name='{$category_name_safe}' 
-                            data-status='" . htmlspecialchars($status) . "' 
-                            data-category-type='{$category_type}'
-                            data-event-date='" . htmlspecialchars($category['event_date']) . "'
-                            data-event-time='" . htmlspecialchars($category['event_time']) . "'
-                            data-venue='" . htmlspecialchars($category['venue']) . "'";
-
-    $delete_data_attrs = "data-bs-toggle='modal' 
-                              data-bs-target='#deleteModal' 
-                              data-category-id='{$category_id}' 
-                              data-category-name='{$category_name_safe}'";
-                              
-    $start_data_attrs = "data-bs-toggle='modal' 
-                                data-bs-target='#startModal' 
-                                data-category-id='{$category_id}' 
-                                data-category-name='{$category_name_safe}'";
-                                
-    $complete_data_attrs = "data-bs-toggle='modal' 
-                                data-bs-target='#completeModal' 
-                                data-category-id='{$category_id}' 
-                                data-category-name='{$category_name_safe}'";
-
-    // --- SMART BUTTON LOGIC ---
-    $primary_btn_text = 'Manage';
-    $primary_btn_class = 'btn-primary';
-    $primary_btn_icon = 'fa-cog';
-    $primary_btn_href = '#';
-    $primary_btn_attrs = ''; 
-    $primary_btn_disabled = false;
-
-    if ($category_type === 'medal') {
-        $primary_btn_href = "submit_results.php?category_id={$category_id}";
-        
-        if ($status === 'Upcoming') {
-            $primary_btn_text = 'Start';
-            $primary_btn_class = 'btn-success';
-            $primary_btn_icon = 'fa-play';
-            $primary_btn_attrs = $start_data_attrs;
-        } elseif ($status === 'Ongoing') {
-            $primary_btn_text = 'Complete';
-            $primary_btn_class = 'btn-warning';
-            $primary_btn_icon = 'fa-check-double';
-            $primary_btn_attrs = $complete_data_attrs;
-        } elseif ($status === 'Completed (Pending Results)') {
-            $primary_btn_text = 'Submit';
-            $primary_btn_class = 'btn-primary';
-            $primary_btn_icon = 'fa-pencil-alt';
-        } elseif (in_array($status, ['Completed', 'Results Approved'])) {
-            $primary_btn_text = 'Results';
-            $primary_btn_class = 'btn-outline-success';
-            $primary_btn_icon = 'fa-chart-bar';
-        } elseif ($status === 'Results Submitted') {
-            $primary_btn_text = 'View';
-            $primary_btn_class = 'btn-outline-primary';
-            $primary_btn_icon = 'fa-eye';
-        } elseif ($status === 'Results Rejected') {
-            $primary_btn_text = 'Resubmit';
-            $primary_btn_class = 'btn-danger';
-            $primary_btn_icon = 'fa-exclamation-triangle';
-        } elseif (in_array($status, ['Postponed', 'Cancelled'])) {
-            $primary_btn_disabled = true;
-        }
-
-    } elseif ($category_type === 'match') {
-        $primary_btn_href = "event_manager_matches.php?category_id={$category_id}";
-
-        if (in_array($status, ['Completed', 'Results Approved'])) {
-            $primary_btn_text = 'Results';
-            $primary_btn_class = 'btn-outline-success';
-            $primary_btn_icon = 'fa-chart-bar';
-        } elseif ($status === 'Results Submitted') {
-            $primary_btn_text = 'View';
-            $primary_btn_class = 'btn-outline-primary';
-            $primary_btn_icon = 'fa-eye';
-        } elseif ($status === 'Results Rejected') {
-            $primary_btn_text = 'Resubmit';
-            $primary_btn_class = 'btn-danger';
-            $primary_btn_icon = 'fa-exclamation-triangle';
-        } else {
-            $primary_btn_text = 'Manage';
-            $primary_btn_class = 'btn-primary';
-            $primary_btn_icon = 'fa-cog';
-            
-            if (in_array($status, ['Postponed', 'Cancelled'])) {
-                 $primary_btn_class = 'btn-outline-secondary';
-            }
-        }
-    }
-
-    // --- EDIT/DELETE LOGIC ---
-    $edit_btn_disabled = in_array($status, ['Ongoing', 'Completed', 'Results Approved', 'Results Submitted']);
-    $edit_tooltip = $edit_btn_disabled ? "data-bs-toggle='tooltip' title='Cannot edit in-progress/completed events'" : '';
-
-    // --- NEW LOGIC: PROTECT SINGLE CATEGORY EVENTS ---
-    if ($is_single_mode) {
-        // If this is the ONLY category, forbid deletion.
-        $delete_btn_disabled = true;
-        $delete_tooltip = "data-bs-toggle='tooltip' title='This is the Main Event. You cannot delete it. Contact Admin to remove the event.'";
-    } else {
-        // Normal logic for multi-category events
-        $delete_btn_disabled = !in_array($status, ['Upcoming', 'Cancelled']);
-        $delete_tooltip = $delete_btn_disabled ? "data-bs-toggle='tooltip' title='Can only delete Upcoming/Cancelled events'" : '';
-    }
-
-    // --- BUILD HTML ---
-    $html = '<div class="action-btn-group" role="group" aria-label="Category Actions">';
-
-    // 1. Top Row: Smart Button
-    if ($primary_btn_disabled) {
-        $html .= "<a href='#' class='btn {$primary_btn_class} disabled' role='button' aria-disabled='true'>";
-        $html .= "  <i class='fas {$primary_btn_icon} me-1'></i> " . htmlspecialchars($primary_btn_text);
-        $html .= "</a>";
-    } elseif (!empty($primary_btn_attrs)) {
-        $html .= "<button type='button' class='btn {$primary_btn_class}' {$primary_btn_attrs}>";
-        $html .= "  <i class='fas {$primary_btn_icon} me-1'></i> " . htmlspecialchars($primary_btn_text);
-        $html .= "</button>";
-    } else {
-        $html .= "<a href='{$primary_btn_href}' class='btn {$primary_btn_class}'>";
-        $html .= "  <i class='fas {$primary_btn_icon} me-1'></i> " . htmlspecialchars($primary_btn_text);
-        $html .= "</a>";
-    }
-
-    // 2. Bottom Row: Edit and Delete
-    $html .= '<div class="action-row-bottom">';
-    
-    // Edit Button
-    $html .= "<button type='button' 
-                        class='btn btn-outline-secondary' 
-                        {$edit_data_attrs} 
-                        " . ($edit_btn_disabled ? 'disabled' : '') . "
-                        {$edit_tooltip}>";
-    $html .= "  <i class='fas fa-edit'></i>";
-    $html .= "</button>";
-
-    // Delete Button (Protected)
-    $html .= "<button type='button' 
-                        class='btn btn-outline-danger' 
-                        {$delete_data_attrs} 
-                        " . ($delete_btn_disabled ? 'disabled' : '') . "
-                        {$delete_tooltip}>";
-    $html .= "  <i class='fas fa-trash-alt'></i>";
-    $html .= "</button>";
-
-    $html .= '</div>'; 
-    $html .= '</div>'; 
-
-    return $html;
-}
 
 /**
  * Renders the winner list with enhanced styling
@@ -798,5 +587,105 @@ function get_status_badge($status, $notes = null, $category_id = null, $category
                 <i class="fas ' . $config['icon'] . '"></i>
                 ' . htmlspecialchars($config['text']) . '
             </span>';
+}
+
+/**
+ * Helper: Render Action Buttons (CLEANED: No Match Logic)
+ */
+function render_category_actions($category, $event_id, $event_name)
+{
+    $cat_id = (int)$category['category_id'];
+    $status = $category['status'];
+    
+    // Default Button Config - Direct Link to Tally Page
+    $btn_text = 'Manage Results';
+    $btn_class = 'btn-primary';
+    $btn_icon = 'fa-edit';
+    $btn_link = "submit_results.php?category_id={$cat_id}";
+    $extra_attrs = '';
+    $html_top = "";
+    
+
+    // Status Logic
+    if ($status === 'Upcoming') {
+        $btn_text = 'Start Event';
+        $btn_class = 'btn-success';
+        $btn_icon = 'fa-play';
+        // Add data-event-name here too just in case
+        $extra_attrs = "data-bs-toggle='modal' data-bs-target='#startModal' data-category-id='{$cat_id}' data-category-name='" . htmlspecialchars($category['category_name']) . "'";
+        // Use button for modal trigger
+        $html_top = "<button type='button' class='btn btn-action {$btn_class}' {$extra_attrs}><i class='fas {$btn_icon} me-2'></i>{$btn_text}</button>";
+    } 
+    elseif ($status === 'Ongoing') {
+        $btn_text = 'Complete Event'; // Changed from "Enter Results"
+        $btn_class = 'btn-warning text-dark';
+        $btn_icon = 'fa-check-double'; // Changed icon to checkmarks
+        
+        // Logic: Trigger the 'completeModal' instead of going to the link
+        $extra_attrs = "data-bs-toggle='modal' data-bs-target='#completeModal' data-category-id='{$cat_id}' data-category-name='" . htmlspecialchars($category['category_name']) . "'";
+        
+        $html_top = "<button type='button' class='btn {$btn_class} w-100 mb-1' {$extra_attrs}><i class='fas {$btn_icon} me-2'></i>{$btn_text}</button>";
+    } 
+    elseif ($status === 'Completed (Pending Results)') {
+        // Event is done, but no results yet -> Show "Submit Results"
+        $html_top = "<a href='{$btn_link}' class='btn btn-primary w-100 mb-1'><i class='fas fa-upload me-2'></i>Submit Results</a>";
+    }
+    elseif ($status === 'Results Submitted') {
+        // Results are in, waiting for approval -> Show "View/Edit"
+        $html_top = "<a href='{$btn_link}' class='btn btn-info text-white w-100 mb-1'><i class='fas fa-eye me-2'></i>View/Edit</a>";
+    }
+    elseif (in_array($status, ['Completed', 'Results Approved'])) {
+        $btn_text = 'Final Results';
+        $btn_class = 'btn-success'; // Changed from 'btn-outline-success'
+        $btn_icon = 'fa-check-circle';
+        $html_top = "<a href='{$btn_link}' class='btn btn-action {$btn_class}'><i class='fas {$btn_icon} me-2'></i> {$btn_text}</a>";
+    }
+    elseif ($status === 'Results Rejected') {
+        $btn_text = 'Fix & Resubmit';
+        $btn_class = 'btn-danger';
+        $btn_icon = 'fa-exclamation-triangle';
+        $html_top = "<a href='{$btn_link}' class='btn btn-action {$btn_class}'><i class='fas {$btn_icon} me-2'></i> {$btn_text}</a>";
+    } 
+    else {
+        // Disabled/Cancelled State
+        $html_top = "<button class='btn btn-action btn-secondary' disabled>Event Locked</button>";
+    }
+
+    // Secondary Actions (Edit/Delete)
+    $html_bottom = "";
+    if (!in_array($status, ['Results Submitted', 'Results Approved'])) {
+        
+        // FIXED: Added 'data-event-name' to this string so the modal can read it
+        $edit_data = "data-bs-toggle='modal' 
+                      data-bs-target='#categoryModal' 
+                      data-action='edit' 
+                      data-event-id='{$event_id}' 
+                      data-event-name='" . htmlspecialchars($event_name, ENT_QUOTES) . "' 
+                      data-category-id='{$cat_id}' 
+                      data-category-name='" . htmlspecialchars($category['category_name'], ENT_QUOTES) . "' 
+                      data-status='{$status}' 
+                      data-event-date='" . htmlspecialchars($category['event_date']) . "' 
+                      data-event-time='" . htmlspecialchars($category['event_time']) . "' 
+                      data-venue='" . htmlspecialchars($category['venue'], ENT_QUOTES) . "'";
+                      
+        $del_data = "data-bs-toggle='modal' 
+                     data-bs-target='#deleteModal' 
+                     data-category-id='{$cat_id}' 
+                     data-category-name='" . htmlspecialchars($category['category_name'], ENT_QUOTES) . "'";
+        // Print URL
+        $print_url = "print_tally_sheet.php?category_id={$cat_id}";
+
+        $html_bottom = "
+        <div class='action-row-bottom'>
+            <a href='{$print_url}' target='_blank' class='btn btn-sm btn-outline-dark' title='Print Tally Sheet'>
+                <i class='fas fa-print'></i>
+            </a>
+            <button class='btn btn-sm btn-outline-secondary' {$edit_data} title='Edit Details'><i class='fas fa-edit'></i></button>
+            <button class='btn btn-sm btn-outline-danger' {$del_data} title='Delete Division'><i class='fas fa-trash'></i></button>
+        </div>";
+        
+    }
+
+    return "<div class='action-btn-group'>{$html_top}{$html_bottom}</div>";
 }
 ?>

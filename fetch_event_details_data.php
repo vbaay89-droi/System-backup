@@ -15,27 +15,26 @@ $response = [
     'success' => true,
     'data' => [
         'event_details' => [],
-        'medal_standings' => [],
-        'raw_match_schedule' => []
+        'medal_standings' => []
+        // Note: 'raw_match_schedule' is removed because Matches feature is deleted
     ]
 ];
 
 try {
+    // --- Query 1: Get Event Details (from L1, L2, L3 tables) ---
     // --- Query 1: Get Event Details (from L1, L2, L3 tables) ---
     $sql_details = "
         SELECT 
             c.category_id AS event_id,
             c.category_name AS event_name,
             c.status AS event_status,
-            
-            c.category_type, -- ### FIX: Renamed 'event_type' to 'category_type'
-            
+            c.category_type, 
             c.notes AS description, 
             
-            -- ### FIX: Added the new schedule columns ###
             c.event_date,
             c.event_time,
             c.venue,
+            c.podium_photo_url, /* ADDED THIS */
             
             ge.event_name AS category,
             g.game_name AS sport_name,
@@ -70,7 +69,6 @@ try {
     $stmt_details->close();
 
     // --- Query 2: Get Medal Standings (Approved Winners for THIS Category) ---
-    // ### FIX: Check for 'Completed' OR 'Results Approved' ###
     $sql_medals = "
         SELECT 
             c.gold_winner_college_id, c.gold_count,
@@ -130,43 +128,6 @@ try {
         }
     }
     $stmt_medals->close();
-
-    // --- Query 3: Get Match Schedule (for "Match" type events) ---
-    $sql_matches = "
-        SELECT 
-            m.match_id, m.match_date, m.match_time, m.venue, m.status,
-            m.score1, m.score2, m.winner_team_id, m.time_finished,
-            t1.college_name AS team1_name, 
-            t2.college_name AS team2_name,
-            w.college_name AS winner_name,
-            g.game_name AS sport_category 
-        FROM matches m
-        LEFT JOIN colleges t1 ON m.team1_id = t1.college_id
-        LEFT JOIN colleges t2 ON m.team2_id = t2.college_id
-        LEFT JOIN colleges w ON m.winner_team_id = w.college_id
-        JOIN categories c ON m.category_id = c.category_id
-        JOIN game_events ge ON c.event_id = ge.event_id
-        JOIN games g ON ge.game_id = g.game_id
-        WHERE m.category_id = ?
-        ORDER BY m.match_date, m.match_time
-    ";
-    
-    $stmt_matches = $conn->prepare($sql_matches);
-    if ($stmt_matches === false) {
-        throw new Exception("SQL prepare error (Query 3): " . $conn->error);
-    }
-    $stmt_matches->bind_param("i", $category_id);
-    $stmt_matches->execute();
-    $result_matches = $stmt_matches->get_result();
-    
-    if ($result_matches->num_rows > 0) {
-        while ($row = $result_matches->fetch_assoc()) {
-            $row['team1_college'] = $row['team1_name'];
-            $row['team2_college'] = $row['team2_name'];
-            $response['data']['raw_match_schedule'][] = $row;
-        }
-    }
-    $stmt_matches->close();
 
 } catch (Exception $e) {
     // Send a detailed error message back as JSON

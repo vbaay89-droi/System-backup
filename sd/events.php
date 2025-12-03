@@ -1,7 +1,7 @@
 <?php
 session_start();
 // Use a relative path to your main db_connect.php
-require_once '../db_connect.php'; 
+require_once '../config.php'; 
 
 // 1. SECURITY & ACCESS CONTROL
 // STRICT: Only 'Sports Director' is allowed
@@ -87,43 +87,28 @@ if (isset($_POST['delete_game'])) {
     header("Location: events.php?tab=games"); exit();
 }
 
-// L2 - EVENTS (CREATE) - SIMPLIFIED "ENABLE/NO CATEGORIES" LOGIC
+// L2 - EVENTS (CREATE) - UPDATED LOGIC FOR SINGLE DIVISION
 if (isset($_POST['add_event'])) {
     $game_id = (int)$_POST['game_id'];
     $event_name = $_POST['event_name'];
-    // 'has_categories' will be 'yes' or 'no'
-    $has_categories = $_POST['has_categories'] ?? 'yes'; 
+    // 'structure_type' will be 'multi' or 'single'
+    $structure_type = $_POST['structure_type'] ?? 'multi'; 
     
-    // 1. Determine Structure based on user choice
-    // If has_categories is 'yes', it is 'Multiple Categories'. If 'no', it is 'Single Category'.
-    $structure_value = ($has_categories === 'yes') ? 'Multiple Categories' : 'Single Category';
+    // 1. Determine Structure Label for Database
+    $structure_db_value = ($structure_type === 'multi') ? 'Multiple Categories' : 'Single Division';
 
-    // 2. Create the Event (Now including event_structure)
+    // 2. Create the Event
     $stmt = $conn->prepare("INSERT INTO game_events (game_id, event_name, event_structure) VALUES (?, ?, ?)");
-    $stmt->bind_param("iss", $game_id, $event_name, $structure_value);
+    $stmt->bind_param("iss", $game_id, $event_name, $structure_db_value);
     $stmt->execute();
     $new_event_id = $conn->insert_id;
     $stmt->close();
     
-    // 2. Handle Logic
-    if ($has_categories === 'no') {
-        // USER SAID: "No Categories"
-        // ACTION: We create a hidden "Main Event" category so the DB works.
-        $cat_name = 'Main Event'; 
-        $cat_type = 'match'; // Defaulting to match as it's safest for generic events
-        $cat_status = 'Upcoming';
-        
-        $stmt_cat = $conn->prepare("INSERT INTO categories (event_id, category_name, category_type, status) VALUES (?, ?, ?, ?)");
-        $stmt_cat->bind_param("isss", $new_event_id, $cat_name, $cat_type, $cat_status);
-        $stmt_cat->execute();
-        $stmt_cat->close();
-        
-        $msg_extra = " (Single Event Mode Configured)";
-    } else {
-        // USER SAID: "Enable Categories"
-        // ACTION: We do nothing. They will add categories manually later.
-        $msg_extra = "";
-    }
+    // 3. LOGIC FIX: 
+    // If "Single Division" is selected, we DO NOT create a category automatically anymore.
+    // This allows the Event Manager to choose "Match" or "Medal" when they initialize the event.
+    
+    $msg_extra = ($structure_type === 'single') ? " (Single Division Mode Configured)" : "";
     
     $_SESSION['message'] = "Event added successfully." . $msg_extra;
     $_SESSION['message_type'] = "success";
@@ -284,7 +269,8 @@ if (isset($_SESSION['message'])) {
 }
 
 // Sidebar Badges
-$pending_requests_count = $conn->query("SELECT COUNT(*) FROM account_requests WHERE status = 'pending'")->fetch_row()[0] ?? 0;
+// Count pending requests for sidebar badge (Fixed: Counts unapproved users)
+$pending_requests_count = $conn->query("SELECT COUNT(*) FROM users WHERE is_approved = 0")->fetch_row()[0] ?? 0;
 $pending_results_count = $conn->query("SELECT COUNT(*) FROM categories WHERE status='Results Submitted'")->fetch_row()[0] ?? 0;
 ?>
 <!DOCTYPE html>
@@ -394,11 +380,6 @@ $pending_results_count = $conn->query("SELECT COUNT(*) FROM categories WHERE sta
             <li class="nav-item">
                 <a class="nav-link active" href="events.php">
                     <i class="fas fa-calendar-alt me-2"></i> <span>Manage Events (L1-L3)</span>
-                </a>
-            </li>
-            <li class="nav-item">
-                <a class="nav-link" href="Manage_Matches.php">
-                    <i class="fas fa-trophy me-2"></i> <span>Manage Matches</span>
                 </a>
             </li>
 
@@ -542,7 +523,7 @@ $pending_results_count = $conn->query("SELECT COUNT(*) FROM categories WHERE sta
                     <div class="card mt-3">
                         <div class="card-header bg-white py-3"><h5 class="mb-0 fw-bold">Game Events & Manager Assignments</h5></div>
                         
-                        <!-- SIMPLIFIED ADD EVENT FORM -->
+                        <!-- UPDATED ADD EVENT FORM -->
                         <div class="card-body bg-light border-bottom">
                             <form action="events.php" method="POST" class="row g-3">
                                 <input type="hidden" name="add_event">
@@ -562,26 +543,26 @@ $pending_results_count = $conn->query("SELECT COUNT(*) FROM categories WHERE sta
                                     <input type="text" class="form-control" id="event_name" name="event_name" required>
                                 </div>
 
-                                <!-- Row 2: Simplified Categories Toggle -->
-                                <div class="col-md-9">
-                                    <label class="form-label fw-bold text-primary mb-2"><i class="fas fa-list-ul me-1"></i> Category Structure</label>
-                                    <div class="d-flex gap-4 align-items-center">
+                                <!-- Row 2: Structure Toggle (UPDATED TERMS) -->
+                               <div class="col-md-9">
+                                    <label class="form-label fw-bold text-primary mb-2"><i class="fas fa-layer-group me-1"></i> Event Structure</label>
+                                    <div class="d-flex gap-4 align-items-center p-2 border rounded bg-white">
                                         <div class="form-check">
-                                            <input class="form-check-input" type="radio" name="has_categories" id="cat_yes" value="yes" checked>
-                                            <label class="form-check-label" for="cat_yes">
-                                                <strong>Multiple Categories</strong> (e.g., Men, Women, Weight Classes)
+                                            <input class="form-check-input" type="radio" name="structure_type" id="struct_multi" value="multi" checked>
+                                            <label class="form-check-label" for="struct_multi">
+                                                <strong>Multiple Divisions</strong> (e.g., Men, Women, Weight Classes)
                                             </label>
                                         </div>
                                         <div class="form-check">
-                                            <input class="form-check-input" type="radio" name="has_categories" id="cat_no" value="no">
-                                            <label class="form-check-label" for="cat_no">
-                                                <strong>Single Event</strong> (No Categories)
+                                            <input class="form-check-input" type="radio" name="structure_type" id="struct_single" value="single">
+                                            <label class="form-check-label" for="struct_single">
+                                                <strong>Single Division</strong> (One open category)
                                             </label>
                                         </div>
                                     </div>
                                     <div class="form-text text-muted mt-2">
-                                        <span id="help_yes"><i class="fas fa-info-circle"></i> Standard mode. You will add categories manually later.</span>
-                                        <span id="help_no" style="display:none;"><i class="fas fa-magic text-success"></i> Simple mode. We will auto-configure this event for you.</span>
+                                        <span id="help_multi"><i class="fas fa-info-circle"></i> Standard mode. You will add specific categories (L3) manually after creating the event.</span>
+                                        <span id="help_single" style="display:none;"><i class="fas fa-magic text-success"></i> Simple mode. The Event Manager will see a button to initialize the <strong>Results Form</strong> immediately.</span>
                                     </div>
                                 </div>
 
@@ -693,13 +674,16 @@ $pending_results_count = $conn->query("SELECT COUNT(*) FROM categories WHERE sta
                                         <td><?= htmlspecialchars($category['game_name']) ?></td>
                                         <td><?= htmlspecialchars($category['event_name']) ?></td>
                                         
-                                        <!-- UPDATED: Display Note if Auto-Category -->
+                                        <!-- DISPLAY LOGIC: Fetch Single Division Properly -->
                                         <td>
                                             <?php 
-                                            if ($category['category_name'] === 'Main Event' || $category['category_name'] === 'Main Competition') {
-                                                echo '<span class="text-muted fst-italic">(No specific category)</span>';
+                                            $catName = $category['category_name'];
+                                            if ($catName === 'Single Division' || $catName === 'Open Division') {
+                                                echo '<span class="badge bg-primary px-3 py-2">Single Division (Open)</span>';
+                                            } elseif ($catName === 'Main Event') {
+                                                echo '<span class="badge bg-secondary">Main Event (Legacy)</span>';
                                             } else {
-                                                echo '<strong>' . htmlspecialchars($category['category_name']) . '</strong>';
+                                                echo '<strong>' . htmlspecialchars($catName) . '</strong>';
                                             }
                                             ?>
                                         </td>
@@ -946,38 +930,15 @@ $pending_results_count = $conn->query("SELECT COUNT(*) FROM categories WHERE sta
     <script>
     document.addEventListener('DOMContentLoaded', function() {
         
-        // --- EXISTING JS ---
+        // --- JS FEATURES ---
         
-        // JS for Assign Manager Modal
-        const assignModal = document.getElementById('assignManagerModal');
-        if (assignModal) {
-            assignModal.addEventListener('show.bs.modal', function(event) {
-                const button = event.relatedTarget;
-                document.getElementById('assign_event_id').value = button.dataset.eventId;
-                document.getElementById('assign_event_name').textContent = button.dataset.eventName;
-                document.getElementById('assign_user_id').value = button.dataset.userId || '0';
-            });
-        }
-
-        // JS to keep the correct tab active after page reload
-        const urlParams = new URLSearchParams(window.location.search);
-        const tab = urlParams.get('tab');
-        if (tab) {
-            const tabElement = document.querySelector('#' + tab + '-tab');
-            if (tabElement) {
-                new bootstrap.Tab(tabElement).show();
-            }
-        }
-        
-        // --- NEW JS FEATURES ---
-        
-        // Feature 0: Help Text Toggle for Radio Buttons
-        const radioButtons = document.querySelectorAll('input[name="has_categories"]');
+        // Feature 0: Help Text Toggle for Structure Radio Buttons
+        const radioButtons = document.querySelectorAll('input[name="structure_type"]');
         radioButtons.forEach(radio => {
             radio.addEventListener('change', function() {
                 if (this.checked) {
-                    document.getElementById('help_yes').style.display = (this.value === 'yes') ? 'inline' : 'none';
-                    document.getElementById('help_no').style.display = (this.value === 'no') ? 'inline' : 'none';
+                    document.getElementById('help_multi').style.display = (this.value === 'multi') ? 'inline' : 'none';
+                    document.getElementById('help_single').style.display = (this.value === 'single') ? 'inline' : 'none';
                 }
             });
         });
@@ -1001,35 +962,46 @@ $pending_results_count = $conn->query("SELECT COUNT(*) FROM categories WHERE sta
         setupTableSearch('searchEvents', 'eventsTableBody');
         setupTableSearch('searchCategories', 'categoriesTableBody');
 
-        // Feature 2: Action Button Modals
-        
-        // Edit Game Modal
+        // JS for Assign Manager Modal
+        const assignModal = document.getElementById('assignManagerModal');
+        if (assignModal) {
+            assignModal.addEventListener('show.bs.modal', function(event) {
+                const button = event.relatedTarget;
+                document.getElementById('assign_event_id').value = button.dataset.eventId;
+                document.getElementById('assign_event_name').textContent = button.dataset.eventName;
+                document.getElementById('assign_user_id').value = button.dataset.userId || '0';
+            });
+        }
+
+        // JS to keep the correct tab active after page reload
+        const urlParams = new URLSearchParams(window.location.search);
+        const tab = urlParams.get('tab');
+        if (tab) {
+            const tabElement = document.querySelector('#' + tab + '-tab');
+            if (tabElement) {
+                new bootstrap.Tab(tabElement).show();
+            }
+        }
+
+        // Edit/Delete Modals JS...
         const editGameModal = document.getElementById('editGameModal');
         if (editGameModal) {
             editGameModal.addEventListener('show.bs.modal', function(event) {
                 const button = event.relatedTarget;
-                const gameId = button.dataset.gameId;
-                const gameName = button.dataset.gameName;
-                
-                editGameModal.querySelector('#edit_game_id').value = gameId;
-                editGameModal.querySelector('#edit_game_name').value = gameName;
+                editGameModal.querySelector('#edit_game_id').value = button.dataset.gameId;
+                editGameModal.querySelector('#edit_game_name').value = button.dataset.gameName;
             });
         }
         
-        // Delete Game Modal
         const deleteGameModal = document.getElementById('deleteGameModal');
         if (deleteGameModal) {
             deleteGameModal.addEventListener('show.bs.modal', function(event) {
                 const button = event.relatedTarget;
-                const gameId = button.dataset.gameId;
-                const gameName = button.dataset.gameName;
-                
-                deleteGameModal.querySelector('#delete_game_id').value = gameId;
-                deleteGameModal.querySelector('#delete_game_name').textContent = gameName;
+                deleteGameModal.querySelector('#delete_game_id').value = button.dataset.gameId;
+                deleteGameModal.querySelector('#delete_game_name').textContent = button.dataset.gameName;
             });
         }
         
-        // Edit Event Modal
         const editEventModal = document.getElementById('editEventModal');
         if (editEventModal) {
             editEventModal.addEventListener('show.bs.modal', function(event) {
@@ -1040,7 +1012,6 @@ $pending_results_count = $conn->query("SELECT COUNT(*) FROM categories WHERE sta
             });
         }
 
-        // Delete Event Modal
         const deleteEventModal = document.getElementById('deleteEventModal');
         if (deleteEventModal) {
             deleteEventModal.addEventListener('show.bs.modal', function(event) {
@@ -1050,7 +1021,6 @@ $pending_results_count = $conn->query("SELECT COUNT(*) FROM categories WHERE sta
             });
         }
 
-        // Edit Category Modal
         const editCategoryModal = document.getElementById('editCategoryModal');
         if (editCategoryModal) {
             editCategoryModal.addEventListener('show.bs.modal', function(event) {
@@ -1061,7 +1031,6 @@ $pending_results_count = $conn->query("SELECT COUNT(*) FROM categories WHERE sta
             });
         }
 
-        // Delete Category Modal
         const deleteCategoryModal = document.getElementById('deleteCategoryModal');
         if (deleteCategoryModal) {
             deleteCategoryModal.addEventListener('show.bs.modal', function(event) {
@@ -1071,9 +1040,7 @@ $pending_results_count = $conn->query("SELECT COUNT(*) FROM categories WHERE sta
             });
         }
 
-        
-        
-        // Feature 4: Interactive Table Sorting
+        // Table Sorting
         function setupTableSorting() {
             document.querySelectorAll('.sortable').forEach(header => {
                 header.addEventListener('click', function() {
@@ -1084,7 +1051,6 @@ $pending_results_count = $conn->query("SELECT COUNT(*) FROM categories WHERE sta
                     const colIndex = Array.from(this.parentElement.children).indexOf(this);
                     const sortDir = this.dataset.sortDir === 'asc' ? 'desc' : 'asc';
                     
-                    // Reset other header icons
                     table.querySelectorAll('th.sortable').forEach(th => {
                         if (th !== this) {
                             th.dataset.sortDir = 'asc';
@@ -1092,7 +1058,6 @@ $pending_results_count = $conn->query("SELECT COUNT(*) FROM categories WHERE sta
                         }
                     });
                     
-                    // Set this header's icon and direction
                     this.dataset.sortDir = sortDir;
                     this.querySelector('i').className = sortDir === 'asc' ? 'fas fa-sort-up fa-xs' : 'fas fa-sort-down fa-xs';
 
@@ -1101,93 +1066,65 @@ $pending_results_count = $conn->query("SELECT COUNT(*) FROM categories WHERE sta
                     const sortedRows = rows.sort((a, b) => {
                         const aVal = a.querySelector(`td:nth-child(${colIndex + 1})`).textContent.trim().toLowerCase();
                         const bVal = b.querySelector(`td:nth-child(${colIndex + 1})`).textContent.trim().toLowerCase();
-                        
                         let comparison = aVal.localeCompare(bVal, undefined, {numeric: true});
-                        
                         return sortDir === 'asc' ? comparison : -comparison;
                     });
                     
-                    // Re-append sorted rows
                     sortedRows.forEach(row => tbody.appendChild(row));
                 });
             });
         }
         setupTableSorting();
 
-    // --- NEW: Auto-dismiss success alerts ---
-    // Find the alert message
-    const autoDismissAlert = document.querySelector('.alert-dismissible');
+        // Auto-dismiss alerts
+        const autoDismissAlert = document.querySelector('.alert-dismissible');
+        if (autoDismissAlert) {
+            setTimeout(() => {
+                new bootstrap.Alert(autoDismissAlert).close();
+            }, 5000);
+        }
 
-    // If an alert is found on the page
-    if (autoDismissAlert) {
-        // Wait for 5 seconds
-        setTimeout(() => {
-            // Get the Bootstrap 5 alert instance
-            const bsAlert = new bootstrap.Alert(autoDismissAlert);
-            
-            // Call the 'close' method, which triggers the fade-out animation
-            bsAlert.close();
-        }, 5000); // 5000 milliseconds = 5 seconds
-    }
-
-    // SIDEBAR TOGGLE
-    const mobileToggle = document.getElementById('mobileToggle');
-    if(mobileToggle) {
-        mobileToggle.addEventListener('click', function() {
-            document.getElementById('sidebar').classList.toggle('show');
-        });
-    }
-
-    let resizeTimer;
-            window.addEventListener('resize', function() {
-                clearTimeout(resizeTimer);
-                resizeTimer = setTimeout(function() {
-                    if (window.innerWidth > 992) {
-                        sidebar.classList.remove('show');
-                        // sidebarOverlay.classList.remove('show'); // overlay is not defined in this file, removed to prevent errors
-                    }
-                }, 250);
+        // Sidebar Toggle
+        const mobileToggle = document.getElementById('mobileToggle');
+        if(mobileToggle) {
+            mobileToggle.addEventListener('click', function() {
+                document.getElementById('sidebar').classList.toggle('show');
             });
+        }
 
-            // --- ### NEW: FIX SIDEBAR/FOOTER OVERLAP ### ---
-            const footer = document.querySelector('footer');
-            const navbar = document.querySelector('.navbar');
-            const sidebar = document.getElementById('sidebar');
-
-            if (sidebar && footer && navbar) {
-                function adjustSidebarHeight() {
-                    // This logic should only apply to desktop view
-                    if (window.innerWidth <= 992) {
-                        sidebar.style.height = ''; // Reset to CSS default for mobile
-                        return;
-                    }
-
-                    const navbarHeight = navbar.offsetHeight;
-                    const footerTop = footer.getBoundingClientRect().top;
-                    const viewportHeight = window.innerHeight;
-                    
-                    // 1. Calculate the max possible height (navbar top to viewport bottom)
-                    const maxSidebarHeight = viewportHeight - navbarHeight;
-
-                    // 2. Calculate the available height (navbar top to footer top)
-                    const availableHeight = footerTop - navbarHeight;
-
-                    // 3. Choose the smaller of the two heights, but never less than 0
-                    const newHeight = Math.max(0, Math.min(maxSidebarHeight, availableHeight));
-                    
-                    // 4. Apply the new height as an inline style
-                    sidebar.style.height = `${newHeight}px`;
+        let resizeTimer;
+        window.addEventListener('resize', function() {
+            clearTimeout(resizeTimer);
+            resizeTimer = setTimeout(function() {
+                if (window.innerWidth > 992) {
+                    document.getElementById('sidebar').classList.remove('show');
                 }
+            }, 250);
+        });
 
-                // Add listeners for scroll and resize events
-                window.addEventListener('scroll', adjustSidebarHeight, { passive: true });
-                window.addEventListener('resize', adjustSidebarHeight);
-                
-                // Initial call to set the correct height on page load
-                // Small delay to ensure all elements are rendered
-                setTimeout(adjustSidebarHeight, 100);
+        // Sidebar/Footer Fix
+        const footer = document.querySelector('footer');
+        const navbar = document.querySelector('.navbar');
+        const sidebar = document.getElementById('sidebar');
+
+        if (sidebar && footer && navbar) {
+            function adjustSidebarHeight() {
+                if (window.innerWidth <= 992) {
+                    sidebar.style.height = ''; 
+                    return;
+                }
+                const navbarHeight = navbar.offsetHeight;
+                const footerTop = footer.getBoundingClientRect().top;
+                const viewportHeight = window.innerHeight;
+                const maxSidebarHeight = viewportHeight - navbarHeight;
+                const availableHeight = footerTop - navbarHeight;
+                const newHeight = Math.max(0, Math.min(maxSidebarHeight, availableHeight));
+                sidebar.style.height = `${newHeight}px`;
             }
-
+            window.addEventListener('scroll', adjustSidebarHeight, { passive: true });
+            window.addEventListener('resize', adjustSidebarHeight);
+            setTimeout(adjustSidebarHeight, 100);
+        }
     });
     </script>
 </body>

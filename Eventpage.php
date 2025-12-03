@@ -493,7 +493,7 @@ $conn->close();
                         <a class="nav-link <?= ($current_page == 'Eventpage.php') ? 'active' : '' ?>" href="Eventpage.php">Events</a>
                     </li>
                     <li class="nav-item">
-                        <a class="nav-link <?= ($current_page == 'college_team.php') ? 'active' : '' ?>" href="college_team.php">Colleges</a>
+                        <a class="nav-link <?= ($current_page == 'college_team.php') ? 'active' : '' ?>" href="college_team.php">Teams</a>
                     </li>
                     <li class="nav-item">
                         <?php if (isset($_SESSION['email'])): ?>
@@ -642,23 +642,6 @@ $conn->close();
                             </button>
                         </li>
                         
-                        <li class="nav-item" role="presentation" data-tab-type="match">
-                            <button class="nav-link rounded-top" id="schedule-tab" 
-                                    data-bs-toggle="tab" data-bs-target="#tab-schedule" 
-                                    type="button" role="tab" data-tab-type="match">
-                                <i class="fas fa-calendar-alt me-2"></i>
-                                <span class="d-none d-sm-inline">Match </span>Schedule
-                            </button>
-                        </li>
-                        
-                        <li class="nav-item" role="presentation" data-tab-type="match">
-                            <button class="nav-link rounded-top" id="results-tab" 
-                                    data-bs-toggle="tab" data-bs-target="#tab-results" 
-                                    type="button" role="tab" data-tab-type="match">
-                                <i class="fas fa-trophy me-2"></i>
-                                <span class="d-none d-sm-inline">Match </span>Results
-                            </button>
-                        </li>
 
                         <li class="nav-item" role="presentation" data-tab-type="medal">
                             <button class="nav-link rounded-top" id="winners-tab" 
@@ -750,61 +733,6 @@ $conn->close();
                             </div>
                         </div>
 
-                        <div class="tab-pane fade p-4" id="tab-schedule" role="tabpanel" data-tab-type="match">
-                            <div class="card border-0 shadow-sm">
-                                <div class="card-header bg-info bg-opacity-10 border-0">
-                                    <h6 class="mb-0 text-dark">
-                                        <i class="fas fa-calendar-check me-2"></i>Upcoming & Ongoing Matches
-                                    </h6>
-                                </div>
-                                <div class="card-body p-0">
-                                    <div class="table-responsive">
-                                        <table class="table table-hover mb-0">
-                                            <thead>
-                                                <tr class="table-light">
-                                                    <th>#</th>
-                                                    <th>DATE</th>
-                                                    <th>TIME</th>
-                                                    <th>TEAMS</th>
-                                                    <th>VENUE</th>
-                                                    <th class="text-center">STATUS</th>
-                                                </tr>
-                                            </thead>
-                                            <tbody id="scheduleTableBody">
-                                                <tr><td colspan="6" class="text-center text-muted py-4">Loading...</td></tr>
-                                            </tbody>
-                                        </table>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-
-                        <div class="tab-pane fade p-4" id="tab-results" role="tabpanel" data-tab-type="match">
-                            <div class="card border-0 shadow-sm">
-                                <div class="card-header bg-success bg-opacity-10 border-0">
-                                    <h6 class="mb-0 text-dark">
-                                        <i class="fas fa-clipboard-check me-2"></i>Completed Match Results
-                                    </h6>
-                                </div>
-                                <div class="card-body p-0">
-                                    <div class="table-responsive">
-                                        <table class="table table-hover mb-0">
-                                            <thead>
-                                                <tr class="table-light">
-                                                    <th>SPORT</th>
-                                                    <th>MATCH</th>
-                                                    <th class="text-center">SCORE</th>
-                                                    <th>WINNER</th>
-                                                </tr>
-                                            </thead>
-                                            <tbody id="matchResultsBody">
-                                                <tr><td colspan="4" class="text-center text-muted py-4">Loading...</td></tr>
-                                            </tbody>
-                                        </table>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
 
                         <div class="tab-pane fade p-0" id="tab-winners" role="tabpanel" data-tab-type="medal">
                             <div class="card border-0">
@@ -813,8 +741,17 @@ $conn->close();
                                         <i class="fas fa-award me-2"></i>Event Medal Winners
                                     </h6>
                                 </div>
-                                <div class="card-body" id="medal-winners-body">
-                                    <div class="text-center p-5 text-muted">Loading...</div>
+                                <div class="card-body">
+                                    
+                                    <div id="podiumPhotoContainer" class="text-center mb-4 d-none">
+                                        <h6 class="text-uppercase text-muted small fw-bold mb-2">Winning Moment</h6>
+                                        <img id="podiumPhotoImg" src="" class="img-fluid rounded shadow-sm" 
+                                             style="max-height: 300px; width: auto; border: 4px solid #fff; box-shadow: 0 4px 12px rgba(0,0,0,0.15);">
+                                    </div>
+
+                                    <div id="medal-winners-body">
+                                        <div class="text-center p-5 text-muted">Loading...</div>
+                                    </div>
                                 </div>
                             </div>
                         </div>
@@ -841,68 +778,88 @@ $conn->close();
     <script>
         document.addEventListener('DOMContentLoaded', function() {
             
+            // 1. ADJUST PADDING FOR FIXED NAVBAR
             const navbarHeight = document.querySelector('.navbar').offsetHeight;
             document.querySelector('.main-content').style.paddingTop = `${navbarHeight + 30}px`;
             
+            // 2. INTERACTIVE BRAND CLICK
             document.querySelector('.interactive-brand').addEventListener('click', function(e) {
                 e.preventDefault();
                 window.location.href = 'home.php'; 
             });
 
+            // 3. DOM ELEMENTS
             const eventsGridContainer = document.getElementById('events-grid-container');
             const eventSearchInput = document.getElementById('event-search-input');
             const filterStatusSelect = document.getElementById('filter-status');
             const eventsTab = document.getElementById('eventsTab');
 
+            // 4. INITIAL DATA (Passed from PHP)
             const initialEventsData = <?php echo json_encode($events); ?>;
             
+            // 5. FILTER STATE
             let currentStatusFilter = 'all';
             let currentCategoryFilter = 'all'; 
             let currentSearchValue = '';
             
+            // 6. AUTO-REFRESH VARIABLES
             let autoRefreshInterval = null;
             let currentEventIdForRefresh = null;
 
-            // ### FIX: UPDATED buildEventHtml FUNCTION ###
+            /**
+             * BUILD EVENT CARD HTML
+             * Corrects hierarchy:
+             * - Title: Event Name (e.g., Basketball)
+             * - Badge: Category Name (e.g., Single Division)
+             * - Subtitle: Game Name (e.g., Ball Games)
+             */
             function buildEventHtml(event) {
                 const statusClass = getEventCardStatusClassJS(event.event_status || '');
-                const title = String(event.event_name || 'Untitled');
-                const sportName = String(event.sport_name || 'Unknown Sport');
-                const category = String(event.category || 'General'); 
+                
+                // Logic: The API returns 'category' as the Event Name (L2) and 'event_name' as Category (L3)
+                // We map them correctly for display here:
+                const mainTitle = String(event.category || 'Untitled'); // e.g., "Basketball"
+                const subCategory = String(event.event_name || 'General'); // e.g., "Men's Division"
+                const sportName = String(event.sport_name || 'Unknown Sport'); // e.g., "Ball Games"
                 const desc = String(event.description || 'No description provided.');
                 
-                // Get original status for filtering and new display status for the card
                 const originalStatus = event.event_status || 'Unknown';
-                const displayStatus = formatStatusTextForCard(originalStatus); // Uses new helper function
+                const displayStatus = formatStatusTextForCard(originalStatus);
                 
                 const managerNameHtml = event.manager_name ? 
-                    `<div class="small text-muted"><i class="fas fa-user-tie me-1"></i>Manager: ${escapeHtml(event.manager_name)}</div>` : 
-                    '';
+                    `<div class="small text-muted mt-2 border-top pt-2"><i class="fas fa-user-tie me-1"></i>Manager: ${escapeHtml(event.manager_name)}</div>` : '';
                 
                 return `
                     <div class="col-md-4 event-card-item" 
                          data-category="${(event.sport_name||'others').toLowerCase()}" 
                          data-status="${(originalStatus).toLowerCase()}" 
-                         data-search-text="${escapeHtml(title.toLowerCase())} ${escapeHtml(sportName.toLowerCase())}">
-                        <div class="sport-card">
-                            <div class="sport-card-body">
-                                <div class="d-flex justify-content-between align-items-center mb-2">
-                                    <h5 class="mb-0 event-title" title="${escapeHtml(title)}">${escapeHtml(title)}</h5>
-                                    <span class="status-pill ${statusClass}" title="${escapeHtml(originalStatus)}">${escapeHtml(displayStatus)}</span>
+                         data-search-text="${escapeHtml(mainTitle.toLowerCase())} ${escapeHtml(sportName.toLowerCase())}">
+                        <div class="sport-card h-100">
+                            <div class="sport-card-body d-flex flex-column">
+                                <div class="d-flex justify-content-between align-items-start mb-2">
+                                    <h5 class="mb-0 event-title fw-bold text-dark" style="font-size: 1.25rem;" title="${escapeHtml(mainTitle)}">
+                                        ${escapeHtml(mainTitle)}
+                                    </h5>
+                                    <span class="status-pill ${statusClass} ms-2" title="${escapeHtml(originalStatus)}">${escapeHtml(displayStatus)}</span>
                                 </div>
-                                <div class="mb-2"> 
-                                    <p class="text-muted mb-1"><strong>${escapeHtml(sportName)}</strong> - ${escapeHtml(category)}</p>
-                                    ${managerNameHtml}
+                                <div class="mb-1 text-uppercase text-primary fw-bold" style="font-size: 0.75rem; letter-spacing: 0.5px;">
+                                    ${escapeHtml(sportName)}
                                 </div>
-                                <p class="text-muted mb-3">${escapeHtml(desc)}</p>
+                                <div class="mb-3">
+                                    <span class="badge bg-light text-dark border border-secondary-subtle">
+                                        <i class="fas fa-layer-group me-1 text-muted"></i> ${escapeHtml(subCategory)}
+                                    </span>
+                                </div>
+                                <p class="text-muted small flex-grow-1 mb-3">${escapeHtml(desc)}</p>
+                                ${managerNameHtml}
                             </div>
-                            <div class="d-flex justify-content-end align-items: center mt-auto">
-                                <a href="#" class="check-event" 
+                            <div class="d-flex justify-content-end align-items: center mt-3 pt-3 border-top">
+                                <a href="#" class="check-event btn btn-sm btn-outline-primary rounded-pill px-3 fw-bold" 
                                    data-bs-toggle="modal" data-bs-target="#viewEventModal" 
                                    data-id="${event.event_id}" 
                                    data-category-type="${event.category_type || 'medal'}"
                                    data-status="${(originalStatus).toLowerCase()}">
-                                    Check Event <span class="iconify ms-1" data-icon="mdi:arrow-right"></span>
+                                    View Details <i class="fas fa-arrow-right ms-1"></i>
                                 </a>
                             </div>
                         </div>
@@ -911,17 +868,12 @@ $conn->close();
 
             function renderEvents(events) {
                 if (!eventsGridContainer) return;
-                
-                let html = '';
-                if (!events || events.length === 0) {
-                    html = '<div class="col-12"><p class="text-center text-muted py-5">No events found. Please add events via the admin panel.</p></div>';
-                } else {
-                    html = events.map(buildEventHtml).join('');
-                }
+                let html = (events && events.length > 0) 
+                    ? events.map(buildEventHtml).join('') 
+                    : '<div class="col-12"><p class="text-center text-muted py-5">No events found.</p></div>';
                 eventsGridContainer.innerHTML = html;
             }
             
-            // ### FIX: UPDATED applyAllFilters FUNCTION ###
             function applyAllFilters() {
                 if (!eventsGridContainer) return;
                 const cards = eventsGridContainer.querySelectorAll('.event-card-item');
@@ -929,29 +881,17 @@ $conn->close();
                 
                 cards.forEach(card => {
                     const ccat = card.dataset.category;
-                    const cstatus = card.dataset.status; // This is the original full status
+                    const cstatus = card.dataset.status; 
                     const ctext = card.dataset.searchText;
                     
                     const showCategory = (currentCategoryFilter === 'all' || ccat === currentCategoryFilter);
                     
-                    // Logic to match the new filter dropdown
                     let showStatus = false;
                     switch (currentStatusFilter) {
-                        case 'all':
-                            showStatus = true;
-                            break;
-                        case 'completed':
-                            // This ONLY shows 'Completed' (which includes 'Results Approved' via PHP)
-                            showStatus = (cstatus === 'completed');
-                            break;
-                        case 'pending results':
-                            // This shows all "pending" types
-                            showStatus = (cstatus === 'completed (pending results)' || cstatus === 'results submitted');
-                            break;
-                        default:
-                            // This handles 'upcoming', 'ongoing', 'postponed', 'cancelled'
-                            showStatus = (cstatus === currentStatusFilter);
-                            break;
+                        case 'all': showStatus = true; break;
+                        case 'completed': showStatus = (cstatus === 'completed' || cstatus === 'results approved'); break;
+                        case 'pending results': showStatus = (cstatus === 'completed (pending results)' || cstatus === 'results submitted'); break;
+                        default: showStatus = (cstatus === currentStatusFilter); break;
                     }
                     
                     const showSearch = (currentSearchValue === '' || ctext.includes(currentSearchValue));
@@ -963,15 +903,13 @@ $conn->close();
                         card.style.display = 'none';
                     }
                 });
-                
-                // TODO: Add a "No results found" message if !hasVisibleEvents
             }
             
-            // --- INITIAL RENDER ---
+            // --- INITIALIZE PAGE ---
             renderEvents(initialEventsData);
             applyAllFilters();
             
-            // --- ### Filter Event Listeners ### ---
+            // --- EVENT LISTENERS ---
             if (eventsTab) {
                 const tabs = eventsTab.querySelectorAll('.nav-link');
                 tabs.forEach(tab => {
@@ -999,18 +937,14 @@ $conn->close();
                 });
             }
 
-            // --- ### VIEW EVENT MODAL LOGIC (No Changes) ### ---
+            // --- MODAL LOGIC ---
             const viewEventModalElement = document.getElementById('viewEventModal');
             const viewEventModal = new bootstrap.Modal(viewEventModalElement);
 
-            // --- Get Modal Element References ---
             const modalEventNameSpan = document.getElementById('modalEventName');
             const modalMedalStandingsBody = document.getElementById('modalMedalStandingsBody');
-            const matchScheduleContent = document.getElementById('scheduleTableBody');
-            const matchResultsBody = document.getElementById('matchResultsBody');
             const medalWinnersBody = document.getElementById('medal-winners-body');
 
-            // --- Main Modal Click Handler ---
             document.body.addEventListener('click', function(e) {
                 if (e.target.closest('.check-event')) {
                     e.preventDefault(); 
@@ -1019,53 +953,33 @@ $conn->close();
                     const categoryType = button.dataset.categoryType || 'medal'; 
                     const status = button.dataset.status;
 
-                    currentEventIdForRefresh = eventId; // Store for auto-refresh
+                    currentEventIdForRefresh = eventId;
 
-                    // --- 1. Show/Hide Adaptive Tabs ---
+                    // 1. Show/Hide Tabs based on Type (Actually simplified to just Details/Medals now)
                     const allTabs = viewEventModalElement.querySelectorAll('.nav-item[data-tab-type]');
                     allTabs.forEach(tabLi => {
                         tabLi.style.display = (tabLi.dataset.tabType === categoryType) ? 'block' : 'none';
                     });
-                    
-                    const allPanes = viewEventModalElement.querySelectorAll('.tab-pane');
-                    allPanes.forEach(pane => {
-                        if (pane.id === 'tab-winners') pane.classList.remove('p-4'); // podium has its own padding
-                        else pane.classList.add('p-4');
-                        if (pane.dataset.tabType && pane.dataset.tabType !== categoryType) {
-                            pane.classList.remove('show', 'active');
-                        }
-                    });
 
-                    // --- 2. "Smart Tab" Activation Logic ---
-                    let targetTabId = 'details-tab'; // Default
-                    if (status === 'completed' || status === 'completed (pending results)' || status === 'results submitted') {
-                        targetTabId = (categoryType === 'medal') ? 'winners-tab' : 'results-tab';
-                    } else if (status === 'ongoing') {
-                        targetTabId = (categoryType === 'match') ? 'schedule-tab' : 'medals-tab';
-                    } else if (status === 'upcoming') {
-                        targetTabId = (categoryType === 'match') ? 'schedule-tab' : 'details-tab';
+                    // 2. Smart Tab Activation
+                    let targetTabId = 'details-tab';
+                    if (status === 'completed' || status === 'completed (pending results)' || status === 'results submitted' || status === 'results approved') {
+                        targetTabId = 'winners-tab'; // Show Podium for completed events
                     }
                     
-                    const detailsTab = document.getElementById('details-tab');
-                    if (detailsTab) {
-                        new bootstrap.Tab(detailsTab).show();
-                    }
+                    const tabToActivate = document.getElementById(targetTabId);
+                    if (tabToActivate) new bootstrap.Tab(tabToActivate).show();
 
-
-                    // --- 3. Show Loading Indicators ---
-                    modalMedalStandingsBody.innerHTML = '<tr><td colspan="6" class="text-center text-muted py-4">Loading...</td></tr>';
-                    matchScheduleContent.innerHTML = '<tr><td colspan="6" class="text-center text-muted py-4">Loading...</td></tr>';
-                    matchResultsBody.innerHTML = '<tr><td colspan="4" class="text-center text-muted py-4">Loading...</td></tr>';
+                    // 3. Reset Loading States
+                    if(modalMedalStandingsBody) modalMedalStandingsBody.innerHTML = '<tr><td colspan="6" class="text-center text-muted py-4">Loading...</td></tr>';
                     if (medalWinnersBody) medalWinnersBody.innerHTML = '<div class="text-center p-5 text-muted">Loading...</div>';
                     
-                    // --- 4. Run Loaders ---
+                    // 4. Load Data
                     loadAndRender(); 
                     if (autoRefreshInterval) clearInterval(autoRefreshInterval);
-                    autoRefreshInterval = setInterval(loadAndRender, 15000); // Auto-refresh modal data
+                    autoRefreshInterval = setInterval(loadAndRender, 15000); 
 
-                    if (categoryType === 'medal') {
-                        fetchMedalWinnerResults(eventId); // This is a separate call
-                    }
+                    fetchMedalWinnerResults(eventId); 
                 }
             });
             
@@ -1075,11 +989,9 @@ $conn->close();
                 currentEventIdForRefresh = null;
             });
             
-            // --- ### FIX: ALL HELPER FUNCTIONS (RESTORED + UPDATED) ### ---
-
-           /**
-             * Main data loader for the modal.
-             * This function is now correct and fetches/parses the nested JSON.
+            /**
+             * LOAD AND RENDER FUNCTION
+             * Fetches data from API and populates the modal fields.
              */
             function loadAndRender() {
                 if (!currentEventIdForRefresh) return;
@@ -1090,10 +1002,10 @@ $conn->close();
                     .then(response => { 
                         if (!response.success) throw new Error(response.message || 'Failed to load details');
                         
-                        const data = response.data; // Access the nested 'data' object
+                        const data = response.data; 
 
                         // 1. Populate Details Tab
-                        modalEventNameSpan.textContent = data.event_details.event_name || 'Event Details';
+                        document.getElementById('modalEventName').textContent = data.event_details.event_name || 'Event Details';
                         document.getElementById('viewGameName').textContent = data.event_details.sport_name || 'N/A';
                         document.getElementById('viewEventName').textContent = data.event_details.category || 'N/A';
                         document.getElementById('viewCategory').textContent = data.event_details.event_name || 'N/A';
@@ -1109,89 +1021,68 @@ $conn->close();
                         // 2. Populate Standings Tab
                         populateMedalStandings(data.medal_standings);
 
-                        // 3. Populate Schedule/Results Tabs
-                        renderScheduleTable(data.raw_match_schedule.filter(m => m.status === 'Upcoming' || m.status === 'Ongoing'));
-                        populateMatchResults(data.raw_match_schedule.filter(m => m.status === 'Completed'));
+                        // 3. Handle Podium Photo
+                        const photoContainer = document.getElementById('podiumPhotoContainer');
+                        const photoImg = document.getElementById('podiumPhotoImg');
+                        
+                        if (data.event_details.podium_photo_url) {
+                            // Clean path (remove '../' if present)
+                            let cleanUrl = data.event_details.podium_photo_url.replace('../', '');
+                            photoImg.src = cleanUrl;
+                            photoContainer.classList.remove('d-none');
+                        } else {
+                            photoContainer.classList.add('d-none');
+                            photoImg.src = '';
+                        }
+
                     })
                     .catch(error => {
                         console.error('Error loading event details:', error);
-                        modalMedalStandingsBody.innerHTML = `<tr><td colspan="6" class="text-center text-danger py-4">Error loading data.</td></tr>`;
-                        matchScheduleContent.innerHTML = `<tr><td colspan="6" class="text-center text-danger py-4">Error loading data.</td></tr>`;
-                        matchResultsBody.innerHTML = `<tr><td colspan="4" class="text-center text-danger py-4">Error loading data.</td></tr>`;
+                        const standingsBody = document.getElementById('modalMedalStandingsBody');
+                        if (standingsBody) standingsBody.innerHTML = `<tr><td colspan="6" class="text-center text-danger py-4">Error loading data.</td></tr>`;
                         
-                        document.getElementById('viewGameName').textContent = 'Error';
-                        document.getElementById('viewEventName').textContent = 'Error';
-                        document.getElementById('viewCategory').textContent = 'Error';
-                        document.getElementById('viewEventDate').textContent = 'Error';
-                        document.getElementById('viewEventTime').textContent = 'Error';
-                        document.getElementById('viewEventVenue').textContent = 'Error';
+                        ['viewGameName', 'viewEventName', 'viewCategory'].forEach(id => {
+                            const el = document.getElementById(id);
+                            if(el) el.textContent = 'Error';
+                        });
                     });
             }
 
-            // ### FIX: UPDATED getEventCardStatusClassJS FUNCTION ###
+            // Helper: Status Class
             function getEventCardStatusClassJS(status) {
-                if (!status) return 'bg-secondary'; // Default grey
-
+                if (!status) return 'bg-secondary'; 
                 const lowerStatus = status.toLowerCase();
                 
-                switch (lowerStatus) {
-                    case 'ongoing': 
-                        return 'bg-success'; // Green - Active now
-
-                    case 'completed':
-                    case 'results approved': // 'Results Approved' is handled by PHP, but good to keep
-                        return 'bg-primary'; // Blue - Finished
-
-                    case 'postponed':
-                    case 'completed (pending results)': // Correctly handles the DB status
-                    case 'results submitted':
-                        return 'bg-warning text-dark'; // Yellow - Wait/Caution
-
-                    case 'upcoming': 
-                        return 'bg-info'; // Light Blue - Informational
-                    
-                    case 'cancelled':
-                    case 'results rejected':
-                        return 'bg-danger'; // Red - Stopped/Error
-                        
-                    case 'draft':
-                        return 'bg-light text-dark'; // Light Grey - Not published
-                        
-                    default:
-                        return 'bg-secondary'; // Default grey for any other status
-                }
+                if (lowerStatus === 'ongoing') return 'bg-success';
+                if (lowerStatus === 'completed' || lowerStatus === 'results approved') return 'bg-primary';
+                if (lowerStatus.includes('pending') || lowerStatus.includes('submitted')) return 'bg-warning text-dark';
+                if (lowerStatus === 'upcoming') return 'bg-info';
+                if (lowerStatus === 'cancelled' || lowerStatus === 'results rejected') return 'bg-danger';
+                
+                return 'bg-secondary';
             }
 
-            // ### NEW: ADDED formatStatusTextForCard FUNCTION ###
-            /**
-             * Formats the status text for display on the event card.
-             * Shortens long statuses like "Completed (pending results)" to "Pending Results".
-             */
+            // Helper: Status Text
             function formatStatusTextForCard(status) {
                 if (!status) return 'Unknown';
-                
                 const lowerStatus = status.toLowerCase();
-                
-                switch (lowerStatus) {
-                    case 'completed (pending results)':
-                    case 'results submitted':
-                        return 'Pending Results';
-                    
-                    case 'results approved':
-                        return 'Completed'; 
-                        
-                    default:
-                        return status; // Return the original status text
-                }
+                if (lowerStatus.includes('pending') || lowerStatus.includes('submitted')) return 'Pending Results';
+                if (lowerStatus === 'results approved') return 'Completed'; 
+                return status; 
             }
             
+            // Helper: Populate Medal Table
             function populateMedalStandings(standingsData) {
+                const container = document.getElementById('modalMedalStandingsBody');
+                if (!container) return;
+
                 let html = '';
                 if (!standingsData || standingsData.length === 0) {
                     html = `<tr><td colspan="6" class="text-center text-muted py-4">No approved medal standings for this event.</td></tr>`;
                 } else {
                     standingsData.sort((a, b) => {
                         if (a.rank && b.rank) return a.rank - b.rank;
+                        // Sorting logic: Gold > Silver > Bronze
                         const ag = parseInt(a.gold) || 0, bg = parseInt(b.gold) || 0;
                         if (bg !== ag) return bg - ag;
                         const as = parseInt(a.silver) || 0, bs = parseInt(b.silver) || 0;
@@ -1209,58 +1100,13 @@ $conn->close();
                                 <td class="text-center">${escapeHtml(String(standing.silver))}</td>
                                 <td class="text-center">${escapeHtml(String(standing.bronze))}</td>
                                 <td class="text-center fw-bold">${escapeHtml(String(standing.total))}</td>
-                            </tr>
-                        `;
+                            </tr>`;
                     });
                 }
-                modalMedalStandingsBody.innerHTML = html;
+                container.innerHTML = html;
             }
             
-            function renderScheduleTable(matches) {
-                if (!matches || matches.length === 0) {
-                    matchScheduleContent.innerHTML = `<tr><td colspan="6" class="text-center text-muted py-4">No upcoming or ongoing matches.</td></tr>`;
-                    return;
-                }
-                matches.sort((a,b) => new Date(a.match_date + 'T' + a.match_time) - new Date(b.match_date + 'T' + b.match_time));
-                
-                let rows = '';
-                matches.forEach((m, idx) => {
-                    const statusClass = m.status === 'Ongoing' ? 'bg-success' : (m.status === 'Upcoming' ? 'bg-info' : 'bg-secondary');
-                    rows += `
-                        <tr>
-                            <td>${idx + 1}</td>
-                            <td><i class="fas fa-calendar-alt me-1"></i>${formatDate(m.match_date)}</td>
-                            <td><i class="fas fa-clock me-1"></i>${formatTime(m.match_time)}</td>
-                            <td>
-                                <div class="fw-bold">${escapeHtml(m.team1_name)} <span class="text-muted">vs</span> ${escapeHtml(m.team2_name)}</div>
-                            </td>
-                            <td><i class="fas fa-map-marker-alt me-1"></i>${escapeHtml(m.venue)}</td>
-                            <td class="text-center"><span class="badge ${statusClass}">${escapeHtml(m.status)}</span></td>
-                        </tr>`;
-                });
-                matchScheduleContent.innerHTML = rows;
-            }
-
-            function populateMatchResults(completedMatches) {
-                let html = '';
-                if (!completedMatches || completedMatches.length === 0) {
-                    html = `<tr><td colspan="4" class="text-center text-muted py-4">No completed match results for this event yet.</td></tr>`;
-                } else {
-                    completedMatches.sort((a,b) => new Date(b.time_finished || b.match_date) - new Date(a.time_finished || a.match_date));
-                    completedMatches.forEach(match => {
-                        html += `
-                            <tr>
-                                <td>${escapeHtml(match.sport_category || 'N/A')}</td>
-                                <td>${escapeHtml(match.team1_name)} vs ${escapeHtml(match.team2_name)}</td>
-                                <td class="text-center fw-bold">${escapeHtml(String(match.score1 || '0'))} - ${escapeHtml(String(match.score2 || '0'))}</td>
-                                <td>${escapeHtml(match.winner_name || 'N/A')}</td>
-                            </tr>
-                        `;
-                    });
-                }
-                matchResultsBody.innerHTML = html;
-            }
-            
+            // Helper: Fetch Podium Data (Winners Tab)
             function fetchMedalWinnerResults(categoryId) {
                 if (!medalWinnersBody) return;
                 medalWinnersBody.innerHTML = `<div class="text-center p-5 text-muted"><div class="spinner-border spinner-border-sm" role="status"></div><span class="ms-2">Loading Winners...</span></div>`;
@@ -1270,13 +1116,12 @@ $conn->close();
                     .then(result => {
                         if (result.success) {
                             const data = result.data;
-                            let html = '';
                             if (!data.gold && !data.silver && !data.bronze) {
-                                html = '<div class="text-center p-5 text-muted">No medal winners have been submitted yet.</div>';
-                                medalWinnersBody.innerHTML = html;
+                                medalWinnersBody.innerHTML = '<div class="text-center p-5 text-muted">No medal winners have been submitted yet.</div>';
                                 return;
                             }
-                            html = '<div class="podium-container">';
+                            // Render Podium
+                            let html = '<div class="podium-container">';
                             html += `<div class="podium-wrapper silver"><div class="podium-winner-name">${escapeHtml(data.silver || 'N/A')}</div><div class="podium-step silver"><i class="fas fa-medal podium-medal"></i><div class="podium-medal-count">${escapeHtml(data.silver_count || '0')}</div></div></div>`;
                             html += `<div class="podium-wrapper gold"><div class="podium-winner-name">${escapeHtml(data.gold || 'N/A')}</div><div class="podium-step gold"><i class="fas fa-medal podium-medal"></i><div class="podium-medal-count">${escapeHtml(data.gold_count || '0')}</div></div></div>`;
                             html += `<div class="podium-wrapper bronze"><div class="podium-winner-name">${escapeHtml(data.bronze || 'N/A')}</div><div class="podium-step bronze"><i class="fas fa-medal podium-medal"></i><div class="podium-medal-count">${escapeHtml(data.bronze_count || '0')}</div></div></div>`;
@@ -1297,12 +1142,10 @@ $conn->close();
                 try {
                     const options = { year: 'numeric', month: 'long', day: 'numeric' };
                     const date = new Date(dateString);
-                    if (isNaN(date.getTime())) return dateString; // return original if invalid
+                    if (isNaN(date.getTime())) return dateString; 
                     date.setTime(date.getTime() + date.getTimezoneOffset() * 60000); 
                     return date.toLocaleDateString('en-US', options);
-                } catch (e) {
-                    return dateString; // return original on error
-                }
+                } catch (e) { return dateString; }
             }
             
             function formatTime(timeString) {
@@ -1311,11 +1154,9 @@ $conn->close();
                     const [hours, minutes] = timeString.split(':');
                     const date = new Date();
                     date.setHours(hours, minutes, 0);
-                    if (isNaN(date.getTime())) return timeString; // return original if invalid
+                    if (isNaN(date.getTime())) return timeString; 
                     return date.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true });
-                } catch (e) {
-                    return timeString; // return original on error
-                }
+                } catch (e) { return timeString; }
             }
 
             function escapeHtml(text) {
@@ -1325,7 +1166,7 @@ $conn->close();
                 return strText.replace(/[&<>"']/g, (m) => map[m]);
             }
             
-        }); // End of DOMContentLoaded
+        }); 
     </script>
 </body>
 </html>

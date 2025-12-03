@@ -1,6 +1,6 @@
 <?php
 session_start();
-require_once 'db_connect.php'; // Assumes this file is in the root directory
+require_once 'config.php'; // Assumes this file is in the root directory
 
 // 1. SECURITY & ACCESS CONTROL
 // STRICT: Only 'Sports Director' is allowed (Acting as Super Admin)
@@ -75,7 +75,11 @@ if (isset($_POST['add_user'])) {
         } else {
             $stmt->close();
             // Insert user
-            $stmt = $conn->prepare("INSERT INTO users (full_name, username, email, password, role, status) VALUES (?, ?, ?, ?, ?, ?)");
+            // UPDATED: Explicitly set 'is_approved' to 1 so they don't appear in pending requests
+            $stmt = $conn->prepare("INSERT INTO users (full_name, username, email, password, role, status, is_approved) VALUES (?, ?, ?, ?, ?, ?, 1)");
+            
+            // Note: We don't need to bind '1' because we hardcoded it in the SQL above.
+            // So the bind_param stays the same (6 strings).
             $stmt->bind_param("ssssss", $full_name, $username_email, $username_email, $hashed_password, $role, $status);
             
             if ($stmt->execute()) {
@@ -172,7 +176,8 @@ if (isset($_SESSION['message'])) {
 }
 
 // Sidebar Badges
-$pending_requests_count = $conn->query("SELECT COUNT(*) FROM account_requests WHERE status = 'pending'")->fetch_row()[0] ?? 0;
+// Count pending requests for sidebar badge (Fixed: Counts unapproved users)
+$pending_requests_count = $conn->query("SELECT COUNT(*) FROM users WHERE is_approved = 0")->fetch_row()[0] ?? 0;
 $pending_results_count = $conn->query("SELECT COUNT(*) FROM categories WHERE status='Results Submitted'")->fetch_row()[0] ?? 0;
 ?>
 
@@ -329,11 +334,6 @@ $pending_results_count = $conn->query("SELECT COUNT(*) FROM categories WHERE sta
             <li class="nav-item">
                 <a class="nav-link" href="sd/events.php">
                     <i class="fas fa-calendar-alt me-2"></i> <span>Manage Events (L1-L3)</span>
-                </a>
-            </li>
-            <li class="nav-item">
-                <a class="nav-link" href="sd/Manage_Matches.php">
-                    <i class="fas fa-trophy me-2"></i> <span>Manage Matches</span>
                 </a>
             </li>
 

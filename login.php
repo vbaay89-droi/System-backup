@@ -672,10 +672,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         <div class="col-lg-7 brand-section">
           <div class="logo-container">
             <img src="imageslogo.png" alt="PIT Logo" class="main-logo">
-            <img src="images/siglakas_pfpNOBG.png" alt="Siglakas Logo" class="main-logo">
+            <img src="images/COte.png" alt="Siglakas Logo" class="main-logo">
           </div>
           <h1 class="brand-title">
-            SmartScore: A Web-Based Scoring and Medal Tally Platform for Siglakas Events
+            SmartScore: A Web-Based Medal Tally Platform for Siglakas Events
           </h1>
         </div>
 

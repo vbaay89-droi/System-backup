@@ -1,8 +1,7 @@
 <?php
 session_start();
 require_once 'config.php'; // Your DB connection
-// This file defines the log_activity() function
-require_once 'db_connect.php';
+
 // This file now defines render_event_list() and helper functions
 require_once 'my_events_view.php'; 
 
@@ -65,7 +64,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
                 if (empty($category_id)) {
                     // --- THIS IS AN ADD OPERATION ---
-                    $category_type = $_POST['category_type']; 
+                    $category_type = 'medal';
                     
                     if (empty($category_name) || empty($status) || empty($event_id) || empty($category_type)) {
                         throw new Exception("All fields are required.");
@@ -246,32 +245,8 @@ try {
         ge.event_name,
         ge.event_structure, /* <--- Now this will work! */
         c.category_id, c.category_name, 
-        
-        -- NEW DYNAMIC STATUS LOGIC --
-        CASE
-            -- 1. Handle final states first (these override everything)
-            WHEN c.status IN ('Results Submitted', 'Results Rejected', 'Cancelled', 'Postponed') THEN c.status
-            WHEN c.status = 'Results Approved' THEN 'Completed' 
-            
-            -- 2. Handle 'Medal' type (it uses its own status)
-            WHEN c.category_type = 'medal' THEN c.status -- This will be 'Upcoming', 'Ongoing', 'Completed (Pending Results)'
-            
-            -- 3. Handle 'Match' type dynamic status
-            WHEN c.category_type = 'Match' THEN
-                (CASE
-                    -- 3a. If any child match is 'Ongoing' OR 'Completed', the whole event is 'Ongoing'
-                    WHEN EXISTS (
-                        SELECT 1 FROM matches m 
-                        WHERE m.category_id = c.category_id AND m.status IN ('Ongoing', 'Completed')
-                    ) THEN 'Ongoing'
-                    
-                    -- 3b. Otherwise (all children are 'Upcoming' or no children exist), it's 'Upcoming'
-                    ELSE 'Upcoming'
-                END)
-
-            -- 4. Fallback in case status is NULL or category_type is NULL
-            ELSE c.status 
-        END AS status,
+        c.status,
+    
         -- END NEW LOGIC --
         
         c.category_type,
@@ -733,28 +708,33 @@ $status_options = [
                 </div>
                 
                 <div class="help-content" id="helpContent" style="display: none;">
-                    <p class="mb-3">The <strong>Actions</strong> column is smart. It adapts based on the event type (Medal vs. Match) and its current status.</p>
+                    <p class="mb-3">The <strong>Actions</strong> column guides you through the official medal tallying process.</p>
                     <ul class="list-unstyled">
+                        
                         <li class="mb-2">
-                            <i class="fas fa-medal text-warning me-2"></i><strong>Medal Events (e.g., Athletics):</strong>
-                            Follow the 3-step button flow: <span class="badge bg-success">Start</span> ➔ <span class="badge bg-warning text-dark">Complete</span> ➔ <span class="badge bg-primary">Submit</span>.
+                            <i class="fas fa-magic text-primary me-2"></i><strong>1. Initialize:</strong> 
+                            For new events, click the <span class="badge bg-primary">Initialize Results Form</span> button to prepare the tally sheet.
                         </li>
+
                         <li class="mb-2">
-                            <i class="fas fa-basketball-ball text-info me-2"></i><strong>Match Events (e.g., Basketball):</strong>
-                            Click the <span class="badge bg-primary">Manage</span> button to open the Match Scheduler, where you can update brackets and scores.
+                            <i class="fas fa-play-circle text-success me-2"></i><strong>2. Start Event:</strong>
+                            Click <span class="badge bg-success">Start Tallying</span> when the event begins. This marks the status as 'Ongoing'.
                         </li>
+
                         <li class="mb-2">
-                            <i class="fas fa-layer-group text-secondary me-2"></i><strong>Single-Category Events:</strong> 
-                            For events with no sub-categories, the 'Category' column is hidden. 
-                            <br><small class="text-danger ms-4"><i class="fas fa-exclamation-circle me-1"></i> <strong>Note:</strong> You cannot delete this event type here. Contact the Administrator if the entire event needs removal.</small>
+                            <i class="fas fa-pen text-warning me-2"></i><strong>3. Enter Results:</strong>
+                            Click <span class="badge bg-warning text-dark">Enter Results</span> to select the Gold, Silver, and Bronze winners.
+                            <br><small class="text-danger ms-4"><i class="fas fa-camera me-1"></i> <strong>Requirement:</strong> You must upload a photo of the signed <strong>Official Tally Sheet</strong> as evidence.</small>
                         </li>
+                        
                         <li class="mb-2">
-                            <i class="fas fa-edit text-secondary me-2"></i><strong>Edit (Pencil):</strong> 
-                            Update details like Venue or Date. Disabled once an event is <em>Ongoing</em> or <em>Completed</em>.
+                            <i class="fas fa-check-double text-info me-2"></i><strong>4. Submit & Verify:</strong> 
+                            Once drafted, click <strong>Submit for Approval</strong> inside the form. The Sports Director will verify your uploaded evidence against the winners you selected.
                         </li>
-                        <li>
-                            <i class="fas fa-trash-alt text-danger me-2"></i><strong>Delete (Trash):</strong> 
-                            Only available for <strong>Upcoming</strong> sub-categories. Disabled for single-category events to prevent accidental data loss.
+
+                        <li class="mb-2">
+                            <i class="fas fa-layer-group text-secondary me-2"></i><strong>Divisions:</strong> 
+                            Events default to a "Single Division". If you need separate categories (e.g., Men/Women), use the <strong>+ Add Category</strong> button.
                         </li>
                     </ul>
                 </div>
@@ -824,15 +804,7 @@ $status_options = [
                             <label for="modal_venue" class="form-label">Venue</label>
                             <input type="text" class="form-control" id="modal_venue" name="venue" placeholder="e.g., PIT Main Gymnasium">
                         </div>
-                        <div class="mb-3">
-                            <label for="modal_category_type" class="form-label">Event Type</label>
-                            <select class="form-select" id="modal_category_type" name="category_type" required>
-                                <option value="" disabled>Select a type...</option>
-                                <option value="medal">Medal (Judged finals, e.g., Athletics, Swim, Quiz)</option>
-                                <option value="match">Match (Team vs. Team, e.g., Basketball, Volleyball)</option>
-                            </select>
-                            <small class="form-text text-muted">This choice is permanent once set.</small>
-                        </div>
+                        
 
                         <div class="mb-3">
                             <label for="status" class="form-label">Status</label>
@@ -1161,8 +1133,12 @@ $status_options = [
 
                     let status = button.getAttribute('data-status');
                     categoryStatusSelect.value = status; 
-                    categoryTypeSelect.value = button.getAttribute('data-category-type');
-                    categoryTypeSelect.disabled = true; 
+                    
+                    // FIXED: Just set the value. No need to disable a hidden input.
+                    if (categoryTypeSelect) {
+                        categoryTypeSelect.value = button.getAttribute('data-category-type') || 'medal';
+                    }
+                    
                     eventDateInput.value = button.getAttribute('data-event-date');
                     eventTimeInput.value = button.getAttribute('data-event-time');
                     venueInput.value = button.getAttribute('data-venue');
