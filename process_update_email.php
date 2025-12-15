@@ -1,6 +1,6 @@
 <?php
 session_start();
-require_once 'db_connect.php'; // Include your database connection
+require_once 'config.php'; // Include your database connection
 
 // --- LOAD PHPMailer ---
 require __DIR__ . '/PHPMailer-master/src/Exception.php';

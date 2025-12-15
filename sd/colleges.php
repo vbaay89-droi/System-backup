@@ -4,7 +4,6 @@ session_start();
 require_once '../config.php'; 
 
 // 1. SECURITY & ACCESS CONTROL
-// STRICT: Only 'Sports Director' is allowed
 if (!isset($_SESSION['role']) || $_SESSION['role'] !== 'Sports Director') {
     header('Location: ../login.php'); 
     exit();
@@ -17,7 +16,7 @@ if (!isset($_SESSION['user_id'])) {
 
 $current_user_id = $_SESSION['user_id'];
 
-// --- START: NEW NAME FETCHING LOGIC ---
+// --- FETCH NAME LOGIC ---
 $stmt_name = $conn->prepare("SELECT full_name, username FROM users WHERE id = ?");
 $stmt_name->bind_param("i", $current_user_id);
 $stmt_name->execute();
@@ -25,51 +24,70 @@ $result_name = $stmt_name->get_result();
 $user_data = $result_name->fetch_assoc();
 $stmt_name->close();
 
-// Determine Name: Use Full Name if available, otherwise Username (Email)
-if (!empty($user_data['full_name'])) {
-    $name = $user_data['full_name'];
-} else {
-    $name = $user_data['username'] ?? 'Sports Director';
-}
-// --- END: NEW NAME FETCHING LOGIC ---
+$name = !empty($user_data['full_name']) ? $user_data['full_name'] : ($user_data['username'] ?? 'Sports Director');
 $current_page = basename($_SERVER['PHP_SELF']);
 
-// --- Page Variables ---
-$upload_dir = '../uploads/colleges/'; 
+// --- FILE UPLOAD CONFIGURATION (FIXED) ---
+// Use absolute path for reliable server storage
+$base_upload_path = dirname(__DIR__) . '/uploads/colleges/'; 
 $default_logo = 'images/default_avatar.png';
 
-// Helper function for handling file uploads
-function handle_file_upload($file_key, $upload_dir, $current_db_path = null) {
-    $default_avatar = 'images/default_avatar.png';
+// Updated Helper function with ERROR HANDLING
+function handle_file_upload($file_key, $target_dir, $current_db_path = null) {
+    global $default_logo; 
     
-    if (isset($_FILES[$file_key]) && $_FILES[$file_key]['error'] === UPLOAD_ERR_OK) {
-        if (!is_dir($upload_dir)) {
-            mkdir($upload_dir, 0777, true);
+    // 1. Check if file is selected (If no file, return current/default logic)
+    if (!isset($_FILES[$file_key]) || $_FILES[$file_key]['error'] == UPLOAD_ERR_NO_FILE) {
+        return $current_db_path ?? $default_logo; 
+    }
+
+    // 2. Check for actual errors (Stop execution if error found)
+    if ($_FILES[$file_key]['error'] !== UPLOAD_ERR_OK) {
+        $_SESSION['message'] = "Upload Failed: Error Code " . $_FILES[$file_key]['error'];
+        $_SESSION['message_type'] = "danger";
+        return false; // Return FALSE to signal failure
+    }
+
+    // 3. Create directory if missing
+    if (!is_dir($target_dir)) {
+        if (!mkdir($target_dir, 0777, true)) {
+            $_SESSION['message'] = "Error: Failed to create upload folder.";
+            $_SESSION['message_type'] = "danger";
+            return false;
         }
+    }
 
-        $file_tmp_path = $_FILES[$file_key]['tmp_name'];
-        $file_name = $_FILES[$file_key]['name'];
-        $file_ext = strtolower(pathinfo($file_name, PATHINFO_EXTENSION));
-        $allowed_ext = ['jpg', 'jpeg', 'png', 'gif'];
+    $file_tmp_path = $_FILES[$file_key]['tmp_name'];
+    $file_name = $_FILES[$file_key]['name'];
+    $file_ext = strtolower(pathinfo($file_name, PATHINFO_EXTENSION));
+    $allowed_ext = ['jpg', 'jpeg', 'png', 'gif', 'webp'];
 
-        if (in_array($file_ext, $allowed_ext)) {
-            $new_file_name = uniqid('', true) . '.' . $file_ext;
-            $target_server_path = $upload_dir . $new_file_name;
+    // 4. Validate Extension
+    if (!in_array($file_ext, $allowed_ext)) {
+        $_SESSION['message'] = "Error: Invalid file type. Only JPG, PNG, GIF allowed.";
+        $_SESSION['message_type'] = "danger";
+        return false;
+    }
 
-            if (move_uploaded_file($file_tmp_path, $target_server_path)) {
-                // Remove old file if it exists and isn't the default
-                if ($current_db_path && $current_db_path !== $default_avatar && file_exists('../' . $current_db_path)) {
-                    @unlink('../' . $current_db_path); 
-                }
-                return rtrim(str_replace('../', '', $upload_dir), '/') . '/' . $new_file_name;
+    // 5. Generate Name & Move
+    $new_file_name = uniqid('team_', true) . '.' . $file_ext;
+    $target_server_path = $target_dir . $new_file_name;
+
+    if (move_uploaded_file($file_tmp_path, $target_server_path)) {
+        // Delete old file if exists
+        if ($current_db_path && $current_db_path !== $default_logo) {
+            $old_file_absolute = dirname(__DIR__) . '/' . $current_db_path;
+            if (file_exists($old_file_absolute)) {
+                @unlink($old_file_absolute); 
             }
         }
+        // Return relative path for DB
+        return 'uploads/colleges/' . $new_file_name;
+    } else {
+        $_SESSION['message'] = "Error: Permission denied. Cannot save file.";
+        $_SESSION['message_type'] = "danger";
+        return false;
     }
-    
-    if (empty($current_db_path)) {
-        return $default_avatar;
-    }
-    return $current_db_path;
 }
 
 // --- CRUD LOGIC ---
@@ -80,35 +98,37 @@ if (isset($_POST['add_college'])) {
     $college_code = $_POST['college_code'];
     $team_manager = $_POST['team_manager']; 
     $slogan       = $_POST['slogan'];       
-    $unit_color   = $_POST['unit_color'] ?? '#cccccc'; // Capture Color
+    $unit_color   = $_POST['unit_color'] ?? '#cccccc';
 
-    $logo_path = handle_file_upload('logo_url', $upload_dir, $default_logo);
+    // Handle Upload
+    $logo_path = handle_file_upload('logo_url', $base_upload_path, $default_logo);
+
+    // CHECK FOR FAILURE
+    if ($logo_path === false) {
+        header("Location: colleges.php");
+        exit();
+    }
 
     $stmt = $conn->prepare("INSERT INTO colleges (college_name, college_code, team_manager, slogan, logo_url, unit_color) VALUES (?, ?, ?, ?, ?, ?)");
     $stmt->bind_param("ssssss", $college_name, $college_code, $team_manager, $slogan, $logo_path, $unit_color);
     
     if($stmt->execute()) {
         $new_college_id = (int)$conn->insert_id;
-        $context = ['team_name' => $college_name, 'team_code' => $college_code];
         
-        // Log activity
-        $log_stmt = $conn->prepare("INSERT INTO system_logs (actor_user_id, action_type, related_id, related_table, log_context) VALUES (?, 'CREATED_COLLEGE', ?, 'colleges', ?)");
-        $json_context = json_encode($context);
-        $log_stmt->bind_param("iis", $current_user_id, $new_college_id, $json_context);
-        $log_stmt->execute();
-        $log_stmt->close();
+        // Log activity (Simplified for clarity)
+        $context = json_encode(['team_name' => $college_name]);
+        $conn->query("INSERT INTO system_logs (actor_user_id, action_type, related_id, related_table, log_context) VALUES ($current_user_id, 'CREATED_COLLEGE', $new_college_id, 'colleges', '$context')");
         
         $_SESSION['message'] = "Team created successfully.";
         $_SESSION['message_type'] = "success";
     } else {
-        $_SESSION['message'] = "Error: " . $stmt->error;
+        $_SESSION['message'] = "Database Error: " . $stmt->error;
         $_SESSION['message_type'] = "danger";
     }
     $stmt->close();
     header("Location: colleges.php");
     exit();
 }
-
 
 // 2. EDIT TEAM
 if (isset($_POST['edit_college'])) {
@@ -117,28 +137,30 @@ if (isset($_POST['edit_college'])) {
     $college_code = $_POST['edit_college_code'];
     $team_manager = $_POST['edit_team_manager'];
     $slogan       = $_POST['edit_slogan'];
-    $unit_color   = $_POST['edit_unit_color']; // Capture Color Update
-
+    $unit_color   = $_POST['edit_unit_color'];
     $current_logo = $_POST['current_logo_url'];
-    $logo_path = handle_file_upload('edit_logo_url', $upload_dir, $current_logo);
+
+    // Handle Upload
+    $logo_path = handle_file_upload('edit_logo_url', $base_upload_path, $current_logo);
+
+    // CHECK FOR FAILURE (Critical Fix)
+    if ($logo_path === false) {
+        header("Location: colleges.php");
+        exit(); // Stop script so error message is shown
+    }
 
     $stmt = $conn->prepare("UPDATE colleges SET college_name = ?, college_code = ?, team_manager = ?, slogan = ?, logo_url = ?, unit_color = ? WHERE college_id = ?");
     $stmt->bind_param("ssssssi", $college_name, $college_code, $team_manager, $slogan, $logo_path, $unit_color, $college_id);
      
     if($stmt->execute()) {
-        $context = ['college_name' => $college_name, 'team_code' => $college_code];
-        
         // Log activity
-        $log_stmt = $conn->prepare("INSERT INTO system_logs (actor_user_id, action_type, related_id, related_table, log_context) VALUES (?, 'UPDATED_COLLEGE', ?, 'colleges', ?)");
-        $json_context = json_encode($context);
-        $log_stmt->bind_param("iis", $current_user_id, $college_id, $json_context);
-        $log_stmt->execute();
-        $log_stmt->close();
+        $context = json_encode(['college_name' => $college_name]);
+        $conn->query("INSERT INTO system_logs (actor_user_id, action_type, related_id, related_table, log_context) VALUES ($current_user_id, 'UPDATED_COLLEGE', $college_id, 'colleges', '$context')");
         
         $_SESSION['message'] = "Team updated successfully.";
         $_SESSION['message_type'] = "success";
     } else {
-        $_SESSION['message'] = "Error: " . $stmt->error;
+        $_SESSION['message'] = "Database Error: " . $stmt->error;
         $_SESSION['message_type'] = "danger";
     }
     $stmt->close();
@@ -151,47 +173,32 @@ if (isset($_POST['delete_college'])) {
     $college_id = (int)$_POST['delete_college_id'];
     
     // Check dependencies
-    $stmt_check = $conn->prepare("SELECT COUNT(*) FROM results WHERE winner_gold_college_id = ? OR winner_silver_college_id = ? OR winner_bronze_college_id = ?");
-    $stmt_check->bind_param("iii", $college_id, $college_id, $college_id);
-    $stmt_check->execute();
-    $count = $stmt_check->get_result()->fetch_row()[0];
-    $stmt_check->close();
+    $check = $conn->query("SELECT COUNT(*) FROM results WHERE winner_gold_college_id = $college_id OR winner_silver_college_id = $college_id OR winner_bronze_college_id = $college_id");
+    $count = $check->fetch_row()[0];
     
     if ($count > 0) {
-        $_SESSION['message'] = "Error: Cannot delete Team. It is linked to {$count} approved result(s).";
+        $_SESSION['message'] = "Cannot delete: Team is linked to $count results.";
         $_SESSION['message_type'] = "danger";
     } else {
-        // Get data for logging
-        $stmt_get_data = $conn->prepare("SELECT college_name, logo_url FROM colleges WHERE college_id = ?");
-        $stmt_get_data->bind_param("i", $college_id);
-        $stmt_get_data->execute();
-        $college_data = $stmt_get_data->get_result()->fetch_assoc();
-        $stmt_get_data->close();
-        $deleted_team_name = $college_data['college_name'] ?? 'Unknown';
+        // Get existing logo to delete file
+        $res = $conn->query("SELECT logo_url FROM colleges WHERE college_id = $college_id");
+        $row = $res->fetch_assoc();
 
-        // Delete
         $stmt = $conn->prepare("DELETE FROM colleges WHERE college_id = ?");
         $stmt->bind_param("i", $college_id);
         
         if($stmt->execute()) {
-            $context = ['deleted_college_name' => $deleted_team_name];
+            // Delete file from server
+            if ($row && $row['logo_url'] && $row['logo_url'] !== $default_logo) {
+                $file = dirname(__DIR__) . '/' . $row['logo_url'];
+                if (file_exists($file)) @unlink($file);
+            }
             
-            // Log activity
-            $log_stmt = $conn->prepare("INSERT INTO system_logs (actor_user_id, action_type, related_id, related_table, log_context) VALUES (?, 'DELETED_COLLEGE', ?, 'colleges', ?)");
-            $json_context = json_encode($context);
-            $log_stmt->bind_param("iis", $current_user_id, $college_id, $json_context);
-            $log_stmt->execute();
-            $log_stmt->close();
-            
+            // Log
+            $conn->query("INSERT INTO system_logs (actor_user_id, action_type, related_id, related_table) VALUES ($current_user_id, 'DELETED_COLLEGE', $college_id, 'colleges')");
+
             $_SESSION['message'] = "Team deleted successfully.";
             $_SESSION['message_type'] = "success";
-
-            // Delete file
-            if ($college_data) {
-                if ($college_data['logo_url'] && $college_data['logo_url'] !== $default_logo && file_exists('../' . $college_data['logo_url'])) {
-                    @unlink('../' . $college_data['logo_url']);
-                }
-            }
         } else {
             $_SESSION['message'] = "Error: " . $stmt->error;
             $_SESSION['message_type'] = "danger";
@@ -219,11 +226,9 @@ if (isset($_SESSION['message'])) {
     unset($_SESSION['message_type']);
 }
 
-// Count pending requests for sidebar badge (To match Dashboard)
-// Count pending requests for sidebar badge (Fixed: Counts unapproved users)
+// Count sidebar badges
 $pending_requests_count = $conn->query("SELECT COUNT(*) FROM users WHERE is_approved = 0")->fetch_row()[0] ?? 0;
 $pending_results_count = $conn->query("SELECT COUNT(*) FROM categories WHERE status='Results Submitted'")->fetch_row()[0] ?? 0;
-
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -290,6 +295,21 @@ $pending_results_count = $conn->query("SELECT COUNT(*) FROM categories WHERE sta
             border: 1px solid rgba(0,0,0,0.1);
             display: inline-block;
         }
+
+        /* --- CUSTOM TEAM LINK STYLE --- */
+.team-name-link {
+    color: #2c3e50; /* Dark text by default (matches your table) */
+    text-decoration: none; /* No underline */
+    font-weight: 700; /* Bold */
+    transition: all 0.2s ease; /* Smooth transition */
+    display: inline-block;
+    cursor: pointer;
+}
+
+.team-name-link:hover {
+    color: var(--accent-color) !important; /* Turns Teal/Green on hover */
+    transform: translateX(5px); /* subtle slide to the right */
+}
     </style>
 </head>
 <body>
@@ -403,6 +423,13 @@ $pending_results_count = $conn->query("SELECT COUNT(*) FROM categories WHERE sta
 
             <h1 class="section-title mb-4">Manage Teams</h1>
 
+            <div class="alert alert-info border-0 shadow-sm d-flex align-items-center" role="alert">
+                <i class="fas fa-info-circle fs-4 me-3"></i>
+                <div>
+                    <strong>Note:</strong> You can click on any <span class="fw-bold text-decoration-underline">Team Name</span> in the list below to view their full profile, roster, and medal history.
+                </div>
+            </div>
+
             <?php if ($message): ?>
             <div class="alert alert-<?php echo $message_type; ?> alert-dismissible fade show" role="alert">
                 <?= htmlspecialchars($message) ?>
@@ -444,8 +471,8 @@ $pending_results_count = $conn->query("SELECT COUNT(*) FROM categories WHERE sta
                                     </td>
                                     <td>
                                         <a href="team_profile.php?team_id=<?= $college['college_id'] ?>" 
-                                           class="text-decoration-none fw-bold text-dark"
-                                           title="View Profile for <?= htmlspecialchars($college['college_name']) ?>">
+                                        class="team-name-link"
+                                        title="View Profile for <?= htmlspecialchars($college['college_name']) ?>">
                                             <?= htmlspecialchars($college['college_name']) ?>
                                         </a>
                                     </td>

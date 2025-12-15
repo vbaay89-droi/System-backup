@@ -11,13 +11,12 @@ switch ($action) {
     
     // --- ACTION: GET STATS FOR THE DASHBOARD (PRIVATE) ---
     case 'get_dashboard_stats':
-        // ### SECURITY CHECK MOVED INSIDE ###
-        // This action is for the logged-in Event Manager
+        // Security Check
         if (!isset($_SESSION['logged_in']) || $_SESSION['logged_in'] !== true || !isset($_SESSION['role']) || $_SESSION['role'] !== 'Event Manager') {
             echo json_encode(['success' => false, 'message' => 'Authentication required.']);
             exit();
         }
-        $user_id = (int)$_SESSION['user_id']; // Get user_id only when needed
+        $user_id = (int)$_SESSION['user_id']; 
 
         try {
             $stats = [
@@ -96,29 +95,27 @@ switch ($action) {
         
         $category_id = (int)$_GET['category_id'];
         
-        // ### FIX: Initialize count variables ###
-        $results = [
-            'gold' => null, 'gold_count' => 0,
-            'silver' => null, 'silver_count' => 0,
-            'bronze' => null, 'bronze_count' => 0,
-            'status' => 'pending' 
-        ];
-
-        
-        // ### FIX: The SQL query now also selects the count columns ###
+        // --- UPDATED QUERY: FETCH LOGOS AND NAMES ---
         $sql = "
             SELECT 
                 c.status,
                 c.gold_count,
                 c.silver_count,
                 c.bronze_count,
-                (SELECT co.college_name FROM colleges co WHERE co.college_id = c.gold_winner_college_id) as gold_winner,
-                (SELECT co.college_name FROM colleges co WHERE co.college_id = c.silver_winner_college_id) as silver_winner,
-                (SELECT co.college_name FROM colleges co WHERE co.college_id = c.bronze_winner_college_id) as bronze_winner
-            FROM 
-                categories c
-            WHERE 
-                c.category_id = ?
+                
+                col_gold.college_name AS gold_winner,
+                col_gold.logo_url AS gold_logo,
+                
+                col_silver.college_name AS silver_winner,
+                col_silver.logo_url AS silver_logo,
+                
+                col_bronze.college_name AS bronze_winner,
+                col_bronze.logo_url AS bronze_logo
+            FROM categories c
+            LEFT JOIN colleges col_gold ON c.gold_winner_college_id = col_gold.college_id
+            LEFT JOIN colleges col_silver ON c.silver_winner_college_id = col_silver.college_id
+            LEFT JOIN colleges col_bronze ON c.bronze_winner_college_id = col_bronze.college_id
+            WHERE c.category_id = ?
         ";
 
         $stmt = $conn->prepare($sql);
@@ -136,23 +133,35 @@ switch ($action) {
         }
 
         $result = $stmt->get_result();
-
-        // ### FIX: Populate the new count variables in the response ###
-        if ($row = $result->fetch_assoc()) {
-            $results['gold'] = $row['gold_winner'];
-            $results['gold_count'] = $row['gold_count'];
-            $results['silver'] = $row['silver_winner'];
-            $results['silver_count'] = $row['silver_count'];
-            $results['bronze'] = $row['bronze_winner'];
-            $results['bronze_count'] = $row['bronze_count'];
-            $results['status'] = $row['status'];
+        $data = $result->fetch_assoc();
+        
+        if ($data) {
+            echo json_encode([
+                'success' => true,
+                'data' => [
+                    'gold' => $data['gold_winner'],
+                    'gold_count' => $data['gold_count'],
+                    'gold_logo' => $data['gold_logo'], // Added Logo
+                    
+                    'silver' => $data['silver_winner'],
+                    'silver_count' => $data['silver_count'],
+                    'silver_logo' => $data['silver_logo'], // Added Logo
+                    
+                    'bronze' => $data['bronze_winner'],
+                    'bronze_count' => $data['bronze_count'],
+                    'bronze_logo' => $data['bronze_logo'], // Added Logo
+                    
+                    'status' => $data['status']
+                ]
+            ]);
+        } else {
+            echo json_encode(['success' => false, 'message' => 'No data found.']);
         }
         
         $stmt->close();
-        echo json_encode(['success' => true, 'data' => $results]);
         break;
 
-    // --- DEFAULT: INVALID ACTION (PROTECTED) ---
+    // --- DEFAULT: INVALID ACTION ---
     default:
         if (!isset($_SESSION['logged_in']) || $_SESSION['logged_in'] !== true) {
              echo json_encode(['success' => false, 'message' => 'Authentication required for this action.']);

@@ -252,6 +252,54 @@ $pending_results_count = $conn->query("SELECT COUNT(*) FROM categories WHERE sta
         .gallery-img { width: 100%; height: 100%; object-fit: cover; transition: transform 0.5s ease; }
         .gallery-card:hover .gallery-img { transform: scale(1.05); }
         .gallery-badge { position: absolute; top: 10px; right: 10px; background: rgba(255, 215, 0, 0.9); color: #000; font-weight: 700; padding: 5px 10px; border-radius: 50px; font-size: 0.8rem; box-shadow: 0 2px 5px rgba(0,0,0,0.2); }
+
+        /* STRENGTHS TAB STYLES */
+.strength-card {
+    border: 1px solid #eee;
+    border-radius: 12px;
+    padding: 15px;
+    margin-bottom: 15px;
+    background: #fff;
+    transition: transform 0.2s;
+}
+.strength-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 5px 15px rgba(0,0,0,0.05);
+}
+.progress-stacked {
+    height: 12px;
+    border-radius: 6px;
+    background-color: #f0f0f0;
+    overflow: hidden;
+    display: flex;
+}
+.progress-bar-segment {
+    height: 100%;
+    transition: width 0.6s ease;
+}
+.leaderboard-item {
+    display: flex;
+    align-items: center;
+    padding: 12px;
+    border-bottom: 1px solid #f0f0f0;
+}
+.leaderboard-item:last-child { border-bottom: none; }
+.rank-circle {
+    width: 35px;
+    height: 35px;
+    background: var(--primary-dark);
+    color: white;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 700;
+    margin-right: 15px;
+    font-size: 0.9rem;
+}
+.rank-1 { background: #FFD700; color: #000; box-shadow: 0 2px 5px rgba(255, 215, 0, 0.4); }
+.rank-2 { background: #C0C0C0; color: #000; }
+.rank-3 { background: #CD7F32; color: #fff; }
     </style>
 </head>
 <body>
@@ -302,12 +350,12 @@ $pending_results_count = $conn->query("SELECT COUNT(*) FROM categories WHERE sta
 
             <li class="nav-item mt-3"><span class="nav-title">Administration</span></li>
             <li class="nav-item">
-                <a class="nav-link" href="Manage_Users.php">
+                <a class="nav-link" href="../Manage_Users.php">
                     <i class="fas fa-users-cog me-2"></i> <span>Manage Users</span>
                 </a>
             </li>
             <li class="nav-item">
-                <a class="nav-link" href="Manage_Requests.php">
+                <a class="nav-link" href="../Manage_Requests.php">
                     <i class="fas fa-user-plus me-2"></i> <span>Account Requests</span>
                     <?php if($pending_requests_count > 0): ?>
                         <span class="badge bg-danger ms-auto rounded-pill"><?= $pending_requests_count ?></span>
@@ -315,7 +363,7 @@ $pending_results_count = $conn->query("SELECT COUNT(*) FROM categories WHERE sta
                 </a>
             </li>
              <li class="nav-item">
-                <a class="nav-link" href="Manage_Viewreports.php">
+                <a class="nav-link" href="../Manage_Viewreports.php">
                     <i class="fas fa-file-alt me-2"></i> <span>View System Reports</span>
                 </a>
             </li>
@@ -337,7 +385,7 @@ $pending_results_count = $conn->query("SELECT COUNT(*) FROM categories WHERE sta
             
             <li class="nav-item mt-3"><span class="nav-title">Season Management</span></li>
             <li class="nav-item">
-                <a class="nav-link" href="manage_archives.php">
+                <a class="nav-link" href="../manage_archives.php">
                     <i class="fas fa-history me-2"></i> <span>Archives & Reset</span>
                 </a>
             </li>
@@ -483,58 +531,93 @@ $pending_results_count = $conn->query("SELECT COUNT(*) FROM categories WHERE sta
                     <div class="row g-4">
                         
                         <div class="col-lg-7">
-                            <div class="card h-100">
-                                <div class="card-header">
-                                    <h5 class="mb-0">Medal Summary by Game Type (L1)</h5>
+                            <div class="card h-100 shadow-sm border-0">
+                                <div class="card-header bg-white border-0 pt-4 px-4">
+                                    <h5 class="mb-0 fw-bold text-dark"><i class="fas fa-chart-bar me-2 text-primary"></i>Medal Distribution by Game Type</h5>
+                                    <small class="text-muted">Visual breakdown of medals won in each game category (L1).</small>
                                 </div>
-                                <div class="card-body">
-                                    <p class="text-muted">Shows all L1 Games where this team has won at least one medal.</p>
-                                    <ul class="list-group list-group-flush">
-                                        <?php if (empty($game_breakdown)): ?>
-                                            <li class="list-group-item text-center text-muted">No medal-winning participation recorded yet.</li>
-                                        <?php endif; ?>
-                                        <?php foreach ($game_breakdown as $game): ?>
-                                            <li class="list-group-item d-flex justify-content-between align-items-start py-3">
-                                                <div class="ms-2 me-auto">
-                                                    <div class="fw-bold fs-5"><?= htmlspecialchars($game['game_name']) ?></div>
-                                                </div>
-                                                <span class="badge bg-warning rounded-pill fs-6" title="Gold"><i class="fas fa-medal me-1"></i><?= $game['GoldCount'] ?></span>
-                                                <span class="badge bg-secondary rounded-pill fs-6 ms-2" title="Silver"><i class="fas fa-medal me-1"></i><?= $game['SilverCount'] ?></span>
-                                                <span class="badge rounded-pill fs-6 ms-2" style="background-color: #cd7f32;" title="Bronze"><i class="fas fa-medal me-1"></i><?= $game['BronzeCount'] ?></span>
-                                            </li>
-                                        <?php endforeach; ?>
-                                    </ul>
+                                <div class="card-body px-4">
+                                    <?php if (empty($game_breakdown)): ?>
+                                        <div class="text-center text-muted py-5">
+                                            <i class="fas fa-chart-area fa-3x mb-3 opacity-25"></i>
+                                            <p>No medal data available yet.</p>
+                                        </div>
+                                    <?php endif; ?>
+
+                                    <?php foreach ($game_breakdown as $game): 
+                                        $g = (int)$game['GoldCount'];
+                                        $s = (int)$game['SilverCount'];
+                                        $b = (int)$game['BronzeCount'];
+                                        $total = $g + $s + $b;
+                                        
+                                        // Calculate Percentages for the bar
+                                        $g_pct = ($total > 0) ? ($g / $total) * 100 : 0;
+                                        $s_pct = ($total > 0) ? ($s / $total) * 100 : 0;
+                                        $b_pct = ($total > 0) ? ($b / $total) * 100 : 0;
+                                    ?>
+                                        <div class="strength-card">
+                                            <div class="d-flex justify-content-between align-items-center mb-2">
+                                                <div class="fw-bold text-dark"><?= htmlspecialchars($game['game_name']) ?></div>
+                                                <div class="fw-bold text-primary"><?= $total ?> <small class="text-muted fw-normal">Medals</small></div>
+                                            </div>
+                                            
+                                            <div class="progress-stacked mb-2">
+                                                <div class="progress-bar-segment bg-warning" style="width: <?= $g_pct ?>%" title="Gold: <?= $g ?>"></div>
+                                                <div class="progress-bar-segment bg-secondary" style="width: <?= $s_pct ?>%" title="Silver: <?= $s ?>"></div>
+                                                <div class="progress-bar-segment" style="width: <?= $b_pct ?>%; background-color: #cd7f32;" title="Bronze: <?= $b ?>"></div>
+                                            </div>
+
+                                            <div class="d-flex small text-muted">
+                                                <div class="me-3"><i class="fas fa-circle text-warning" style="font-size: 8px;"></i> <?= $g ?> Gold</div>
+                                                <div class="me-3"><i class="fas fa-circle text-secondary" style="font-size: 8px;"></i> <?= $s ?> Silver</div>
+                                                <div><i class="fas fa-circle" style="color: #cd7f32; font-size: 8px;"></i> <?= $b ?> Bronze</div>
+                                            </div>
+                                        </div>
+                                    <?php endforeach; ?>
                                 </div>
                             </div>
                         </div>
 
                         <div class="col-lg-5">
-                            <div class="card h-100">
-                                <div class="card-header">
-                                    <h5 class="mb-0">Top 5 Performing Events (L2)</h5>
+                            <div class="card h-100 shadow-sm border-0">
+                                <div class="card-header bg-white border-0 pt-4 px-4">
+                                    <h5 class="mb-0 fw-bold text-dark"><i class="fas fa-trophy me-2 text-warning"></i>Top Events</h5>
+                                    <small class="text-muted">Best performing specific events (L2).</small>
                                 </div>
-                                <div class="card-body">
-                                    <p class="text-muted">Ranking of specific L2 Events based on medals won.</p>
-                                    <ul class="list-group list-group-flush">
-                                        <?php if (empty($top_performing_events)): ?>
-                                            <li class="list-group-item text-center text-muted">No medals won yet.</li>
-                                        <?php endif; ?>
-                                        <?php foreach ($top_performing_events as $index => $event): ?>
-                                            <li class="list-group-item d-flex justify-content-between align-items-start py-3">
-                                                <div class="ms-2 me-auto">
-                                                    <div class="fw-bold">
-                                                        <span class="badge bg-primary rounded-pill me-2" style="font-size: 0.9em;">#<?= $index + 1 ?></span>
-                                                        <?= htmlspecialchars($event['event_name']) ?>
-                                                    </div>
+                                <div class="card-body px-0">
+                                    <?php if (empty($top_performing_events)): ?>
+                                        <div class="text-center text-muted py-5">
+                                            <p>No results yet.</p>
+                                        </div>
+                                    <?php endif; ?>
+                                    
+                                    <div class="px-3">
+                                    <?php foreach ($top_performing_events as $index => $event): 
+                                        $rankClass = 'bg-light text-dark';
+                                        if ($index == 0) $rankClass = 'rank-1';
+                                        if ($index == 1) $rankClass = 'rank-2';
+                                        if ($index == 2) $rankClass = 'rank-3';
+                                    ?>
+                                        <div class="leaderboard-item">
+                                            <div class="rank-circle <?= $rankClass ?>">
+                                                <?= $index + 1 ?>
+                                            </div>
+                                            <div class="flex-grow-1">
+                                                <div class="fw-bold text-dark"><?= htmlspecialchars($event['event_name']) ?></div>
+                                                <div class="small text-muted">
+                                                    <span class="text-warning fw-bold"><?= $event['GoldCount'] ?>G</span> • 
+                                                    <span class="text-secondary fw-bold"><?= $event['SilverCount'] ?>S</span> • 
+                                                    <span style="color: #cd7f32;" class="fw-bold"><?= $event['BronzeCount'] ?>B</span>
                                                 </div>
-                                                <div class="d-flex ms-2">
-                                                    <span class="badge bg-warning rounded-pill" title="Gold"><i class="fas fa-medal"></i> <?= $event['GoldCount'] ?></span>
-                                                    <span class="badge bg-secondary rounded-pill ms-1" title="Silver"><i class="fas fa-medal"></i> <?= $event['SilverCount'] ?></span>
-                                                    <span class="badge rounded-pill ms-1" style="background-color: #cd7f32;" title="Bronze"><i class="fas fa-medal"></i> <?= $event['BronzeCount'] ?></span>
-                                                </div>
-                                            </li>
-                                        <?php endforeach; ?>
-                                    </ul>
+                                            </div>
+                                            <div class="text-end">
+                                                <span class="badge bg-light text-dark border">
+                                                    <?= $event['GoldCount'] + $event['SilverCount'] + $event['BronzeCount'] ?> Total
+                                                </span>
+                                            </div>
+                                        </div>
+                                    <?php endforeach; ?>
+                                    </div>
                                 </div>
                             </div>
                         </div>
@@ -560,7 +643,13 @@ $pending_results_count = $conn->query("SELECT COUNT(*) FROM categories WHERE sta
                                         <div class="col-md-6 col-lg-4">
                                             <div class="card gallery-card h-100 border-0">
                                                 <div class="gallery-img-wrapper">
-                                                    <img src="<?= htmlspecialchars($photo['display_url']) ?>" class="gallery-img" alt="Podium Photo">
+                                                    <img src="<?= htmlspecialchars($photo['display_url']) ?>" 
+                                                         class="gallery-img zoomable-photo" 
+                                                         alt="Podium Photo"
+                                                         data-caption="<?= htmlspecialchars($photo['event_name'] . ' - ' . $photo['category_name']) ?>"
+                                                         style="cursor: pointer;"
+                                                         title="Click to view full size">
+                                                    
                                                     <div class="gallery-badge"><i class="fas fa-trophy me-1"></i>Gold</div>
                                                 </div>
                                                 <div class="card-body text-center p-3">
@@ -582,6 +671,24 @@ $pending_results_count = $conn->query("SELECT COUNT(*) FROM categories WHERE sta
                 </div>
             
             </div> </div> </div> 
+
+            <div class="modal fade" id="galleryModal" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered modal-lg">
+            <div class="modal-content bg-transparent border-0">
+                <div class="modal-body p-0 text-center position-relative">
+                    <button type="button" class="btn-close btn-close-white position-absolute top-0 end-0 m-3" 
+                            data-bs-dismiss="modal" aria-label="Close" 
+                            style="background-color: rgba(0,0,0,0.5); padding: 1rem; border-radius: 50%; z-index: 1051; box-shadow: 0 0 15px rgba(0,0,0,0.5);">
+                    </button>
+                    
+                    <img id="galleryModalImg" src="" class="img-fluid rounded shadow-lg" 
+                         style="max-height: 90vh; border: 4px solid #fff; box-shadow: 0 10px 40px rgba(0,0,0,0.5);">
+                    
+                    <div id="galleryModalCaption" class="mt-2 text-white fw-bold bg-dark bg-opacity-75 d-inline-block px-4 py-2 rounded-pill"></div>
+                </div>
+            </div>
+        </div>
+    </div>
     
     <footer class="bg-dark text-white py-4">
         <div class="text-center">
@@ -597,6 +704,25 @@ $pending_results_count = $conn->query("SELECT COUNT(*) FROM categories WHERE sta
             const sidebar = document.getElementById('sidebar');
             const footer = document.querySelector('footer');
             const navbar = document.querySelector('.navbar');
+
+            // --- GALLERY LIGHTBOX LOGIC ---
+            const galleryModalElement = document.getElementById('galleryModal');
+            const galleryModalImg = document.getElementById('galleryModalImg');
+            const galleryModalCaption = document.getElementById('galleryModalCaption');
+            const galleryModal = new bootstrap.Modal(galleryModalElement);
+
+            document.querySelectorAll('.zoomable-photo').forEach(img => {
+                img.addEventListener('click', function() {
+                    const src = this.getAttribute('src');
+                    const caption = this.getAttribute('data-caption');
+                    
+                    if (src) {
+                        galleryModalImg.src = src;
+                        galleryModalCaption.textContent = caption || 'Victory Moment';
+                        galleryModal.show();
+                    }
+                });
+            });
 
             if (sidebar && footer && navbar) {
                 function adjustSidebarHeight() {

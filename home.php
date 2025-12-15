@@ -8,20 +8,30 @@ $name = isset($_SESSION['username']) ? $_SESSION['username'] : 'User';
 $default_logo = 'images/default_avatar.png'; 
 
 // --- FETCH RECENT WINNERS FOR TICKER ---
+// --- FETCH RECENT WINNERS FOR TICKER (CONCISE FORMAT) ---
+// --- FETCH RECENT WINNERS FOR TICKER (LATEST ONLY) ---
 $recent_winners = [];
-// Logic: Get the 5 most recently approved categories
 $sql_ticker = "
     SELECT 
         ge.event_name, 
         c.category_name, 
-        cg.college_name AS gold_winner,
-        c.approved_at
+        
+        c.gold_count, 
+        c.silver_count, 
+        c.bronze_count,
+        
+        cg.college_code AS gold_code,
+        cs.college_code AS silver_code,
+        cb.college_code AS bronze_code
+        
     FROM categories c
     JOIN game_events ge ON c.event_id = ge.event_id
     LEFT JOIN colleges cg ON c.gold_winner_college_id = cg.college_id
+    LEFT JOIN colleges cs ON c.silver_winner_college_id = cs.college_id
+    LEFT JOIN colleges cb ON c.bronze_winner_college_id = cb.college_id
     WHERE c.status = 'Results Approved' 
     ORDER BY c.approved_at DESC 
-    LIMIT 5";
+    LIMIT 1"; // <--- CHANGED TO 1
 
 $res_ticker = $conn->query($sql_ticker);
 if ($res_ticker) {
@@ -83,13 +93,13 @@ function getRankMeta(int $rank): array {
             return ['<img src="secondplace.svg" alt="1st Runner-up" style="width: 45px; height: 45px;">', '1st Runner-up'];
         case 3:
             return ['<img src="thirdplace.svg" alt="2nd Runner-up" style="width: 45px; height: 45px;">', '2nd Runner-up'];
-        case 4:
-            return ['<img src="4.png" alt="3rd Runner-up" style="width: 50px; height: 50px;">', '3rd Runner-up'];
-        case 5:
-            return ['<img src="5htplace.svg" alt="4th Runner-up" style="width: 50px; height: 50px;">', '4th Runner-up'];
+        
+        // Cases 4 and 5 are removed so they fall into 'default'
+        
         default: 
-    $runnerUpCount = $rank - 1;
-    return [(string)$rank, $runnerUpCount . 'th Runner-up'];
+            $runnerUpCount = $rank - 1;
+            // This returns the Rank Number (e.g., "4") instead of an image
+            return [(string)$rank, $runnerUpCount . 'th Runner-up'];
     }
 }
 
@@ -101,7 +111,7 @@ $conn->close();
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>PIT Sports Tallying - Live Medal Standings</title>
+    <title>PIT SIGLAKAS MEDAL Tallying - Live Medal Standings</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" rel="stylesheet">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=Poppins:wght@400;500;600;700;800&display=swap" rel="stylesheet">
@@ -352,14 +362,26 @@ $conn->close();
             gap: 1rem;
             margin-bottom: 1rem;
         }
-        .footer-main .footer-logo-group img {
-            height: 50px;
+        /* --- FOOTER LOGO FIX --- */
+        .footer-main .footer-logo-group {
+            display: flex;              /* Forces items to sit in a row */
+            align-items: center;        /* Vertically centers them */
+            gap: 12px;                  /* Space between logos and text */
+            margin-bottom: 1rem;
         }
+
+        .footer-main .footer-logo-group img {
+            height: 50px !important;    /* Force height */
+            width: 50px !important;     /* Force width */
+            object-fit: contain;        /* Keep logo shape correct */
+        }
+
         .footer-main .footer-logo-group h5 {
-            font-family: 'Poppins', sans-serif;
+            margin: 0;                  /* Remove default spacing that pushes it down */
+            font-size: 1.1rem;          /* Adjust text size */
             font-weight: 700;
             color: #fff;
-            margin: 0;
+            line-height: 1.2;           /* Tighter line spacing */
         }
         .footer-main p {
             font-size: 0.9rem;
@@ -487,34 +509,7 @@ $conn->close();
             z-index: 2;
         }
 
-        .ticker-wrap {
-            flex-grow: 1;
-            overflow: hidden;
-            white-space: nowrap;
-            position: relative;
-            /* Add a fade effect on the sides to look premium */
-            mask-image: linear-gradient(to right, transparent, black 2%, black 98%, transparent);
-            -webkit-mask-image: linear-gradient(to right, transparent, black 2%, black 98%, transparent);
-        }
-
-        .ticker-move {
-            display: inline-block;
-            white-space: nowrap;
-            padding-right: 100%; 
-            animation: ticker 25s linear infinite; 
-        }
         
-        .ticker-wrap:hover .ticker-move {
-            animation-play-state: paused;
-        }
-
-        .ticker-item {
-            display: inline-block;
-            padding: 0 40px; /* More space between items */
-            font-size: 1rem;
-            position: relative;
-            vertical-align: middle;
-        }
         
         /* Separator Dot */
         .ticker-item::after {
@@ -527,9 +522,85 @@ $conn->close();
             transform: translateY(-50%);
         }
 
+        .ticker-wrap {
+            flex-grow: 1;
+            overflow: hidden;
+            white-space: nowrap;
+            position: relative;
+            mask-image: linear-gradient(to right, transparent, black 2%, black 98%, transparent);
+            -webkit-mask-image: linear-gradient(to right, transparent, black 2%, black 98%, transparent);
+        }
+
+        .ticker-move {
+            display: inline-block;
+            white-space: nowrap;
+            /* Move left by 50% (the width of one full set of items) */
+            animation: ticker 15s linear infinite; 
+        }
+        
+        .ticker-wrap:hover .ticker-move {
+            animation-play-state: paused;
+        }
+
+        .ticker-item {
+            display: inline-block;
+            padding: 0 40px;
+            font-size: 1rem;
+            position: relative;
+            vertical-align: middle;
+        }
+        
+        .ticker-item::after {
+            content: '•';
+            position: absolute;
+            right: 0;
+            color: #6c757d;
+            font-size: 1.2rem;
+            top: 50%;
+            transform: translateY(-50%);
+        }
+
         @keyframes ticker {
-            0% { transform: translate3d(0, 0, 0); }
-            100% { transform: translate3d(-100%, 0, 0); }
+            0% { transform: translateX(0); }
+            100% { transform: translateX(-50%); } /* Move exactly half the width */
+        }
+
+        /* --- MOBILE RESPONSIVE FIX --- */
+        @media (max-width: 767px) {
+            /* 1. Stack the controls vertically */
+            .hero-controls {
+                flex-direction: column;
+                justify-content: center;
+                gap: 12px; /* Add space between items */
+                margin-top: 1rem;
+            }
+
+            /* 2. Reset the 'Last Updated' pill so it's not floating anymore */
+            .last-updated {
+                position: static; /* Puts it back in the normal flow */
+                transform: none;  /* Removes the centering trick */
+                width: 100%;      /* Full width for cleaner look */
+                text-align: center;
+            }
+
+            /* 3. Center the Refresh Timer */
+            #refresh-timer {
+                margin-left: 0;   /* Remove the force-right push */
+                font-size: 0.85rem;
+            }
+
+            /* 4. Make the Print button full width for easier tapping */
+            .print-btn {
+                width: 50%;
+            }
+        }
+
+        /* --- FIX FOR CONTENT STICKING TO HEADER ON MOBILE --- */
+        @media (max-width: 991px) {
+            .main-content {
+                /* Increased from 100px to 140px to give the ticker breathing room */
+                padding-top: 140px !important; 
+            }
         }
 </style>
 </head>
@@ -540,8 +611,8 @@ $conn->close();
             <a class="navbar-brand d-flex align-items-center" href="home.php">
                 <img src="imageslogo.png" alt="Logo" class="me-2 brand-logo" style="height: 50px; width: 48px; object-fit: contain;">
                 <div class="d-flex flex-column lh-sm">
-                    <strong class="text-white brand-heading" style="font-size: 1.25rem;">PIT SPORTS TALLYING</strong>
-                    <small class="text-light brand-subheading" style="font-size: 0.75rem;">Official College Tournament System</small>
+                    <strong class="text-white brand-heading" style="font-size: 1.25rem;">PIT SIGLAKAS MEDAL Tallying</strong>
+                    <small class="text-light brand-subheading" style="font-size: 0.75rem;">Official College Medal Tally System</small>
                 </div>
             </a>
 
@@ -580,14 +651,35 @@ $conn->close();
                     <div class="ticker-label">JUST IN</div>
                     <div class="ticker-wrap">
                         <div class="ticker-move">
-                            <?php foreach ($recent_winners as $winner): ?>
-                                <div class="ticker-item">
-                                    <i class="fas fa-trophy text-warning me-1"></i>
-                                    <span class="fw-bold text-white"><?= htmlspecialchars($winner['gold_winner']) ?></span> 
-                                    <span class="text-white-50 ms-1">wins Gold in</span>
-                                    <span class="text-info ms-1"><?= htmlspecialchars($winner['event_name']) ?> - <?= htmlspecialchars($winner['category_name']) ?></span>
-                                </div>
-                            <?php endforeach; ?>
+                            <?php 
+                            // Get the single latest winner
+                            $latest = $recent_winners[0];
+
+                            // Build the string ONCE
+                            $fullEvent = htmlspecialchars($latest['event_name']);
+                            if (!empty($latest['category_name']) && $latest['category_name'] !== 'Single Division' && $latest['category_name'] !== 'Main Event') {
+                                $fullEvent .= ' - ' . htmlspecialchars($latest['category_name']);
+                            }
+                            
+                            $itemHtml = '<div class="ticker-item">';
+                            $itemHtml .= '<span class="text-uppercase fw-bold me-2" style="color: #fff; opacity: 0.7; letter-spacing: 1px;">' . $fullEvent . ':</span>';
+                            
+                            if($latest['gold_code']) {
+                                $itemHtml .= '<span class="me-3">🥇(' . $latest['gold_count'] . ') <strong style="color: #FFD700; text-shadow: 0 0 10px rgba(255, 215, 0, 0.3);">' . htmlspecialchars($latest['gold_code']) . '</strong></span>';
+                            }
+                            if($latest['silver_code']) {
+                                $itemHtml .= '<span class="me-3">🥈(' . $latest['silver_count'] . ') <strong style="color: #C0C0C0; text-shadow: 0 0 10px rgba(192, 192, 192, 0.3);">' . htmlspecialchars($latest['silver_code']) . '</strong></span>';
+                            }
+                            if($latest['bronze_code']) {
+                                $itemHtml .= '<span class="me-3">🥉(' . $latest['bronze_count'] . ') <strong style="color: #CD7F32; text-shadow: 0 0 10px rgba(205, 127, 50, 0.3);">' . htmlspecialchars($latest['bronze_code']) . '</strong></span>';
+                            }
+                            $itemHtml .= '</div>';
+                            
+                            // REPEAT IT 10 TIMES to fill the bar and loop seamlessly
+                            for ($i = 0; $i < 10; $i++) {
+                                echo $itemHtml;
+                            }
+                            ?>
                         </div>
                     </div>
                 </div>
@@ -717,7 +809,8 @@ $conn->close();
                 <div class="col-lg-5 col-md-12 mb-4 mb-lg-0">
                     <div class="footer-logo-group">
                         <img src="imageslogo.png" alt="Logo">
-                        <h5>PIT SPORTS TALLYING</h5>
+                        <img src="images/COTE.png" alt="Logo">
+                        <h5> PIT SILAKAS MEDAL TALLY</h5>
                     </div>
                     <p>The official live medal tallying system for the Palompon Institute of Technology. Bringing you real-time results, event schedules, and team standings.</p>
                 </div>
@@ -726,21 +819,24 @@ $conn->close();
                     <ul class="footer-links">
                         <li><a href="home.php">Home (Standings)</a></li>
                         <li><a href="Eventpage.php">Events Schedule</a></li>
-                        <li><a href="colleges.php">Teams & Rosters</a></li>
+                        <li><a href="college_team.php">Teams & Rosters</a></li>
                     </ul>
                 </div>
                 <div class="col-lg-4 col-md-6">
-                    <h6>Contact & Admin</h6>
-                    <ul class="footer-links">
-                        <li><a href="#">Sports Director's Office</a></li>
-                        <li><a href="#">Report an Issue</a></li>
-                        <li><a href="login.php">Administrator Login</a></li>
-                    </ul>
+                    <h6>Contact Us</h6>
+                    <div style="color: rgba(255,255,255,0.7); font-size: 0.9rem; line-height: 1.6;">
+                        <p class="mb-1 fw-bold text-white">Palompon Institute of Technology</p>
+                        <p class="mb-2">Evangelista Street, Brgy. Guiwan II,<br>Palompon, Leyte 6538</p>
+                        <p class="mb-0">
+                            <i class="fas fa-phone-alt me-2"></i>(053) 555-9841<br>
+                            <i class="fas fa-envelope me-2"></i>op@pit.edu.ph
+                        </p>
+                    </div>
                 </div>
             </div>
             <div class="footer-bottom">
-                <small>&copy; <?php echo date("Y"); ?> PIT SPORTS TALLYING. All rights reserved.</small><br>
-                <small>Developed by Tsunayoshi Sawada</small>
+                <small>&copy; <?php echo date("Y"); ?> PIT SILAKAS MEDAL TALLY. All rights reserved.</small><br>
+                <small>Developed by Jayvee Baybyon</small>
             </div>
         </div>
     </footer>
@@ -751,6 +847,7 @@ $conn->close();
     const defaultLogo = <?= json_encode($default_logo); ?>; 
     let previousMedalTally = <?= json_encode($medal_tally); ?>;
 
+    // --- HELPER FUNCTIONS ---
     function getRankLabel(rank) {
         switch (rank) {
             case 1: return 'Champion';
@@ -767,10 +864,16 @@ $conn->close();
             case 1: return '<img src="trophy1.svg" alt="Champion Trophy" style="width: 45px; height: 45px;">';
             case 2: return '<img src="secondplace.svg" alt="1st Runner-up" style="width: 45px; height: 45px;">';
             case 3: return '<img src="thirdplace.svg" alt="2nd Runner-up" style="width: 45px; height: 45px;">';
-            case 4: return '<img src="4.png" alt="3rd Runner-up" style="width: 50px; height: 50px;">';
-            case 5: return '<img src="5htplace.svg" alt="4th Runner-up" style="width: 50px; height: 50px;">';
-            default: return rank;
+            
+            // Removed cases 4 and 5
+            
+            default: return rank; // Returns just the number
         }
+    }
+
+    function escapeHtml(text) {
+        if (!text) return '';
+        return text.toString().replace(/[&<>"']/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'}[m]));
     }
     
     // --- REAL-TIME REFRESH LOGIC ---
@@ -786,15 +889,60 @@ $conn->close();
         }, 3000);
     }
 
+    // --- UPDATE TICKER (New Function) ---
+    function updateTicker(winners) {
+        const tickerContainer = document.querySelector('.news-ticker-box');
+        const tickerMove = document.querySelector('.ticker-move');
+        
+        // If no winners, hide ticker
+        if (!winners || winners.length === 0) {
+            if(tickerContainer) tickerContainer.style.display = 'none';
+            return;
+        }
+
+        // Ensure ticker is visible
+        if(tickerContainer) tickerContainer.style.display = 'flex';
+        
+        // Get latest single winner
+        const latest = winners[0];
+        
+        let fullEvent = escapeHtml(latest.event_name);
+        if (latest.category_name && latest.category_name !== 'Single Division' && latest.category_name !== 'Main Event') {
+            fullEvent += ' - ' + escapeHtml(latest.category_name);
+        }
+
+        let itemHtml = '<div class="ticker-item">';
+        itemHtml += '<span class="text-uppercase fw-bold me-2" style="color: #fff; opacity: 0.7; letter-spacing: 1px;">' + fullEvent + ':</span>';
+        
+        if (latest.gold_code) {
+            itemHtml += `<span class="me-3">🥇(${latest.gold_count}) <strong style="color: #FFD700; text-shadow: 0 0 10px rgba(255, 215, 0, 0.3);">${escapeHtml(latest.gold_code)}</strong></span>`;
+        }
+        if (latest.silver_code) {
+            itemHtml += `<span class="me-3">🥈(${latest.silver_count}) <strong style="color: #C0C0C0; text-shadow: 0 0 10px rgba(192, 192, 192, 0.3);">${escapeHtml(latest.silver_code)}</strong></span>`;
+        }
+        if (latest.bronze_code) {
+            itemHtml += `<span class="me-3">🥉(${latest.bronze_count}) <strong style="color: #CD7F32; text-shadow: 0 0 10px rgba(205, 127, 50, 0.3);">${escapeHtml(latest.bronze_code)}</strong></span>`;
+        }
+        itemHtml += '</div>';
+
+        // Repeat 10 times for seamless loop
+        let finalHtml = "";
+        for (let i = 0; i < 10; i++) {
+            finalHtml += itemHtml;
+        }
+
+        // Only update DOM if content changed
+        if (tickerMove && tickerMove.innerHTML !== finalHtml) {
+            tickerMove.innerHTML = finalHtml;
+        }
+    }
+
     function updateStandings(newMedalTally, lastUpdatedTime) {
         const overallListContainer = document.getElementById('overall-standings-list'); 
         const printTableBody = document.getElementById('print-table-body');
         const lastUpdatedEl = document.getElementById('last-updated-display');
 
-        if (!overallListContainer || !lastUpdatedEl || !printTableBody) {
-            console.error("Required elements not found.");
-            return;
-        }
+        if (!overallListContainer || !lastUpdatedEl || !printTableBody) return;
 
         if (lastUpdatedTime) {
             const date = new Date(lastUpdatedTime);
@@ -816,14 +964,11 @@ $conn->close();
                 const totalMedals = tally.total;
                 const collegeCode = tally.college_code || 'DEFAULT';
                 const logoUrl = tally.logo_url || defaultLogo; 
-                
-                // NEW CODE: Get color from JSON data
                 const unitColor = tally.unit_color || '#cccccc';
                 
                 const label = getRankLabel(rank);
                 const rankIconHtml = getRankIcon(rank);
 
-                // [NEW] Fixed JS Syntax and applied CSS Variable
                 overallHtml += `
                     <div class="entry" style="--team-color: ${unitColor};">
                         <div class="left">
@@ -892,21 +1037,28 @@ $conn->close();
                 return response.json();
             })
             .then(data => {
-                if (data.success && data.medal_tally) {
-                    const newTallyStr = JSON.stringify(data.medal_tally);
-                    const oldTallyStr = JSON.stringify(previousMedalTally);
+                if (data.success) {
+                    // 1. Update Medal Tally
+                    if (data.medal_tally) {
+                        const newTallyStr = JSON.stringify(data.medal_tally);
+                        const oldTallyStr = JSON.stringify(previousMedalTally);
 
-                    if (newTallyStr !== oldTallyStr) {
-                        console.log("Medal data changed! Playing confetti.");
-                        playConfetti(); 
-                        previousMedalTally = data.medal_tally; 
+                        if (newTallyStr !== oldTallyStr) {
+                            console.log("Medal data changed! Playing confetti.");
+                            playConfetti(); 
+                            previousMedalTally = data.medal_tally; 
+                        }
+                        updateStandings(data.medal_tally, data.last_updated);
+                    }
+
+                    // 2. Update Ticker (NEW ADDITION)
+                    if (data.recent_winners) {
+                        updateTicker(data.recent_winners);
                     }
 
                     if (data.last_updated && data.last_updated !== currentLastUpdated) {
                         currentLastUpdated = data.last_updated;
                     }
-
-                    updateStandings(data.medal_tally, data.last_updated);
                 } else {
                     console.error('Failed to get standings data:', data.error);
                 }

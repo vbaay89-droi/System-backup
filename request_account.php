@@ -139,7 +139,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     /* Background */
     body::before {
       content: ''; position: fixed; top: 0; left: 0; width: 100%; height: 100%;
-      background: url('siglakas_cover.png'); background-size: cover; z-index: -2;
+      background: url('images/featured_image.png'); background-size: cover; z-index: -2;
     }
 
     body::after {

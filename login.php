@@ -70,8 +70,49 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     $mail->addAddress($user['email']); 
 
                     $mail->isHTML(true);
-                    $mail->Subject = 'Your OTP Code';
-                    $mail->Body    = "Your OTP is <b>$otp</b>. It will expire in 5 minutes.";
+                    $mail->Subject = 'Verify Your Login - PIT Sports Tallying';
+                    $mail->Body    = '
+                    <!DOCTYPE html>
+                    <html>
+                    <head>
+                        <style>
+                            body { font-family: Arial, sans-serif; background-color: #f4f4f4; margin: 0; padding: 0; }
+                            .email-wrapper { width: 100%; background-color: #f4f4f4; padding: 20px 0; }
+                            .email-container { max-width: 600px; margin: 0 auto; background-color: #ffffff; border-radius: 8px; overflow: hidden; box-shadow: 0 4px 10px rgba(0,0,0,0.1); border-top: 5px solid #4CAF50; }
+                            .header { background-color: #1a1a1a; padding: 30px; text-align: center; }
+                            .header h1 { margin: 0; color: #ffffff; font-size: 20px; text-transform: uppercase; letter-spacing: 1px; font-weight: 700; }
+                            .content { padding: 40px 30px; text-align: center; color: #333333; }
+                            .otp-box { background-color: #f0fdf4; border-radius: 8px; display: inline-block; padding: 15px 40px; margin: 25px 0; font-size: 32px; font-weight: bold; letter-spacing: 6px; color: #2E7D32; }
+                            .warning-text { font-size: 14px; color: #757575; margin-top: 10px; }
+                            .footer { background-color: #eeeeee; padding: 20px; text-align: center; font-size: 12px; color: #888888; }
+                            .footer p { margin: 5px 0; }
+                        </style>
+                    </head>
+                    <body>
+                        <div class="email-wrapper">
+                            <div class="email-container">
+                                <div class="header">
+                                    <h1>PIT Siglakas Medal Tallying</h1>
+                                </div>
+                                
+                                <div class="content">
+                                    <h2 style="color: #333; margin-top: 0;">Login Verification</h2>
+                                    <p style="font-size: 16px; color: #555;">Hello,</p>
+                                    <p style="font-size: 16px; color: #555;">To complete your login, please use the One-Time Password (OTP) below.</p>
+                                    
+                                    <div class="otp-box">' . $otp . '</div>
+                                    
+                                    <p class="warning-text">This code is valid for <b>5 minutes</b>.<br>If you did not request this code, please ignore this email.</p>
+                                </div>
+                                
+                                <div class="footer">
+                                    <p>&copy; ' . date("Y") . ' PIT Sports Tallying System. All rights reserved.</p>
+                                    <p>Palompon Institute of Technology</p>
+                                </div>
+                            </div>
+                        </div>
+                    </body>
+                    </html>';
 
                     $mail->send();
                     header('Location: verify_otp.php');
@@ -137,7 +178,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
       left: 0;
       width: 100%;
       height: 100%;
-      background: url('siglakas_cover.png');
+      background: url('images/featured_image.png');
       background-size: cover;
       z-index: -2;
     }
@@ -608,6 +649,80 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
       }
     }
 
+    /* --- FOOTER STYLES (MATCHING HOME.PHP) --- */
+    .footer-main {
+        flex-shrink: 0;
+        background: linear-gradient(135deg, #1a1a1a 0%, #2d2d2d 100%);
+        color: rgba(255,255,255,0.7);
+        padding: 3rem 0 2rem 0;
+        box-shadow: 0 -4px 20px rgba(0,0,0,0.15);
+        position: relative;
+        z-index: 1;
+    }
+
+    .footer-main .footer-logo-group {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        margin-bottom: 1rem;
+    }
+
+    .footer-main .footer-logo-group img {
+        height: 50px !important;
+        width: 50px !important;
+        object-fit: contain;
+    }
+
+    .footer-main .footer-logo-group h5 {
+        margin: 0;
+        font-size: 1.1rem;
+        font-weight: 700;
+        color: #fff;
+        line-height: 1.2;
+    }
+
+    .footer-main p {
+        font-size: 0.9rem;
+        max-width: 400px;
+    }
+
+    .footer-main h6 {
+        font-family: 'Poppins', sans-serif;
+        color: #fff;
+        font-weight: 600;
+        margin-bottom: 1rem;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+    }
+
+    .footer-main .footer-links {
+        list-style: none;
+        padding: 0;
+    }
+
+    .footer-main .footer-links li {
+        margin-bottom: 0.5rem;
+    }
+
+    .footer-main .footer-links a {
+        text-decoration: none;
+        color: rgba(255,255,255,0.7);
+        transition: var(--transition);
+    }
+
+    .footer-main .footer-links a:hover {
+        color: #fff;
+        padding-left: 5px;
+    }
+
+    .footer-bottom {
+        border-top: 1px solid rgba(255,255,255,0.1);
+        padding-top: 1.5rem;
+        margin-top: 2rem;
+        text-align: center;
+        font-size: 0.85rem;
+    }
+
     @media (max-width: 767.98px) {
       .logo-container {
         gap: 1rem;
@@ -623,6 +738,28 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         font-size: 1.5rem;
       }
     }
+
+    @media (max-width: 991px) {
+            /* 1. Center text on smaller screens */
+            .footer-main { 
+                text-align: center; 
+            }
+            
+            /* 2. Center the logo group (Image + Text) */
+            .footer-main .footer-logo-group { 
+                justify-content: center; 
+            }
+            
+            /* 3. Add spacing between columns so they don't look cramped */
+            .footer-main .row > div { 
+                margin-bottom: 2rem; 
+            }
+            
+            /* 4. Ensure the last column doesn't have extra margin */
+            .footer-main .row > div:last-child {
+                margin-bottom: 0;
+            }
+        }
   </style>
 </head>
 
@@ -651,13 +788,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     <a class="nav-link <?= ($current_page == 'Eventpage.php') ? 'active' : '' ?>" href="Eventpage.php">Events</a>
                 </li>
                 <li class="nav-item">
-                    <a class="nav-link <?= ($current_page == 'college_team.php') ? 'active' : '' ?>" href="college_team.php">Colleges</a>
+                    <a class="nav-link <?= ($current_page == 'college_team.php') ? 'active' : '' ?>" href="college_team.php">Teams</a>
                 </li>
                 <li class="nav-item">
                     <?php if (isset($_SESSION['email'])): ?>
                         <a href="logout.php" class="btn btn-danger ms-3">Logout</a>
                     <?php else: ?>
-                        <a href="login.php" class="btn btn-success ms-3">Login</a>
+                        <a href="login.php" class="btn btn-success ms-3">Admin Login</a>
                     <?php endif; ?>
                 </li>
             </ul>
@@ -672,7 +809,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         <div class="col-lg-7 brand-section">
           <div class="logo-container">
             <img src="imageslogo.png" alt="PIT Logo" class="main-logo">
-            <img src="images/COte.png" alt="Siglakas Logo" class="main-logo">
+            <img src="images/COTE.png" alt="Siglakas Logo" class="main-logo">
           </div>
           <h1 class="brand-title">
             SmartScore: A Web-Based Medal Tally Platform for Siglakas Events
@@ -727,7 +864,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
               <p class="mt-4 text-muted text-center">
                 <small>
-                  <i class="fas fa-info-circle me-1"></i> New user? 
+                  <i class="fas fa-info-circle me-1"></i> New Manager? 
                   <a href="request_account.php" class="request-account-link">Request an account here.</a>
                 </small>
               </p>
@@ -739,12 +876,43 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     </div>
   </div>
 
-  <footer class="bg-dark text-white py-4">
-    <div class="text-center">
-      <small>&copy; <?= date("Y") ?> PIT SPORTS TALLYING. All rights reserved.</small><br>
-      <small>Developed by Tsunayoshi Sawada</small>
-    </div>
-  </footer>
+  <footer class="footer-main">
+        <div class="container">
+            <div class="row">
+                <div class="col-lg-5 col-md-12 mb-4 mb-lg-0">
+                    <div class="footer-logo-group">
+                        <img src="imageslogo.png" alt="Logo">
+                        <img src="images/COte.png" alt="Logo">
+                        <h5> PIT SILAKAS MEDAL TALLY</h5>
+                    </div>
+                    <p>The official live medal tallying system for the Palompon Institute of Technology. Bringing you real-time results, event schedules, and team standings.</p>
+                </div>
+                <div class="col-lg-3 col-md-6 mb-4 mb-md-0">
+                    <h6>Quick Links</h6>
+                    <ul class="footer-links">
+                        <li><a href="home.php">Home (Standings)</a></li>
+                        <li><a href="Eventpage.php">Events Schedule</a></li>
+                        <li><a href="college_team.php">Teams & Rosters</a></li>
+                    </ul>
+                </div>
+                <div class="col-lg-4 col-md-6">
+                    <h6>Contact Us</h6>
+                    <div style="color: rgba(255,255,255,0.7); font-size: 0.9rem; line-height: 1.6;">
+                        <p class="mb-1 fw-bold text-white">Palompon Institute of Technology</p>
+                        <p class="mb-2">Evangelista Street, Brgy. Guiwan II,<br>Palompon, Leyte 6538</p>
+                        <p class="mb-0">
+                            <i class="fas fa-phone-alt me-2"></i>(053) 555-9841<br>
+                            <i class="fas fa-envelope me-2"></i>op@pit.edu.ph
+                        </p>
+                    </div>
+                </div>
+            </div>
+            <div class="footer-bottom">
+                <small>&copy; <?php echo date("Y"); ?> PIT SILAKAS MEDAL TALLY. All rights reserved.</small><br>
+                <small>Developed by Jayvee Baybyon</small>
+            </div>
+        </div>
+    </footer>
 
   <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
 

@@ -93,7 +93,7 @@ $conn->close();
 
 
     <style>
-        /* --- STYLES (Identical to previous file) --- */
+        /* --- STYLES --- */
         :root {
             --primary-green: #4CAF50;
             --primary-dark: #2E7D32;
@@ -151,7 +151,7 @@ $conn->close();
             flex: 1 0 auto;
             position: relative;
             z-index: 1;
-            padding-top: 100px; /* Space for fixed navbar */
+            padding-top: 100px;
         }
         
         .overall-card {
@@ -264,28 +264,21 @@ $conn->close();
         }
         
         .event-title {
-            font-family: 'Roboto', sans-serif;
-            font-weight: 700;
-            font-size: 1.1rem;
-            margin: 0;
-            color: #2c3e50;
-            margin-right: 8px;
-            overflow: hidden;
-            text-overflow: ellipsis;
-            white-space: nowrap;
-            flex-shrink: 1;
-            min-width: 0;
-        }
-        .status-pill {
-            font-size: 0.75rem;
-            font-weight: 600;
-            padding: 5px 12px;
-            border-radius: 20px;
-            color: #fff;
-            letter-spacing: 0.3px;
-            text-transform: uppercase;
-            flex-shrink: 0;
-        }
+    font-family: 'Roboto', sans-serif;
+    font-weight: 700;
+    font-size: 1.1rem;
+    margin: 0;
+    color: #2c3e50;
+    margin-right: 0; /* Removed fixed margin */
+    
+    /* FIX: Allow text to wrap and break long words */
+    white-space: normal;      
+    overflow-wrap: break-word; /* standard */
+    word-wrap: break-word;     /* older browsers */
+    word-break: break-word;    /* forces break for long strings like Chess(INDIVIDUAL) */
+    line-height: 1.2;
+    flex: 1 1 auto;            /* Allow title to take available space */
+}
         
         .check-event {
             font-weight: 600;
@@ -353,76 +346,139 @@ $conn->close();
         .modal-body .silver-medal { color: var(--accent-silver); }
         .modal-body .bronze-medal { color: var(--accent-bronze); }
 
+        /* --- MODERN 3D PODIUM DESIGN --- */
         .podium-container {
             display: flex;
             align-items: flex-end;
             justify-content: center;
-            min-height: 250px;
-            padding: 2rem 1rem;
-            gap: 5px;
+            min-height: 320px; /* Taller for better impact */
+            padding: 3rem 1rem 1rem;
+            gap: 15px; /* More spacing between steps */
+            background: radial-gradient(circle at center bottom, rgba(255, 215, 0, 0.05) 0%, transparent 70%); /* Subtle gold glow from bottom */
         }
+
         .podium-wrapper {
             display: flex;
             flex-direction: column;
             align-items: center;
-            width: 33.33%;
+            width: 30%; /* Slightly narrower columns */
+            position: relative;
+            transition: transform 0.3s ease;
         }
-        .podium-wrapper.gold { order: 2; }
+
+        .podium-wrapper:hover {
+            transform: translateY(-5px); /* Slight lift on hover */
+        }
+
+        /* Order: Silver(1) - Gold(2) - Bronze(3) */
+        .podium-wrapper.gold { order: 2; width: 35%; z-index: 10; } /* Gold is wider and on top */
         .podium-wrapper.silver { order: 1; }
         .podium-wrapper.bronze { order: 3; }
 
+        /* WINNER NAME CARDS */
+        .podium-winner-name {
+            font-size: 1rem;
+            font-weight: 800;
+            color: var(--text-dark);
+            margin-bottom: 15px;
+            text-align: center;
+            width: 100%;
+            background: white;
+            padding: 8px 5px;
+            border-radius: 8px;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.1);
+            border: 1px solid rgba(0,0,0,0.05);
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            display: -webkit-box;
+            -webkit-line-clamp: 2;
+            -webkit-box-orient: vertical;
+            overflow: hidden;
+        }
+
+        .podium-wrapper.gold .podium-winner-name {
+            font-size: 1.2rem;
+            color: #b78a02;
+            border-bottom: 3px solid #FFD700;
+        }
+
+        /* THE STEPS (Pillars) */
         .podium-step {
             display: flex;
             flex-direction: column;
-            justify-content: center; 
+            justify-content: flex-start; 
             align-items: center;
             text-align: center;
             width: 100%;
-            border-radius: 8px 8px 0 0;
-            padding: 1.5rem 1rem;
-            background-color: #f0f0f0;
-            box-shadow: 0 -4px 12px rgba(0,0,0,0.05) inset;
-        }
-        .podium-step.gold {
-            height: 180px;
-            background-color: #fffbeb;
-            border: 1px solid var(--accent-gold);
-        }
-        .podium-step.silver {
-            height: 140px;
-            background-color: #f8f8f8;
-            border: 1px solid var(--accent-silver);
-        }
-        .podium-step.bronze {
-            height: 110px;
-            background-color: #fdf8f4;
-            border: 1px solid var(--accent-bronze);
-        }
-        .podium-medal {
-            font-size: 3rem;
-            margin-bottom: 0.5rem;
-        }
-        .podium-step.gold .podium-medal { color: var(--accent-gold); }
-        .podium-step.silver .podium-medal { color: var(--accent-silver); }
-        .podium-step.bronze .podium-medal { color: var(--accent-bronze); }
-        
-        .podium-winner-name {
-            font-size: 1rem;
-            font-weight: 600;
-            color: var(--text-dark);
-            margin-bottom: 8px;
-            text-align: center;
-            width: 100%;
-            padding: 0 5px; 
-        }
-        
-        .podium-medal-count {
-            font-size: 1.5rem;
-            font-weight: 700;
-            color: var(--text-dark);
-            opacity: 0.7;
+            border-radius: 12px 12px 0 0;
+            padding-top: 20px;
+            position: relative;
+            box-shadow: 
+                inset 0 0 20px rgba(0,0,0,0.05), /* Inner Depth */
+                0 10px 20px rgba(0,0,0,0.1); /* Drop Shadow */
+            color: white; 
         }
 
+        /* GOLD PILLAR */
+        .podium-step.gold {
+            height: 220px;
+            background: linear-gradient(135deg, #FFD700 0%, #FDB931 50%, #d4af37 100%);
+            border: none;
+        }
+
+        /* SILVER PILLAR */
+        .podium-step.silver {
+            height: 160px;
+            background: linear-gradient(135deg, #E0E0E0 0%, #BDBDBD 50%, #9E9E9E 100%);
+            border: none;
+        }
+
+        /* BRONZE PILLAR */
+        .podium-step.bronze {
+            height: 120px;
+            background: linear-gradient(135deg, #FFAF7B 0%, #D78957 50%, #A0522D 100%);
+            border: none;
+        }
+
+        /* MEDAL ICONS */
+        .podium-medal {
+            font-size: 2.5rem;
+            margin-bottom: 5px;
+            filter: drop-shadow(0 2px 4px rgba(0,0,0,0.2));
+            color: white !important; 
+        }
+
+        /* MEDAL COUNT (The Score) */
+        .podium-medal-count {
+            font-size: 2rem;
+            font-weight: 900;
+            color: rgba(255,255,255,0.95);
+            line-height: 1;
+        }
+
+        .podium-label {
+            font-size: 0.7rem;
+            text-transform: uppercase;
+            opacity: 0.8;
+            margin-top: 5px;
+            font-weight: 600;
+        }
+
+        /* RANK BADGE (1, 2, 3) */
+        .rank-badge-podium {
+            width: 40px;
+            height: 40px;
+            background: rgba(255,255,255,0.2);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 800;
+            font-size: 1.2rem;
+            margin-top: auto; 
+            margin-bottom: 20px;
+            border: 1px solid rgba(255,255,255,0.4);
+        }
 
         @media (max-width: 991.98px) {
             .hero-section {
@@ -433,6 +489,7 @@ $conn->close();
                 min-height: 220px;
             }
         }
+        
         @media (max-width: 767.98px) {
             .overall-card {
                 padding: 1.5rem;
@@ -453,17 +510,306 @@ $conn->close();
                 padding: 0.75rem 0.1rem;
             }
             
+            /* ADJUST PODIUM FOR PHONES */
             .podium-container {
-                min-height: 200px;
+                min-height: 220px; 
                 padding: 1rem 0.5rem;
+                align-items: flex-end; 
             }
-            .podium-step { padding: 1rem 0.5rem; }
-            .podium-step.gold { height: 150px; }
+            
+            .podium-wrapper {
+                width: 32%; 
+            }
+            .podium-wrapper.gold { width: 36%; } 
+
+            /* Make pillars shorter for mobile */
+            .podium-step { padding: 10px 2px; }
+            .podium-step.gold { height: 160px; }
             .podium-step.silver { height: 120px; }
             .podium-step.bronze { height: 90px; }
-            .podium-medal { font-size: 2rem; margin-bottom: 0.5rem; }
-            .podium-winner-name { font-size: 0.85rem; }
+
+            /* Resize text/icons */
+            .podium-medal { font-size: 1.5rem; margin-bottom: 2px; }
             .podium-medal-count { font-size: 1.2rem; }
+            .podium-label { font-size: 0.6rem; margin-top: 2px; }
+            
+            /* Hide the "1, 2, 3" badge on very small screens */
+            .rank-badge-podium {
+                width: 25px; height: 25px; font-size: 0.8rem; margin-bottom: 5px;
+            }
+            
+            .podium-winner-name {
+                font-size: 0.75rem;
+                margin-bottom: 8px;
+                padding: 4px 2px;
+            }
+        }
+        
+        .status-pill {
+    font-size: 0.7rem;          /* Slightly smaller text to fit long statuses */
+    font-weight: 800;
+    padding: 6px 10px;
+    border-radius: 30px;
+    color: #fff;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    box-shadow: 0 2px 5px rgba(0,0,0,0.15);
+    border: 1px solid rgba(255,255,255,0.2);
+    
+    /* FIX: Set a fixed minimum width and center text */
+    min-width: 130px;           /* Ensures all badges are at least this wide */
+    text-align: center;         /* Centers the text inside the badge */
+    display: inline-block;      /* Required for width to work */
+    white-space: nowrap;        /* Keeps status text on one line */
+}
+
+        /* 1. ONGOING (Active/Green) - With Pulse Animation */
+        .status-ongoing {
+            background: linear-gradient(135deg, #28a745, #218838) !important;
+            box-shadow: 0 0 8px rgba(40, 167, 69, 0.6);
+            animation: pulse-green 2s infinite;
+        }
+
+        /* 2. COMPLETED (Finished/Blue) */
+        .status-completed {
+            background: linear-gradient(135deg, #0d6efd, #0b5ed7) !important;
+        }
+
+        /* 3. PENDING (Waiting/Orange) */
+        .status-pending {
+            background: linear-gradient(135deg, #fd7e14, #e36b09) !important; /* Bright Orange */
+            color: white !important;
+        }
+
+        /* 4. UPCOMING (Future/Teal) */
+        .status-upcoming {
+            background: linear-gradient(135deg, #17a2b8, #138496) !important;
+        }
+        
+        /* 5. CANCELLED (Red) */
+        .status-cancelled {
+            background: linear-gradient(135deg, #dc3545, #c82333) !important;
+        }
+
+        /* Animation for Ongoing */
+        @keyframes pulse-green {
+            0% { box-shadow: 0 0 0 0 rgba(40, 167, 69, 0.7); }
+            70% { box-shadow: 0 0 0 6px rgba(40, 167, 69, 0); }
+            100% { box-shadow: 0 0 0 0 rgba(40, 167, 69, 0); }
+        }
+
+        /* PODIUM LOGO STYLES */
+        .podium-logo {
+            width: 60px;
+            height: 60px;
+            border-radius: 50%;
+            object-fit: cover;
+            border: 3px solid white;
+            box-shadow: 0 4px 8px rgba(0,0,0,0.15);
+            background-color: white;
+            margin-bottom: -15px; /* Pull it down slightly to overlap the name card */
+            position: relative;
+            z-index: 2;
+            transition: transform 0.3s ease;
+        }
+
+        .podium-wrapper:hover .podium-logo {
+            transform: scale(1.1); /* Pop effect on hover */
+        }
+
+        /* Make Gold Logo Bigger */
+        .podium-wrapper.gold .podium-logo {
+            width: 80px;
+            height: 80px;
+            border: 4px solid #FFD700; /* Gold border */
+        }
+
+        /* Adjust winner name to accommodate the logo above it */
+        .podium-winner-name {
+            padding-top: 15px; /* Make space for the logo overlap */
+            margin-top: 5px;
+        }
+
+        /* --- PROFESSIONAL PHOTO FRAME --- */
+        .winning-photo-frame {
+            width: 100%;           /* Fill the available width */
+            max-width: 500px;      /* Prevent it from getting too huge on big screens */
+            height: 320px;         /* FIXED HEIGHT: This ensures consistency */
+            margin: 0 auto;        /* Center the frame */
+            background-color: #f8f9fa; /* Light gray background */
+            border-radius: 12px;   /* Smooth corners */
+            overflow: hidden;      /* Cut off any image overflow */
+            border: 4px solid #fff; 
+            box-shadow: 0 8px 20px rgba(0,0,0,0.15); /* Nice depth */
+            position: relative;
+        }
+
+        .winning-photo-frame img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;     /* THE KEY: Crops image to fill the box perfectly */
+            object-position: center top; /* Focus on faces/top part of image */
+            cursor: pointer;
+            transition: transform 0.4s ease;
+        }
+
+        .winning-photo-frame:hover img {
+            transform: scale(1.05); /* Subtle zoom effect on hover */
+        }
+
+        /* Optional: "Expand" icon overlay on hover */
+        .winning-photo-frame::after {
+            content: '\f00e'; /* FontAwesome Zoom Icon */
+            font-family: 'Font Awesome 5 Free';
+            font-weight: 900;
+            position: absolute;
+            top: 50%; left: 50%;
+            transform: translate(-50%, -50%);
+            color: white;
+            font-size: 2rem;
+            opacity: 0;
+            transition: opacity 0.3s ease;
+            text-shadow: 0 2px 10px rgba(0,0,0,0.5);
+            pointer-events: none;
+        }
+
+        .winning-photo-frame:hover::after {
+            opacity: 1;
+        }
+
+        /* --- FOOTER & PRINT --- */
+        .footer-main {
+            flex-shrink: 0;
+            background: linear-gradient(135deg, #1a1a1a 0%, #2d2d2d 100%);
+            color: rgba(255,255,255,0.7);
+            padding: 3rem 0 2rem 0;
+            box-shadow: 0 -4px 20px rgba(0,0,0,0.15);
+            position: relative;
+            z-index: 1;
+        }
+        .footer-main .footer-logo-group {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+            margin-bottom: 1rem;
+        }
+        /* --- FOOTER LOGO FIX --- */
+        .footer-main .footer-logo-group {
+            display: flex;              /* Forces items to sit in a row */
+            align-items: center;        /* Vertically centers them */
+            gap: 12px;                  /* Space between logos and text */
+            margin-bottom: 1rem;
+        }
+
+        .footer-main .footer-logo-group img {
+            height: 50px !important;    /* Force height */
+            width: 50px !important;     /* Force width */
+            object-fit: contain;        /* Keep logo shape correct */
+        }
+
+        .footer-main .footer-logo-group h5 {
+            margin: 0;                  /* Remove default spacing that pushes it down */
+            font-size: 1.1rem;          /* Adjust text size */
+            font-weight: 700;
+            color: #fff;
+            line-height: 1.2;           /* Tighter line spacing */
+        }
+        .footer-main p {
+            font-size: 0.9rem;
+            max-width: 400px;
+        }
+        .footer-main h6 {
+            font-family: 'Poppins', sans-serif;
+            color: #fff;
+            font-weight: 600;
+            margin-bottom: 1rem;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+        .footer-main .footer-links {
+            list-style: none;
+            padding: 0;
+        }
+        .footer-main .footer-links li {
+            margin-bottom: 0.5rem;
+        }
+        .footer-main .footer-links a {
+            text-decoration: none;
+            color: rgba(255,255,255,0.7);
+            transition: var(--transition);
+        }
+        .footer-main .footer-links a:hover {
+            color: #fff;
+            padding-left: 5px;
+        }
+        .footer-bottom {
+            border-top: 1px solid rgba(255,255,255,0.1);
+            padding-top: 1.5rem;
+            margin-top: 2rem;
+            text-align: center;
+            font-size: 0.85rem;
+        }
+
+        @media (max-width: 991px) {
+            /* 1. Center text on smaller screens */
+            .footer-main { 
+                text-align: center; 
+            }
+            
+            /* 2. Center the logo group (Image + Text) */
+            .footer-main .footer-logo-group { 
+                justify-content: center; 
+            }
+            
+            /* 3. Add spacing between columns so they don't look cramped */
+            .footer-main .row > div { 
+                margin-bottom: 2rem; 
+            }
+            
+            /* 4. Ensure the last column doesn't have extra margin */
+            .footer-main .row > div:last-child {
+                margin-bottom: 0;
+            }
+        }
+
+        /* --- MOBILE ORGANIZATION: COMPACT 3-COLUMN GRID --- */
+        @media (max-width: 767px) {
+            
+            /* 1. Header: Justify (Left vs Right) */
+            .events-header .d-flex {
+                display: flex !important;
+                justify-content: space-between !important;
+                align-items: center !important;
+                width: 100%;
+            }
+
+            /* 2. Tabs: Organize into a Tighter 3-column Grid */
+            .events-nav-tabs {
+                display: grid !important;
+                /* Change: Create 3 equal columns instead of 2 */
+                grid-template-columns: repeat(3, 1fr); 
+                gap: 0px;                         /* Slightly tighter gap */
+                border-bottom: 1px solid #dee2e6;
+                padding-bottom: 15px;
+                margin-right: 0 !important;
+            }
+
+            /* 3. Tab Links: Compact and Centered */
+            .events-nav-tabs .nav-item {
+                width: 100%;
+                text-align: center;
+            }
+
+            .events-nav-tabs .nav-link {
+                margin: 0 !important;
+                padding: 8px 2px;   /* Reduce side padding to fit text */
+                width: 100%;
+                justify-content: center;
+                font-size: 0.85rem; /* Slightly smaller text to prevent wrapping */
+                white-space: nowrap; /* Keep text on one line */
+                overflow: hidden;
+                text-overflow: ellipsis; /* Add dots (...) if text is too long */
+            }
         }
     </style>
 </head>
@@ -518,7 +864,7 @@ $conn->close();
                                 <img src="images/SiglakaseventIcon.png" alt="Events Icon" class="me-2" style="width: 3.5rem; height: 3.5rem; object-fit: contain;">
                                 Siglakas Events
                             </h1>
-                            <p class="lead text-muted">Discover and track all tournament events, matches, and standings in one place.</p>
+                            <p class="lead text-muted">Your centralized hub for the Siglakas Tournament. Stay updated with official event schedules, view real-time results, and track the latest medal standings as they happen</p>
                         </div>
                         <div class="col-lg-6">
                             <div class="row g-3">
@@ -643,10 +989,10 @@ $conn->close();
                         </li>
                         
 
-                        <li class="nav-item" role="presentation" data-tab-type="medal">
+                        <li class="nav-item" role="presentation">
                             <button class="nav-link rounded-top" id="winners-tab" 
                                     data-bs-toggle="tab" data-bs-target="#tab-winners" 
-                                    type="button" role="tab" data-tab-type="medal">
+                                    type="button" role="tab">
                                 <i class="fas fa-award me-2"></i>
                                 Medal Winners
                             </button>
@@ -744,9 +1090,17 @@ $conn->close();
                                 <div class="card-body">
                                     
                                     <div id="podiumPhotoContainer" class="text-center mb-4 d-none">
-                                        <h6 class="text-uppercase text-muted small fw-bold mb-2">Winning Moment</h6>
-                                        <img id="podiumPhotoImg" src="" class="img-fluid rounded shadow-sm" 
-                                             style="max-height: 300px; width: auto; border: 4px solid #fff; box-shadow: 0 4px 12px rgba(0,0,0,0.15);">
+                                        <h6 class="text-uppercase text-muted small fw-bold mb-3">
+                                            <i class="fas fa-camera-retro me-1"></i> Winning Moment
+                                        </h6>
+                                        
+                                        <div class="winning-photo-frame">
+                                            <img id="podiumPhotoImg" src="" alt="Winning Moment" title="Click to view full size">
+                                        </div>
+                                        
+                                        <div class="small text-muted mt-2">
+                                            <i class="fas fa-search-plus me-1"></i>Click image to expand
+                                        </div>
                                     </div>
 
                                     <div id="medal-winners-body">
@@ -767,9 +1121,58 @@ $conn->close();
             </div>
         </div>
     </div>
+
+    <div class="modal fade" id="imagePreviewModal" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered modal-lg">
+            <div class="modal-content bg-transparent border-0">
+                <div class="modal-body p-0 text-center position-relative">
+                    <button type="button" class="btn-close btn-close-white position-absolute top-0 end-0 m-3" 
+                            data-bs-dismiss="modal" aria-label="Close" 
+                            style="background-color: rgba(0,0,0,0.5); padding: 1rem; border-radius: 50%; z-index: 1051;">
+                    </button>
+                    <img id="previewImageFull" src="" class="img-fluid rounded shadow-lg" 
+                         style="max-height: 90vh; border: 2px solid rgba(255,255,255,0.2);">
+                </div>
+            </div>
+        </div>
+    </div>
     
-    <footer class="bg-dark text-white p-4 text-center">
-        <small>&copy; 2025 PIT Sports Tallying System. All rights reserved.</small>
+    <footer class="footer-main">
+        <div class="container">
+            <div class="row">
+                <div class="col-lg-5 col-md-12 mb-4 mb-lg-0">
+                    <div class="footer-logo-group">
+                        <img src="imageslogo.png" alt="Logo">
+                        <img src="images/COTE.png" alt="Logo">
+                        <h5> PIT SILAKAS MEDAL TALLY</h5>
+                    </div>
+                    <p>The official live medal tallying system for the Palompon Institute of Technology. Bringing you real-time results, event schedules, and team standings.</p>
+                </div>
+                <div class="col-lg-3 col-md-6 mb-4 mb-md-0">
+                    <h6>Quick Links</h6>
+                    <ul class="footer-links">
+                        <li><a href="home.php">Home (Standings)</a></li>
+                        <li><a href="Eventpage.php">Events Schedule</a></li>
+                        <li><a href="college_team.php">Teams & Rosters</a></li>
+                    </ul>
+                </div>
+                <div class="col-lg-4 col-md-6">
+                    <h6>Contact Us</h6>
+                    <div style="color: rgba(255,255,255,0.7); font-size: 0.9rem; line-height: 1.6;">
+                        <p class="mb-1 fw-bold text-white">Palompon Institute of Technology</p>
+                        <p class="mb-2">Evangelista Street, Brgy. Guiwan II,<br>Palompon, Leyte 6538</p>
+                        <p class="mb-0">
+                            <i class="fas fa-phone-alt me-2"></i>(053) 555-9841<br>
+                            <i class="fas fa-envelope me-2"></i>op@pit.edu.ph
+                        </p>
+                    </div>
+                </div>
+            </div>
+            <div class="footer-bottom">
+                <small>&copy; <?php echo date("Y"); ?> PIT SILAKAS MEDAL TALLY. All rights reserved.</small><br>
+                <small>Developed by Jayvee Baybyon</small>
+            </div>
+        </div>
     </footer>
 
 
@@ -777,6 +1180,27 @@ $conn->close();
     <script src="https://code.iconify.design/2/2.2.1/iconify.min.js"></script>
     <script>
         document.addEventListener('DOMContentLoaded', function() {
+
+            // --- NEW: LIGHTBOX LOGIC ---
+            const podiumImg = document.getElementById('podiumPhotoImg');
+            const previewModalEl = document.getElementById('imagePreviewModal');
+            const previewImageFull = document.getElementById('previewImageFull');
+            // Initialize the Bootstrap modal
+            const imagePreviewModal = new bootstrap.Modal(previewModalEl);
+
+            if (podiumImg) {
+                podiumImg.addEventListener('click', function() {
+                    // Only open if there is actually an image source
+                    if (this.src && this.src !== '' && !this.src.endsWith('html')) {
+                        previewImageFull.src = this.src;
+                        imagePreviewModal.show();
+                    }
+                });
+                
+                // Add a hover zoom effect via JS (Optional, or handled by CSS)
+                podiumImg.addEventListener('mouseenter', () => podiumImg.style.transform = 'scale(1.02)');
+                podiumImg.addEventListener('mouseleave', () => podiumImg.style.transform = 'scale(1)');
+            }
             
             // 1. ADJUST PADDING FOR FIXED NAVBAR
             const navbarHeight = document.querySelector('.navbar').offsetHeight;
@@ -955,11 +1379,6 @@ $conn->close();
 
                     currentEventIdForRefresh = eventId;
 
-                    // 1. Show/Hide Tabs based on Type (Actually simplified to just Details/Medals now)
-                    const allTabs = viewEventModalElement.querySelectorAll('.nav-item[data-tab-type]');
-                    allTabs.forEach(tabLi => {
-                        tabLi.style.display = (tabLi.dataset.tabType === categoryType) ? 'block' : 'none';
-                    });
 
                     // 2. Smart Tab Activation
                     let targetTabId = 'details-tab';
@@ -1049,17 +1468,28 @@ $conn->close();
             }
 
             // Helper: Status Class
+            // Helper: Get Status Class (Updated for Visibility)
             function getEventCardStatusClassJS(status) {
                 if (!status) return 'bg-secondary'; 
                 const lowerStatus = status.toLowerCase();
                 
-                if (lowerStatus === 'ongoing') return 'bg-success';
-                if (lowerStatus === 'completed' || lowerStatus === 'results approved') return 'bg-primary';
-                if (lowerStatus.includes('pending') || lowerStatus.includes('submitted')) return 'bg-warning text-dark';
-                if (lowerStatus === 'upcoming') return 'bg-info';
-                if (lowerStatus === 'cancelled' || lowerStatus === 'results rejected') return 'bg-danger';
+                if (lowerStatus === 'ongoing') {
+                    return 'status-ongoing'; // Custom Green Pulse
+                }
+                if (lowerStatus === 'completed' || lowerStatus === 'results approved') {
+                    return 'status-completed'; // Solid Blue
+                }
+                if (lowerStatus.includes('pending') || lowerStatus.includes('submitted')) {
+                    return 'status-pending'; // Bright Orange (Was Yellow)
+                }
+                if (lowerStatus === 'upcoming') {
+                    return 'status-upcoming'; // Teal
+                }
+                if (lowerStatus === 'cancelled' || lowerStatus === 'results rejected') {
+                    return 'status-cancelled'; // Red
+                }
                 
-                return 'bg-secondary';
+                return 'bg-secondary'; // Grey fallback
             }
 
             // Helper: Status Text
@@ -1120,11 +1550,51 @@ $conn->close();
                                 medalWinnersBody.innerHTML = '<div class="text-center p-5 text-muted">No medal winners have been submitted yet.</div>';
                                 return;
                             }
+                            // Default logo if missing
+                            const defaultLogo = 'images/default_avatar.png'; 
+
                             // Render Podium
                             let html = '<div class="podium-container">';
-                            html += `<div class="podium-wrapper silver"><div class="podium-winner-name">${escapeHtml(data.silver || 'N/A')}</div><div class="podium-step silver"><i class="fas fa-medal podium-medal"></i><div class="podium-medal-count">${escapeHtml(data.silver_count || '0')}</div></div></div>`;
-                            html += `<div class="podium-wrapper gold"><div class="podium-winner-name">${escapeHtml(data.gold || 'N/A')}</div><div class="podium-step gold"><i class="fas fa-medal podium-medal"></i><div class="podium-medal-count">${escapeHtml(data.gold_count || '0')}</div></div></div>`;
-                            html += `<div class="podium-wrapper bronze"><div class="podium-winner-name">${escapeHtml(data.bronze || 'N/A')}</div><div class="podium-step bronze"><i class="fas fa-medal podium-medal"></i><div class="podium-medal-count">${escapeHtml(data.bronze_count || '0')}</div></div></div>`;
+                            
+                            // SILVER (Left)
+                            html += `
+                            <div class="podium-wrapper silver">
+                                <img src="${escapeHtml(data.silver_logo || defaultLogo)}" class="podium-logo" onerror="this.src='${defaultLogo}'">
+                                <div class="podium-winner-name">${escapeHtml(data.silver || 'N/A')}</div>
+                                <div class="podium-step silver">
+                                    <i class="fas fa-medal podium-medal"></i>
+                                    <div class="podium-medal-count">${escapeHtml(data.silver_count || '0')}</div>
+                                    <div class="podium-label">Medals</div>
+                                    <div class="rank-badge-podium">2</div>
+                                </div>
+                            </div>`;
+                            
+                            // GOLD (Center)
+                            html += `
+                            <div class="podium-wrapper gold">
+                                <img src="${escapeHtml(data.gold_logo || defaultLogo)}" class="podium-logo" onerror="this.src='${defaultLogo}'">
+                                <div class="podium-winner-name">${escapeHtml(data.gold || 'N/A')}</div>
+                                <div class="podium-step gold">
+                                    <i class="fas fa-trophy podium-medal mb-2"></i>
+                                    <div class="podium-medal-count">${escapeHtml(data.gold_count || '0')}</div>
+                                    <div class="podium-label">Medals</div>
+                                    <div class="rank-badge-podium">1</div>
+                                </div>
+                            </div>`;
+                            
+                            // BRONZE (Right)
+                            html += `
+                            <div class="podium-wrapper bronze">
+                                <img src="${escapeHtml(data.bronze_logo || defaultLogo)}" class="podium-logo" onerror="this.src='${defaultLogo}'">
+                                <div class="podium-winner-name">${escapeHtml(data.bronze || 'N/A')}</div>
+                                <div class="podium-step bronze">
+                                    <i class="fas fa-medal podium-medal"></i>
+                                    <div class="podium-medal-count">${escapeHtml(data.bronze_count || '0')}</div>
+                                    <div class="podium-label">Medals</div>
+                                    <div class="rank-badge-podium">3</div>
+                                </div>
+                            </div>`;
+                            
                             html += '</div>';
                             medalWinnersBody.innerHTML = html;
                         } else {

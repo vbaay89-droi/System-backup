@@ -164,7 +164,8 @@ if (isset($_GET['action']) && $_GET['action'] == 'reset' && isset($_GET['id'])) 
             $stmt_update->execute();
             
             if ($stmt_update->affected_rows == 1) {
-                $_SESSION['message'] = "Password reset for '{$email}'. New Password: <strong>$new_password</strong>";
+                // FIXED: Removed <strong> tags to prevent display issues
+                $_SESSION['message'] = "Password reset for '{$email}'. The new temporary password is: $new_password";
                 $_SESSION['message_type'] = 'success';
             } else {
                 throw new Exception("Password not changed.");
@@ -399,20 +400,25 @@ $pending_results_count = $conn->query("SELECT COUNT(*) FROM categories WHERE sta
                                 <tr>
                                     <td><?= htmlspecialchars($request['full_name']) ?></td>
                                     <td><?= htmlspecialchars($request['email']) ?></td>
-                                    <td><span class="badge bg-info text-dark"><?= htmlspecialchars($request['role']) ?></span></td>
+                                    <td class="fw-bold text-dark"><?= htmlspecialchars($request['role']) ?></td>
                                     <td><?= date('M d, Y h:i A', strtotime($request['created_at'])) ?></td>
                                     <td>
-                                        <a href="Manage_Requests.php?action=approve&id=<?= $request['id'] ?>" 
-                                           class="btn btn-sm btn-success me-2" 
-                                           onclick="return confirm('Approve this user? An email will be sent.')">
-                                            <i class="fas fa-check"></i> Approve
-                                        </a>
-                                        <a href="Manage_Requests.php?action=reject&id=<?= $request['id'] ?>" 
-                                           class="btn btn-sm btn-danger" 
-                                           onclick="return confirm('Reject and delete this request?')">
-                                            <i class="fas fa-times"></i> Reject
-                                        </a>
-                                    </td>
+    <div class="d-flex gap-2">
+        <a href="Manage_Requests.php?action=approve&id=<?= $request['id'] ?>" 
+           class="btn btn-success btn-sm d-inline-flex align-items-center shadow-sm"
+           title="Approve User"
+           onclick="return confirm('Approve this user? An email will be sent.')">
+            <i class="fas fa-check me-1"></i> Approve
+        </a>
+
+        <a href="Manage_Requests.php?action=reject&id=<?= $request['id'] ?>" 
+           class="btn btn-danger btn-sm d-inline-flex align-items-center shadow-sm"
+           title="Reject Request"
+           onclick="return confirm('Reject and delete this request?')">
+            <i class="fas fa-trash-alt me-1"></i> Reject
+        </a>
+    </div>
+</td>
                                 </tr>
                                 <?php endforeach; ?>
                                 <?php if (empty($pending_requests)): ?>

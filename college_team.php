@@ -120,18 +120,78 @@ function truncate_text($text, $length = 100, $suffix = '...') {
         .btn-danger, .btn-success { padding: 0.6rem 1.5rem; border-radius: 10px; font-weight: 600; transition: var(--transition); border: none; box-shadow: 0 4px 12px rgba(0,0,0,0.15); }
         .btn-danger:hover, .btn-success:hover { transform: translateY(-2px); box-shadow: 0 6px 20px rgba(0,0,0,0.2); }
         
-        /* MAIN LAYOUT */
-        .main-content { flex: 1 0 auto; position: relative; z-index: 1; padding-top: 100px; padding-bottom: 60px; }
-        .footer-main { flex-shrink: 0; background: linear-gradient(135deg, #1a1a1a 0%, #2d2d2d 100%); color: rgba(255,255,255,0.7); padding: 3rem 0 2rem 0; box-shadow: 0 -4px 20px rgba(0,0,0,0.15); }
-        .footer-main .footer-logo-group { display: flex; align-items: center; gap: 1rem; margin-bottom: 1rem; }
-        .footer-main .footer-logo-group img { height: 50px; }
-        .footer-main h5 { font-family: 'Poppins', sans-serif; font-weight: 700; color: #fff; margin: 0; }
-        .footer-main h6 { font-family: 'Poppins', sans-serif; color: #fff; font-weight: 600; margin-bottom: 1rem; }
-        .footer-main .footer-links { list-style: none; padding: 0; }
-        .footer-main .footer-links a { text-decoration: none; color: rgba(255,255,255,0.7); }
-        .footer-main .footer-links a:hover { color: #fff; }
-        .footer-bottom { border-top: 1px solid rgba(255,255,255,0.1); padding-top: 1.5rem; margin-top: 2rem; text-align: center; font-size: 0.85rem; }
+        /* --- FOOTER & PRINT --- */
+        .footer-main {
+            flex-shrink: 0;
+            background: linear-gradient(135deg, #1a1a1a 0%, #2d2d2d 100%);
+            color: rgba(255,255,255,0.7);
+            padding: 3rem 0 2rem 0;
+            box-shadow: 0 -4px 20px rgba(0,0,0,0.15);
+            position: relative;
+            z-index: 1;
+        }
+        .footer-main .footer-logo-group {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+            margin-bottom: 1rem;
+        }
+        /* --- FOOTER LOGO FIX --- */
+        .footer-main .footer-logo-group {
+            display: flex;              /* Forces items to sit in a row */
+            align-items: center;        /* Vertically centers them */
+            gap: 12px;                  /* Space between logos and text */
+            margin-bottom: 1rem;
+        }
 
+        .footer-main .footer-logo-group img {
+            height: 50px !important;    /* Force height */
+            width: 50px !important;     /* Force width */
+            object-fit: contain;        /* Keep logo shape correct */
+        }
+
+        .footer-main .footer-logo-group h5 {
+            margin: 0;                  /* Remove default spacing that pushes it down */
+            font-size: 1.1rem;          /* Adjust text size */
+            font-weight: 700;
+            color: #fff;
+            line-height: 1.2;           /* Tighter line spacing */
+        }
+        .footer-main p {
+            font-size: 0.9rem;
+            max-width: 400px;
+        }
+        .footer-main h6 {
+            font-family: 'Poppins', sans-serif;
+            color: #fff;
+            font-weight: 600;
+            margin-bottom: 1rem;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+        .footer-main .footer-links {
+            list-style: none;
+            padding: 0;
+        }
+        .footer-main .footer-links li {
+            margin-bottom: 0.5rem;
+        }
+        .footer-main .footer-links a {
+            text-decoration: none;
+            color: rgba(255,255,255,0.7);
+            transition: var(--transition);
+        }
+        .footer-main .footer-links a:hover {
+            color: #fff;
+            padding-left: 5px;
+        }
+        .footer-bottom {
+            border-top: 1px solid rgba(255,255,255,0.1);
+            padding-top: 1.5rem;
+            margin-top: 2rem;
+            text-align: center;
+            font-size: 0.85rem;
+        }
         /* CARDS */
         .hero-section { background: linear-gradient(135deg, rgba(255,255,255,0.9) 0%, rgba(233,236,239,0.9) 100%); border-radius: 16px; padding: 32px; box-shadow: var(--shadow-md); }
         .stat-card-new { background: white; border-radius: 12px; padding: 20px 15px; box-shadow: var(--shadow-sm); transition: var(--transition); height: 100%; }
@@ -224,6 +284,150 @@ function truncate_text($text, $length = 100, $suffix = '...') {
         }
         .close-lightbox:hover, .close-lightbox:focus { color: #bbb; text-decoration: none; cursor: pointer; }
         @keyframes zoom { from {transform:scale(0)} to {transform:scale(1)} }
+        /* PODIUM STYLE CARDS */
+        .college-card {
+            transition: transform 0.3s ease, box-shadow 0.3s ease;
+            border: 0;
+            border-top: 5px solid var(--team-color); /* Default strip */
+        }
+
+
+
+        /* Rank Badge on Card */
+        .rank-badge {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            font-weight: 800;
+            font-size: 0.85rem;
+            padding: 5px 10px;
+            border-radius: 50px;
+            background: #f8f9fa;
+            color: #6c757d;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+        }
+        .rank-1-card .rank-badge { background: #ffd700; color: #000; }
+        .rank-2-card .rank-badge { background: #c0c0c0; color: #fff; }
+        .rank-3-card .rank-badge { background: #cd7f32; color: #fff; }
+
+        /* Mini Medal Counter on Card */
+        .medal-mini-stat {
+            display: flex;
+            justify-content: space-around;
+            background: #f8f9fa;
+            border-radius: 8px;
+            padding: 8px;
+            margin: 10px 0;
+            font-size: 0.9rem;
+            font-weight: 700;
+        }
+        .medal-mini-stat div { text-align: center; }
+        .medal-mini-stat span { font-size: 1.1rem; display: block; }
+
+        /* --- DARK HERO SECTION --- */
+.hero-section {
+    /* Matches the Navbar/Sidebar Dark Theme */
+    background: linear-gradient(135deg, #1a1a1a 0%, #2d2d2d 100%);
+    color: white;
+    border-radius: 16px;
+    padding: 3rem;
+    box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+    margin-bottom: 2.5rem;
+    position: relative;
+    overflow: hidden;
+    border: 1px solid rgba(255,255,255,0.1);
+}
+
+/* Subtle Glow Effect */
+.hero-section::before {
+    content: '';
+    position: absolute;
+    top: -50%;
+    right: -10%;
+    width: 400px;
+    height: 400px;
+    background: radial-gradient(circle, rgba(76, 175, 80, 0.15) 0%, transparent 70%);
+    border-radius: 50%;
+    pointer-events: none;
+}
+
+/* Update Stat Cards to look good on Dark Background */
+.stat-card-new {
+    background: rgba(255, 255, 255, 0.1); /* Glassmorphism */
+    backdrop-filter: blur(10px);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 12px;
+    padding: 20px 15px;
+    transition: transform 0.3s ease;
+}
+
+.stat-card-new:hover {
+    transform: translateY(-5px);
+    background: rgba(255, 255, 255, 0.15);
+}
+
+.stat-card-new .text-muted {
+    color: rgba(255, 255, 255, 0.7) !important; /* Lighten muted text */
+}
+
+/* --- DIGITAL VICTORY CARD (Fallback for Silver/Bronze) --- */
+.digital-victory-card {
+    width: 100%;
+    height: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    position: relative;
+    overflow: hidden;
+    /* Uses the team color via inline style */
+    background-color: var(--card-bg); 
+}
+
+/* Glassy Texture Overlay */
+.digital-victory-card::after {
+    content: '';
+    position: absolute;
+    top: 0; left: 0; right: 0; bottom: 0;
+    background: linear-gradient(135deg, rgba(255,255,255,0.3) 0%, rgba(0,0,0,0.1) 100%);
+    z-index: 1;
+}
+
+/* Centered Floating Logo */
+.digital-victory-card img {
+    width: 55%;
+    height: 55%;
+    object-fit: contain;
+    filter: drop-shadow(0 10px 20px rgba(0,0,0,0.3));
+    z-index: 2;
+    transition: transform 0.4s ease;
+}
+
+/* Hover Effect */
+.gallery-card:hover .digital-victory-card img {
+    transform: scale(1.15) rotate(5deg);
+}
+
+@media (max-width: 991px) {
+            /* 1. Center text on smaller screens */
+            .footer-main { 
+                text-align: center; 
+            }
+            
+            /* 2. Center the logo group (Image + Text) */
+            .footer-main .footer-logo-group { 
+                justify-content: center; 
+            }
+            
+            /* 3. Add spacing between columns so they don't look cramped */
+            .footer-main .row > div { 
+                margin-bottom: 2rem; 
+            }
+            
+            /* 4. Ensure the last column doesn't have extra margin */
+            .footer-main .row > div:last-child {
+                margin-bottom: 0;
+            }
+        }
     </style>
 </head>
 <body>
@@ -261,33 +465,34 @@ function truncate_text($text, $length = 100, $suffix = '...') {
         <div class="container">
             
             <div class="hero-section mb-5">
-                <div class="row align-items-center">
+                <div class="row align-items-center position-relative" style="z-index: 1;">
                     <div class="col-lg-6 mb-4 mb-lg-0">
-                        <h1 class="display-4 fw-bold mb-3 text-dark" style="font-family: 'Poppins', sans-serif;">
-                            <i class="fas fa-users me-2"></i>Participating Teams
-                        </h1>
-                        <p class="lead text-muted">A comprehensive look at all teams competing in the tournament.</p>
+                        <h1 class="display-4 fw-bold mb-3 text-white" style="font-family: 'Poppins', sans-serif;">
+                        <img src="images/team.png" alt="Team Icon" class="me-2" style="height: 80px; width: auto; object-fit: contain; vertical-align: middle;">
+                        Participating Teams
+                    </h1>
+                        <p class="lead text-white-50">A comprehensive look at all teams competing in the Siglakas.</p>
                     </div>
                     <div class="col-lg-6">
                         <div class="row g-3">
                             <div class="col-4">
                                 <div class="stat-card-new text-center">
                                     <i class="fas fa-flag fs-2 text-primary"></i>
-                                    <div class="fw-bold mt-2 text-primary"><?= $total_teams ?></div>
+                                    <div class="fw-bold mt-2 text-white"><?= $total_teams ?></div>
                                     <div class="text-muted small">Total Teams</div>
                                 </div>
                             </div>
                             <div class="col-4">
                                 <div class="stat-card-new text-center">
                                     <i class="fas fa-star fs-2 text-success"></i>
-                                    <div class="fw-bold mt-2 text-success"><?= $topPerformersCount ?></div>
+                                    <div class="fw-bold mt-2 text-white"><?= $topPerformersCount ?></div>
                                     <div class="text-muted small">Top Performers</div>
                                 </div>
                             </div>
                             <div class="col-4">
                                 <div class="stat-card-new text-center">
                                     <i class="fas fa-medal fs-2 text-warning"></i>
-                                    <div class="fw-bold mt-2 text-warning"><?= $total_medals ?></div>
+                                    <div class="fw-bold mt-2 text-white"><?= $total_medals ?></div>
                                     <div class="text-muted small">Medals Awarded</div>
                                 </div>
                             </div>
@@ -326,33 +531,68 @@ function truncate_text($text, $length = 100, $suffix = '...') {
                     
                     <?php foreach ($colleges_data as $index => $college): ?>
                         <?php
+                            $rank = $index + 1;
                             $logo_path = (!empty($college['logo_url'])) ? $college['logo_url'] : $default_logo;
-                            $slogan_short = truncate_text($college['slogan'] ?? 'No slogan available.', 80);
+                            $slogan_short = truncate_text($college['slogan'] ?? 'No slogan.', 60);
                             $unit_color = !empty($college['unit_color']) ? $college['unit_color'] : '#cccccc';
+                            
+                            // --- PODIUM LOGIC ---
+                            $card_special_class = '';
+                            $rank_icon = "#" . $rank;
+                            
+                            if ($rank == 1) {
+                                $card_special_class = 'rank-1-card';
+                                $rank_icon = '<i class="fas fa-trophy"></i> Champion';
+                            } elseif ($rank == 2) {
+                                $card_special_class = 'rank-2-card';
+                                $rank_icon = '<i class="fas fa-medal"></i> 2nd Place';
+                            } elseif ($rank == 3) {
+                                $card_special_class = 'rank-3-card';
+                                $rank_icon = '<i class="fas fa-medal"></i> 3rd Place';
+                            }
                         ?>
+                        
                         <div class="col-12 col-md-6 col-lg-4 d-flex college-card-wrapper" 
                              data-name="<?= htmlspecialchars(strtolower($college['college_name'])) ?>"
                              data-code="<?= htmlspecialchars(strtolower($college['college_code'])) ?>"
-                             data-rank="<?= $index + 1 ?>"
+                             data-rank="<?= $rank ?>"
                              data-total-medals="<?= $college['TotalMedals'] ?>">
                              
-                            <div class="college-card d-flex flex-column w-100" style="--team-color: <?= htmlspecialchars($unit_color) ?>;">
+                            <div class="college-card d-flex flex-column w-100 <?= $card_special_class ?>" style="--team-color: <?= htmlspecialchars($unit_color) ?>;">
+                                
+                                <!-- Rank Badge -->
+                                <div class="rank-badge"><?= $rank_icon ?></div>
+
                                 <img src="<?= htmlspecialchars($logo_path) ?>" 
-                                     alt="<?= htmlspecialchars($college['college_name']) ?> Logo" 
-                                     class="college-logo"
+                                     alt="Logo" 
+                                     class="college-logo mt-3"
                                      onerror="this.onerror=null; this.src='<?= $default_logo ?>'">
                                 
-                                <div class="text-center">
-                                    <span class="college-badge"><?= htmlspecialchars($college['college_code']) ?></span>
-                                    <h5 class="college-name mb-1"><?= htmlspecialchars($college['college_name']) ?></h5>
-                                    <p class="text-muted small truncate-text fst-italic">"<?= htmlspecialchars($slogan_short) ?>"</p>
+                                <div class="text-center mt-2">
+                                    <h5 class="college-name mb-1 text-dark"><?= htmlspecialchars($college['college_name']) ?></h5>
+                                    <span class="badge bg-light text-dark border mb-2"><?= htmlspecialchars($college['college_code']) ?></span>
+                                    <p class="text-muted small truncate-text fst-italic mb-2" style="height: 40px;">
+                                        "<?= htmlspecialchars($slogan_short) ?>"
+                                    </p>
                                 </div>
+
+                                <!-- NEW: Mini Medal Stats on Card -->
+                                <div class="medal-mini-stat">
+                                    <div title="Gold" class="text-warning"><i class="fas fa-medal"></i> <span><?= $college['GoldCount'] ?></span></div>
+                                    <div title="Silver" class="text-secondary"><i class="fas fa-medal"></i> <span><?= $college['SilverCount'] ?></span></div>
+                                    <div title="Bronze" style="color: #cd7f32;"><i class="fas fa-medal"></i> <span><?= $college['BronzeCount'] ?></span></div>
+                                    <div title="Total" class="text-dark border-start ps-3">Total <span><?= $college['TotalMedals'] ?></span></div>
+                                </div>
+
                                 <div class="mt-auto d-grid gap-2">
+
                                     <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#detailsModal" 
+
                                             data-college-id="<?= $college['college_id'] ?>">
+
                                         <i class="fas fa-info-circle me-1"></i> Full Details
+
                                     </button>
-                                    <a href="home.php" class="btn btn-outline-secondary btn-full-width"><i class="fas fa-chart-bar me-1"></i> View Leaderboard</a>
                                 </div>
                             </div>
                         </div>
@@ -411,11 +651,38 @@ function truncate_text($text, $length = 100, $suffix = '...') {
     <footer class="footer-main">
         <div class="container">
             <div class="row">
-                <div class="col-lg-5 mb-4"><div class="footer-logo-group"><img src="imageslogo.png" alt="Logo"><h5>PIT SPORTS TALLYING</h5></div><p>The official live medal tallying system.</p></div>
-                <div class="col-lg-3 mb-4"><h6>Quick Links</h6><ul class="footer-links"><li><a href="home.php">Home</a></li><li><a href="Eventpage.php">Events</a></li><li><a href="college_team.php">Teams</a></li></ul></div>
-                <div class="col-lg-4"><h6>Admin</h6><ul class="footer-links"><li><a href="login.php">Administrator Login</a></li></ul></div>
+                <div class="col-lg-5 col-md-12 mb-4 mb-lg-0">
+                    <div class="footer-logo-group">
+                        <img src="imageslogo.png" alt="Logo">
+                        <img src="images/COte.png" alt="Logo">
+                        <h5> PIT SILAKAS MEDAL TALLY</h5>
+                    </div>
+                    <p>The official live medal tallying system for the Palompon Institute of Technology. Bringing you real-time results, event schedules, and team standings.</p>
+                </div>
+                <div class="col-lg-3 col-md-6 mb-4 mb-md-0">
+                    <h6>Quick Links</h6>
+                    <ul class="footer-links">
+                        <li><a href="home.php">Home (Standings)</a></li>
+                        <li><a href="Eventpage.php">Events Schedule</a></li>
+                        <li><a href="college_team.php">Teams & Rosters</a></li>
+                    </ul>
+                </div>
+                <div class="col-lg-4 col-md-6">
+                    <h6>Contact Us</h6>
+                    <div style="color: rgba(255,255,255,0.7); font-size: 0.9rem; line-height: 1.6;">
+                        <p class="mb-1 fw-bold text-white">Palompon Institute of Technology</p>
+                        <p class="mb-2">Evangelista Street, Brgy. Guiwan II,<br>Palompon, Leyte 6538</p>
+                        <p class="mb-0">
+                            <i class="fas fa-phone-alt me-2"></i>(053) 555-9841<br>
+                            <i class="fas fa-envelope me-2"></i>op@pit.edu.ph
+                        </p>
+                    </div>
+                </div>
             </div>
-            <div class="footer-bottom"><small>&copy; <?php echo date("Y"); ?> PIT SPORTS TALLYING.</small></div>
+            <div class="footer-bottom">
+                <small>&copy; <?php echo date("Y"); ?> PIT SILAKAS MEDAL TALLY. All rights reserved.</small><br>
+                <small>Developed by Jayvee Baybyon</small>
+            </div>
         </div>
     </footer>
 
@@ -440,6 +707,14 @@ function truncate_text($text, $length = 100, $suffix = '...') {
     }
 
     document.addEventListener('DOMContentLoaded', function() {
+        // --- FIX: ADJUST PADDING FOR FIXED NAVBAR ---
+        const navbar = document.querySelector('.navbar');
+        const mainContent = document.querySelector('.main-content');
+        if (navbar && mainContent) {
+            const navbarHeight = navbar.offsetHeight;
+            // Add extra buffer (30px) so it doesn't look cramped
+            mainContent.style.paddingTop = `${navbarHeight + 30}px`;
+        }
         
         // --- 1. DATA FROM PHP ---
         const collegesData = <?php 
@@ -664,27 +939,73 @@ function truncate_text($text, $length = 100, $suffix = '...') {
                     html += '</tbody></table></div>';
                 }
             }
-            // --- VICTORY GALLERY TAB ---
+            // --- VICTORY GALLERY TAB (UPDATED) ---
             else if (tabType === 'gallery') {
                 if (data.length === 0) {
-                    html = '<div class="alert alert-light text-center m-3 border"><i class="fas fa-camera fa-3x text-muted mb-3 opacity-50"></i><br>No victory photos available yet.</div>';
+                    html = '<div class="alert alert-light text-center m-3 border"><i class="fas fa-camera fa-3x text-muted mb-3 opacity-50"></i><br>No victories recorded yet.</div>';
                 } else {
                     html = '<div class="row g-3 p-3">';
+                    
+                    // 1. Get current team info for the Digital Card
+                    const college = collegesData.find(c => c.college_id == currentCollegeId);
+                    const teamColor = college ? college.unit_color : '#ccc';
+                    const teamLogo = college ? (college.logo_url || defaultLogo) : defaultLogo;
+
                     data.forEach(row => {
-                        let categoryText = (row.category_name && row.category_name !== '.') ? row.category_name : 'Open';
+                        let categoryText = (row.category_name && row.category_name !== '.') ? row.category_name : 'Open Division';
                         let caption = `${row.event_name} - ${categoryText}`;
+                        let medal = (row.medal_won || 'Gold').toLowerCase();
+                        let hasPhoto = (row.podium_photo_url && row.podium_photo_url.trim() !== '');
+
+                        // --- BADGE LOGIC ---
+                        let badgeColor = '#FFD700'; // Gold
+                        let badgeLabel = 'Champion';
+                        let badgeText = 'text-dark';
+
+                        if (medal === 'silver') { 
+                            badgeColor = '#C0C0C0'; badgeLabel = '2nd Place'; badgeText = 'text-dark';
+                        } else if (medal === 'bronze') { 
+                            badgeColor = '#CD7F32'; badgeLabel = '3rd Place'; badgeText = 'text-white';
+                        }
+
+                        // --- DISPLAY LOGIC (Hybrid Approach) ---
+                        let visualContent = '';
+                        let clickAction = '';
+
+                        // Show Photo ONLY if it's Gold AND a photo exists
+                        if (medal === 'gold' && hasPhoto) {
+                            visualContent = `<img src="${row.podium_photo_url}" class="gallery-img" alt="Victory Photo">`;
+                            clickAction = `onclick="openLightbox('${row.podium_photo_url}', '${escapeHtml(caption)}')"`
+                        } 
+                        // Otherwise, show Digital Victory Card
+                        else {
+                            visualContent = `
+                                <div class="digital-victory-card" style="--card-bg: ${teamColor}">
+                                    <img src="${teamLogo}" alt="Team Logo">
+                                </div>
+                            `;
+                            // No lightbox for digital cards (it's just a logo)
+                            clickAction = 'style="cursor: default;"'; 
+                        }
                         
                         html += `
                             <div class="col-md-6">
-                                <div class="card gallery-card h-100 border-0" onclick="openLightbox('${row.podium_photo_url}', '${escapeHtml(caption)}')">
+                                <div class="card gallery-card h-100 border-0" ${clickAction}>
                                     <div class="gallery-img-wrapper">
-                                        <img src="${row.podium_photo_url}" class="gallery-img" alt="Victory Photo">
-                                        <div class="gallery-badge"><i class="fas fa-trophy"></i> Gold</div>
+                                        ${visualContent}
+                                        <div class="gallery-badge shadow-sm" style="background: ${badgeColor};" title="${badgeLabel}">
+                                            <span class="${badgeText} fw-bold"><i class="fas fa-trophy me-1"></i> ${badgeLabel}</span>
+                                        </div>
                                     </div>
                                     <div class="card-body p-3 text-center">
                                         <h6 class="card-title fw-bold mb-1 text-dark">${row.event_name}</h6>
-                                        <p class="card-text text-muted small mb-1">${row.game_name} • ${categoryText}</p>
-                                        <small class="text-secondary fst-italic" style="font-size: 0.75rem;">${row.date_formatted}</small>
+                                        <p class="card-text text-muted small mb-1 text-uppercase fw-bold" style="font-size: 0.7rem; letter-spacing: 1px;">
+                                            ${row.game_name}
+                                        </p>
+                                        <div class="badge bg-light text-secondary border px-2 py-1 mt-1">${categoryText}</div>
+                                        <div class="mt-2 text-secondary fst-italic" style="font-size: 0.75rem;">
+                                            <i class="far fa-calendar-alt me-1"></i> ${row.date_formatted || 'Date TBD'}
+                                        </div>
                                     </div>
                                 </div>
                             </div>

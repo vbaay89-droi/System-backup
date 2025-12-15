@@ -58,14 +58,14 @@ function formatLogEntry_EM($conn, $log, $current_user_id) {
         case 'CREATED_CATEGORY':
             $cat_name = htmlspecialchars($context['category_name'] ?? 'a new category');
             $status_msg = !empty($context['status']) ? " (Status: " . htmlspecialchars($context['status']) . ")" : "";
-            $message = "$actor_name created the category <strong>\"$cat_name\"</strong>$status_msg.";
+            $message = "$actor_name initialized the event <strong>\"$cat_name\"</strong>$status_msg.";
             $icon = "fas fa-plus-circle text-success";
             break;
 
         case 'UPDATED_CATEGORY':
             $cat_name = htmlspecialchars($context['new_category_name'] ?? 'a category');
-            $status_msg = !empty($context['new_status']) ? " and set status to <strong>" . htmlspecialchars($context['new_status']) . "</strong>" : "";
-            $message = "$actor_name updated the category <strong>\"$cat_name\"</strong>$status_msg.";
+            $status_msg = !empty($context['new_status']) ? " and updated status to <strong>" . htmlspecialchars($context['new_status']) . "</strong>" : "";
+            $message = "$actor_name updated details for <strong>\"$cat_name\"</strong>$status_msg.";
             $icon = "fas fa-pencil-alt text-info";
             break;
 
@@ -79,25 +79,6 @@ function formatLogEntry_EM($conn, $log, $current_user_id) {
             $cat_name = htmlspecialchars($context['category_name'] ?? 'a category');
             $message = "$actor_name submitted results for <strong>\"$cat_name\"</strong>.";
             $icon = "fas fa-paper-plane text-primary";
-            break;
-            
-        case 'CREATED_MATCH':
-            $cat_name = htmlspecialchars($context['category_name'] ?? 'a category');
-            $message = "$actor_name created a new match in <strong>\"$cat_name\"</strong>.";
-            $icon = "fas fa-plus-circle text-success";
-            break;
-            
-        case 'UPDATED_MATCH':
-            $cat_name = htmlspecialchars($context['category_name'] ?? 'a category');
-            $status_msg = !empty($context['status']) ? " (Status: " . htmlspecialchars($context['status']) . ")" : "";
-            $message = "$actor_name updated a match in <strong>\"$cat_name\"</strong>$status_msg.";
-            $icon = "fas fa-pencil-alt text-info";
-            break;
-            
-        case 'DELETED_MATCH':
-            $cat_name = htmlspecialchars($context['category_name'] ?? 'a category');
-            $message = "$actor_name deleted a match from <strong>\"$cat_name\"</strong>.";
-            $icon = "fas fa-trash-alt text-danger";
             break;
             
         default:
@@ -122,7 +103,7 @@ $processed_logs = [];
 $current_user_id = $user_id; 
 
 try {
-    $stmt_logs = $conn->prepare("SELECT * FROM system_logs WHERE actor_user_id = ? ORDER BY created_at DESC LIMIT 5");
+    $stmt_logs = $conn->prepare("SELECT * FROM system_logs WHERE actor_user_id = ? ORDER BY created_at DESC LIMIT 6");
     $stmt_logs->bind_param("i", $current_user_id);
     $stmt_logs->execute();
     $result_logs = $stmt_logs->get_result();
@@ -156,50 +137,39 @@ try {
             --transition: all 0.3s ease; 
             --card-shadow: 0 5px 20px rgba(0, 0, 0, 0.08); 
             --bg-light: #F8F9FA; 
-            --primary-gradient: linear-gradient(135deg, #2c3e50 0%, #4ca1af 100%);
+            --primary-gradient: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
             --accent-color: #1abc9c;
         }
         body { background-color: var(--bg-light); margin: 0; padding: 0; min-height: 100vh; font-family: 'Inter', sans-serif; display: flex; flex-direction: column; }
         
         /* Navbar */
-        .navbar { background: linear-gradient(135deg, #1a1a1a 0%, #2d2d2d 100%) !important; box-shadow: 0 4px 20px rgba(0,0,0,0.15); padding: 1rem 1.5rem; height: var(--header-height); position: fixed; top: 0; left: 0; right: 0; z-index: 1050; }
-        .navbar-brand .brand-heading { font-family: 'Poppins', sans-serif; font-weight: 700; }
-        .user-dropdown .dropdown-toggle { color: white; display: flex; align-items: center; text-decoration: none; padding: 8px 12px; border-radius: 8px; transition: var(--transition); }
-        .user-dropdown .dropdown-toggle:hover { background-color: rgba(255, 255, 255, 0.1); }
+        .navbar { background: rgba(26, 26, 26, 0.95) !important; backdrop-filter: blur(10px); box-shadow: 0 4px 20px rgba(0,0,0,0.15); padding: 1rem 1.5rem; height: var(--header-height); position: fixed; top: 0; left: 0; right: 0; z-index: 1050; border-bottom: 1px solid rgba(255, 255, 255, 0.1); }
+        .navbar-brand .brand-heading { font-family: 'Poppins', sans-serif; font-weight: 700; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; }
+        .user-dropdown .dropdown-toggle { color: white; display: flex; align-items: center; text-decoration: none; padding: 8px 16px; border-radius: 50px; background: rgba(255, 255, 255, 0.1); backdrop-filter: blur(10px); border: 1px solid rgba(255, 255, 255, 0.2); transition: var(--transition); }
+        .user-dropdown .dropdown-toggle:hover { background-color: rgba(255, 255, 255, 0.2); }
         .user-dropdown .dropdown-toggle img { width: 36px; height: 36px; border-radius: 50%; object-fit: cover; margin-right: 10px; }
         
         /* Sidebar */
-        .sidebar { width: var(--sidebar-width); position: fixed; top: var(--header-height); left: 0; height: calc(100vh - var(--header-height)); background: #2c3e50; color: white; box-shadow: 5px 0 15px rgba(0,0,0,0.2); z-index: 1040; transition: width var(--transition); overflow-y: auto; }
+        .sidebar { width: var(--sidebar-width); position: fixed; top: var(--header-height); left: 0; height: calc(100vh - var(--header-height)); background: rgba(44, 62, 80, 0.95); backdrop-filter: blur(10px); color: white; box-shadow: 5px 0 30px rgba(0,0,0,0.3); z-index: 1040; transition: width var(--transition); overflow-y: auto; }
         .sidebar-nav { padding: 20px 0; }
         .sidebar-nav .nav-link { color: rgba(255, 255, 255, 0.7); font-size: 1.05rem; font-weight: 500; padding: 12px 25px; transition: var(--transition); border-left: 5px solid transparent; margin: 2px 0; display: flex; align-items: center; text-decoration: none; }
         .sidebar-nav .nav-link i { width: 30px; text-align: center; flex-shrink: 0; font-size: 0.95em; }
         .sidebar-nav .nav-link:hover { color: white; background: rgba(255, 255, 255, 0.05); border-left-color: var(--accent-color); }
-        .sidebar-nav .nav-link.active { color: white; background: rgba(255, 255, 255, 0.1); border-left-color: #3498db; font-weight: 600; }
+        .sidebar-nav .nav-link.active { color: white; background: linear-gradient(90deg, rgba(102, 126, 234, 0.2), transparent); border-left-color: #667eea; font-weight: 600; }
         
         /* Main Content */
         .main-content { flex: 1 0 auto; padding: 30px; margin-top: var(--header-height); margin-left: var(--sidebar-width); transition: margin-left var(--transition); min-height: calc(100vh - var(--header-height)); }
-        .section-title { font-family: 'Poppins', sans-serif; font-weight: 600; color: #333; }
         
-        /* Footer */
-        footer { flex-shrink: 0; background: #2c3e50 !important; box-shadow: 0 -2px 10px rgba(0,0,0,0.1); padding-left: var(--sidebar-width); transition: padding-left var(--transition); position: relative; z-index: 1041; }
-        @media (max-width: 992px) {
-            .sidebar { left: -260px; }
-            .sidebar.show { left: 0; }
-            .main-content, footer { margin-left: 0; }
-        }
+        /* Hero Section (Adopted Design) */
+        .hero-section { background: var(--primary-gradient); color: white; padding: 40px; border-radius: 15px; margin-bottom: 30px; box-shadow: var(--card-shadow); position: relative; overflow: hidden; }
+        .welcome-badge { background: rgba(255,255,255,0.2); padding: 6px 16px; border-radius: 30px; font-size: 0.85rem; font-weight: 600; display: inline-block; backdrop-filter: blur(5px); letter-spacing: 0.5px; }
 
-        /* === ENHANCED DESIGN ELEMENTS === */
-        .card { border: none; border-radius: 12px; box-shadow: 0 4px 16px rgba(0, 0, 0, 0.08); overflow: hidden; margin-bottom: 1.5rem; }
-        .card-header { background: #ffffff !important; border-bottom: 2px solid #f1f3f5 !important; padding: 1.25rem 1.5rem !important; }
-        .card-header h5 { font-family: 'Poppins', sans-serif; font-weight: 600; color: #2c3e50; margin-bottom: 0; font-size: 1.1rem; }
-        
         /* Stat Cards */
-        .stat-card { background: white; border-radius: 12px; padding: 20px; box-shadow: 0 4px 16px rgba(0, 0, 0, 0.08); height: 100%; transition: transform 0.2s; }
+        .stat-card { background: white; border: none; border-radius: 15px; padding: 20px; box-shadow: var(--card-shadow); transition: transform 0.3s; height: 100%; border-left: 5px solid transparent; }
         .stat-card:hover { transform: translateY(-5px); }
         .stat-icon-wrapper { width: 60px; height: 60px; border-radius: 50%; display: flex; align-items: center; justify-content: center; color: white; font-size: 1.5rem; margin-right: 15px; flex-shrink: 0; box-shadow: 0 4px 10px rgba(0,0,0,0.15); }
         .stat-count { font-size: 2.2rem; font-weight: 700; line-height: 1; margin-bottom: 5px; font-family: 'Poppins', sans-serif; }
         
-        /* Gradients for icons */
         .stat-events .stat-icon-wrapper { background: linear-gradient(135deg, #3498db 0%, #2980b9 100%); }
         .stat-categories .stat-icon-wrapper { background: linear-gradient(135deg, #2ecc71 0%, #27ae60 100%); }
         .stat-pending .stat-icon-wrapper { background: linear-gradient(135deg, #f1c40f 0%, #f39c12 100%); }
@@ -207,7 +177,11 @@ try {
         
         .navbar-profile-icon { width: 36px; height: 36px; font-size: 36px; text-align: center; line-height: 1; border-radius: 50%; margin-right: 10px; color: rgba(255,255,255,0.8); }
         
-        /* Activity Log Styles */
+        /* Activity Log */
+        .card { border: none; border-radius: 12px; box-shadow: 0 4px 16px rgba(0, 0, 0, 0.08); overflow: hidden; margin-bottom: 1.5rem; }
+        .card-header { background: #ffffff !important; border-bottom: 2px solid #f1f3f5 !important; padding: 1.25rem 1.5rem !important; }
+        .card-header h5 { font-family: 'Poppins', sans-serif; font-weight: 600; color: #2c3e50; margin-bottom: 0; font-size: 1.1rem; }
+        
         .activity-log-item { display: flex; align-items: start; padding: 1rem; border-bottom: 1px solid #f1f3f5; transition: background 0.2s; }
         .activity-log-item:last-child { border-bottom: none; }
         .activity-log-item:hover { background-color: #f8f9fa; }
@@ -220,16 +194,24 @@ try {
         .list-group-item:hover { background-color: #f8f9fa; padding-left: 1.5rem; }
         .list-group-item.list-group-item-primary { background-color: #eaf6ff; border-color: #d0eaff; color: #0c5460; }
         .list-group-item.list-group-item-primary:hover { background-color: #d6ecff; }
+        
+        footer { flex-shrink: 0; background: rgba(44, 62, 80, 0.95) !important; box-shadow: 0 -2px 10px rgba(0,0,0,0.1); padding-left: var(--sidebar-width); transition: padding-left var(--transition); position: relative; z-index: 1041; border-top: 1px solid rgba(255, 255, 255, 0.1); }
+
+        @media (max-width: 992px) {
+            .sidebar { left: -260px; }
+            .sidebar.show { left: 0; }
+            .main-content, footer { margin-left: 0; }
+        }
     </style>
 </head>
 <body>
 
     <nav class="navbar navbar-dark bg-dark">
         <div class="container-fluid d-flex align-items-center justify-content-between">
-            <a class="navbar-brand d-flex align-items: center" href="event_manager_dashboard.php">
-                <img src="../imageslogo.png" alt="Logo" class="me-2 brand-logo" style="height: 50px; width: 48px; object-fit: contain;">
+            <a class="navbar-brand d-flex align-items-center" href="event_manager_dashboard.php">
+                <img src="imageslogo.png" alt="Logo" class="me-2" style="height: 50px; width: 48px; object-fit: contain;">
                 <div class="d-flex flex-column lh-sm">
-                    <strong class="text-white" style="font-size: 1.25rem;">PIT SPORTS TALLYING</strong>
+                    <strong class="text-white brand-heading" style="font-size: 1.25rem;">PIT SPORTS TALLYING</strong>
                     <small class="text-light" style="font-size: 0.75rem;">Event Manager Panel</small>
                 </div>
             </a>
@@ -243,9 +225,8 @@ try {
                 </a>
                 <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="userDropdown">
                     <li><a class="dropdown-item" href="admin_profile.php"><i class="fas fa-user-circle me-2"></i> Profile</a></li>
-                    <li><a class="dropdown-item" href="../Tournament_Manager_page.php" target="_blank"><i class="fas fa-globe me-2"></i> Public Site</a></li>
                     <li><hr class="dropdown-divider"></li>
-                    <li><a class="dropdown-item text-danger" href="../logout.php"><i class="fas fa-sign-out-alt me-2"></i> Logout</a></li>
+                    <li><a class="dropdown-item text-danger" href="logout.php"><i class="fas fa-sign-out-alt me-2"></i> Logout</a></li>
                 </ul>
             </div>
         </div>
@@ -269,7 +250,7 @@ try {
                 </a>
             </li>
             <li class="nav-item mt-auto">
-                <a class="nav-link text-danger" href="../logout.php">
+                <a class="nav-link text-danger" href="logout.php">
                     <i class="fas fa-sign-out-alt me-2"></i> <span>Logout</span>
                 </a>
             </li>
@@ -278,18 +259,29 @@ try {
 
     <div class="main-content">
         <div class="container-fluid">
-            
-            <nav aria-label="breadcrumb" class="mb-4">
-                <ol class="breadcrumb">
-                    <li class="breadcrumb-item active" aria-current="page">Dashboard</li>
-                </ol>
-            </nav>
-            <h1 class="section-title mb-4">Event Manager Dashboard</h1>
+
+            <div class="hero-section">
+                <div class="row align-items-center">
+                    <div class="col-lg-9">
+                        <div class="welcome-badge mb-3"><i class="fas fa-id-badge me-1"></i> Official Event Manager</div>
+                        <h1 class="fw-bold mb-1">Welcome to SmartScore</h1>
+                        <h5 class="fw-light mb-3 text-white-50">The Official Scoring & Verification Portal for Siglakas</h5>
+                        <hr class="my-4" style="border-color: rgba(255,255,255,0.15); width: 60%;">
+                        <p class="lead fs-6 opacity-90 mb-0" style="line-height: 1.7; font-weight: 400;">
+                            Good day, <strong><?= htmlspecialchars($display_name) ?></strong>. You are responsible for the accuracy and integrity of the tournament results. 
+                            Use this dashboard to initialize your assigned events, input the official winners, and upload the required evidence (Tally Sheets) for the Sports Director's approval.
+                        </p>
+                    </div>
+                    <div class="col-lg-3 text-end d-none d-lg-block">
+                        <i class="fas fa-clipboard-list fa-6x opacity-25" style="transform: rotate(-10deg);"></i>
+                    </div>
+                </div>
+            </div>
 
             <div class="row g-4 mb-4">
                 <div class="col-xl-3 col-md-6">
                     <div class="stat-card stat-events">
-                        <div class="d-flex align-items-center">
+                        <div class="d-flex align-items: center">
                             <div class="stat-icon-wrapper"><i class="fas fa-trophy"></i></div>
                             <div>
                                 <div class="stat-count text-primary" id="stat-assigned-events">...</div>
@@ -350,14 +342,14 @@ try {
                                     </div>
                                     <i class="fas fa-chevron-right text-primary"></i>
                                 </a>
-                                <a href="../Tournament_Manager_page.php" target="_blank" class="list-group-item list-group-item-action d-flex justify-content-between align-items-center">
+                                <a href="Eventpage.php" target="_blank" class="list-group-item list-group-item-action d-flex justify-content-between align-items-center">
                                     <div>
                                         <i class="fas fa-globe me-2 text-info"></i>
                                         View Public Tallying Site
                                     </div>
                                     <i class="fas fa-external-link-alt text-muted small"></i>
                                 </a>
-                                <a href="../admin_profile.php" class="list-group-item list-group-item-action d-flex justify-content-between align-items-center">
+                                <a href="admin_profile.php" class="list-group-item list-group-item-action d-flex justify-content-between align-items-center">
                                     <div>
                                         <i class="fas fa-user-circle me-2 text-secondary"></i>
                                         View My Profile
@@ -447,7 +439,6 @@ try {
             loadDashboardStats();
 
             // --- DYNAMIC SIDEBAR/FOOTER ADJUSTMENT ---
-            // Prevents sidebar from overlapping the footer
             const footer = document.querySelector('footer');
             const sidebar = document.getElementById('sidebar');
             const navbar = document.querySelector('.navbar');

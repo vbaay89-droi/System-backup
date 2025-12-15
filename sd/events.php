@@ -1,10 +1,8 @@
 <?php
 session_start();
-// Use a relative path to your main db_connect.php
 require_once '../config.php'; 
 
 // 1. SECURITY & ACCESS CONTROL
-// STRICT: Only 'Sports Director' is allowed
 if (!isset($_SESSION['role']) || $_SESSION['role'] !== 'Sports Director') {
     header('Location: ../login.php'); 
     exit();
@@ -25,14 +23,10 @@ $result_name = $stmt_name->get_result();
 $user_data = $result_name->fetch_assoc();
 $stmt_name->close();
 
-if (!empty($user_data['full_name'])) {
-    $name = $user_data['full_name'];
-} else {
-    $name = $user_data['username'] ?? 'Sports Director';
-}
+$name = !empty($user_data['full_name']) ? $user_data['full_name'] : ($user_data['username'] ?? 'Sports Director');
 $current_page = basename($_SERVER['PHP_SELF']);
 
-// --- Page Specific PHP ---
+// --- PHP ACTIONS (Create/Update/Delete/Assign) ---
 
 // L1 - GAMES (CREATE)
 if (isset($_POST['add_game'])) {
@@ -40,236 +34,110 @@ if (isset($_POST['add_game'])) {
     $stmt = $conn->prepare("INSERT INTO games (game_name) VALUES (?)");
     $stmt->bind_param("s", $game_name);
     $stmt->execute();
-    
-    $_SESSION['message'] = "Game added successfully.";
-    $_SESSION['message_type'] = "success";
-    header("Location: events.php?tab=games"); exit();
+    $_SESSION['message'] = "Game added successfully."; $_SESSION['message_type'] = "success"; header("Location: events.php?tab=games"); exit();
 }
-
 // L1 - GAMES (UPDATE)
 if (isset($_POST['update_game'])) {
-    $game_id = (int)$_POST['game_id'];
-    $game_name = $_POST['game_name'];
-    
+    $game_id = (int)$_POST['game_id']; $game_name = $_POST['game_name'];
     $stmt = $conn->prepare("UPDATE games SET game_name = ? WHERE game_id = ?");
     $stmt->bind_param("si", $game_name, $game_id);
     $stmt->execute();
-    
-    $_SESSION['message'] = "Game updated successfully.";
-    $_SESSION['message_type'] = "success";
-    header("Location: events.php?tab=games"); exit();
+    $_SESSION['message'] = "Game updated successfully."; $_SESSION['message_type'] = "success"; header("Location: events.php?tab=games"); exit();
 }
-
 // L1 - GAMES (DELETE)
 if (isset($_POST['delete_game'])) {
     $game_id = (int)$_POST['game_id'];
-    
-    // Check for child events
     $stmt_check = $conn->prepare("SELECT COUNT(*) FROM game_events WHERE game_id = ?");
-    $stmt_check->bind_param("i", $game_id);
-    $stmt_check->execute();
-    $count = 0;
-    $stmt_check->bind_result($count);
-    $stmt_check->fetch();
-    $stmt_check->close();
-
-    if ($count > 0) {
-        $_SESSION['message'] = "Cannot delete game. It has {$count} child event(s) linked to it.";
-        $_SESSION['message_type'] = "danger";
-    } else {
-        $stmt = $conn->prepare("DELETE FROM games WHERE game_id = ?");
-        $stmt->bind_param("i", $game_id);
-        $stmt->execute();
-        
-        $_SESSION['message'] = "Game deleted successfully.";
-        $_SESSION['message_type'] = "success";
+    $stmt_check->bind_param("i", $game_id); $stmt_check->execute();
+    $count = 0; $stmt_check->bind_result($count); $stmt_check->fetch(); $stmt_check->close();
+    if ($count > 0) { $_SESSION['message'] = "Cannot delete game. It has linked events."; $_SESSION['message_type'] = "danger"; } 
+    else {
+        $stmt = $conn->prepare("DELETE FROM games WHERE game_id = ?"); $stmt->bind_param("i", $game_id); $stmt->execute();
+        $_SESSION['message'] = "Game deleted successfully."; $_SESSION['message_type'] = "success";
     }
     header("Location: events.php?tab=games"); exit();
 }
 
-// L2 - EVENTS (CREATE) - UPDATED LOGIC FOR SINGLE DIVISION
+// L2 - EVENTS (CREATE)
 if (isset($_POST['add_event'])) {
-    $game_id = (int)$_POST['game_id'];
-    $event_name = $_POST['event_name'];
-    // 'structure_type' will be 'multi' or 'single'
-    $structure_type = $_POST['structure_type'] ?? 'multi'; 
-    
-    // 1. Determine Structure Label for Database
-    $structure_db_value = ($structure_type === 'multi') ? 'Multiple Categories' : 'Single Division';
-
-    // 2. Create the Event
-    $stmt = $conn->prepare("INSERT INTO game_events (game_id, event_name, event_structure) VALUES (?, ?, ?)");
-    $stmt->bind_param("iss", $game_id, $event_name, $structure_db_value);
-    $stmt->execute();
-    $new_event_id = $conn->insert_id;
-    $stmt->close();
-    
-    // 3. LOGIC FIX: 
-    // If "Single Division" is selected, we DO NOT create a category automatically anymore.
-    // This allows the Event Manager to choose "Match" or "Medal" when they initialize the event.
-    
-    $msg_extra = ($structure_type === 'single') ? " (Single Division Mode Configured)" : "";
-    
-    $_SESSION['message'] = "Event added successfully." . $msg_extra;
-    $_SESSION['message_type'] = "success";
+    $game_id = (int)$_POST['game_id']; $event_name = trim($_POST['event_name']); // We default everything to 'Standard' since we removed the toggle
+$structure_db_value = 'Standard';
+    try {
+        $stmt = $conn->prepare("INSERT INTO game_events (game_id, event_name, event_structure) VALUES (?, ?, ?)");
+        $stmt->bind_param("iss", $game_id, $event_name, $structure_db_value); $stmt->execute(); $stmt->close();
+        $msg_extra = ($structure_type === 'single') ? " (Single Mode)" : "";
+        $_SESSION['message'] = "Event added successfully." . $msg_extra; $_SESSION['message_type'] = "success";
+    } catch (mysqli_sql_exception $e) {
+        if ($e->getCode() == 1062) { $_SESSION['message'] = "Event '$event_name' already exists."; $_SESSION['message_type'] = "warning"; } 
+        else { $_SESSION['message'] = "Error: " . $e->getMessage(); $_SESSION['message_type'] = "danger"; }
+    }
     header("Location: events.php?tab=events"); exit();
 }
-
 // L2 - EVENTS (UPDATE)
 if (isset($_POST['update_event'])) {
-    $event_id = (int)$_POST['event_id'];
-    $game_id = (int)$_POST['game_id'];
-    $event_name = $_POST['event_name'];
-
+    $event_id = (int)$_POST['event_id']; $game_id = (int)$_POST['game_id']; $event_name = $_POST['event_name'];
     $stmt = $conn->prepare("UPDATE game_events SET game_id = ?, event_name = ? WHERE event_id = ?");
-    $stmt->bind_param("isi", $game_id, $event_name, $event_id);
-    $stmt->execute();
-    
-    $_SESSION['message'] = "Event updated successfully.";
-    $_SESSION['message_type'] = "success";
-    header("Location: events.php?tab=events"); exit();
+    $stmt->bind_param("isi", $game_id, $event_name, $event_id); $stmt->execute();
+    $_SESSION['message'] = "Event updated successfully."; $_SESSION['message_type'] = "success"; header("Location: events.php?tab=events"); exit();
 }
-
 // L2 - EVENTS (DELETE)
 if (isset($_POST['delete_event'])) {
     $event_id = (int)$_POST['event_id'];
-
     $stmt_check = $conn->prepare("SELECT COUNT(*) FROM categories WHERE event_id = ?");
-    $stmt_check->bind_param("i", $event_id);
-    $stmt_check->execute();
-    $count = 0;
-    $stmt_check->bind_result($count);
-    $stmt_check->fetch();
-    $stmt_check->close();
-
-    if ($count > 0) {
-        $_SESSION['message'] = "Cannot delete event. It has {$count} child categor(y/ies) linked.";
-        $_SESSION['message_type'] = "danger";
-    } else {
-        $stmt_del_assign = $conn->prepare("DELETE FROM event_manager_assignments WHERE event_id = ?");
-        $stmt_del_assign->bind_param("i", $event_id);
-        $stmt_del_assign->execute();
-        $stmt_del_assign->close();
-
-        $stmt = $conn->prepare("DELETE FROM game_events WHERE event_id = ?");
-        $stmt->bind_param("i", $event_id);
-        $stmt->execute();
-
-        $_SESSION['message'] = "Event deleted successfully.";
-        $_SESSION['message_type'] = "success";
+    $stmt_check->bind_param("i", $event_id); $stmt_check->execute();
+    $count = 0; $stmt_check->bind_result($count); $stmt_check->fetch(); $stmt_check->close();
+    if ($count > 0) { $_SESSION['message'] = "Cannot delete event. It has linked categories."; $_SESSION['message_type'] = "danger"; } 
+    else {
+        $conn->query("DELETE FROM event_manager_assignments WHERE event_id = $event_id");
+        $conn->query("DELETE FROM game_events WHERE event_id = $event_id");
+        $_SESSION['message'] = "Event deleted successfully."; $_SESSION['message_type'] = "success";
     }
     header("Location: events.php?tab=events"); exit();
 }
-
 
 // L3 - CATEGORIES (CREATE)
 if (isset($_POST['add_category'])) {
-    $event_id = (int)$_POST['event_id'];
-    $category_name = $_POST['category_name'];
-    
+    $event_id = (int)$_POST['event_id']; $category_name = $_POST['category_name'];
     $stmt = $conn->prepare("INSERT INTO categories (event_id, category_name) VALUES (?, ?)");
-    $stmt->bind_param("is", $event_id, $category_name);
-    $stmt->execute();
-    
-    $_SESSION['message'] = "Category added successfully.";
-    $_SESSION['message_type'] = "success";
-    header("Location: events.php?tab=categories"); exit();
+    $stmt->bind_param("is", $event_id, $category_name); $stmt->execute();
+    $_SESSION['message'] = "Category added successfully."; $_SESSION['message_type'] = "success"; header("Location: events.php?tab=categories"); exit();
 }
-
 // L3 - CATEGORIES (UPDATE)
 if (isset($_POST['update_category'])) {
-    $category_id = (int)$_POST['category_id'];
-    $event_id = (int)$_POST['event_id'];
-    $category_name = $_POST['category_name'];
-    
+    $category_id = (int)$_POST['category_id']; $event_id = (int)$_POST['event_id']; $category_name = $_POST['category_name'];
     $stmt = $conn->prepare("UPDATE categories SET event_id = ?, category_name = ? WHERE category_id = ?");
-    $stmt->bind_param("isi", $event_id, $category_name, $category_id);
-    $stmt->execute();
-    
-    $_SESSION['message'] = "Category updated successfully.";
-    $_SESSION['message_type'] = "success";
-    header("Location: events.php?tab=categories"); exit();
+    $stmt->bind_param("isi", $event_id, $category_name, $category_id); $stmt->execute();
+    $_SESSION['message'] = "Category updated successfully."; $_SESSION['message_type'] = "success"; header("Location: events.php?tab=categories"); exit();
 }
-
 // L3 - CATEGORIES (DELETE)
 if (isset($_POST['delete_category'])) {
     $category_id = (int)$_POST['category_id'];
-
-    $stmt = $conn->prepare("DELETE FROM categories WHERE category_id = ?");
-    $stmt->bind_param("i", $category_id);
-    $stmt->execute();
-    
-    $_SESSION['message'] = "Category deleted successfully.";
-    $_SESSION['message_type'] = "success";
-    header("Location: events.php?tab=categories"); exit();
+    $stmt = $conn->prepare("DELETE FROM categories WHERE category_id = ?"); $stmt->bind_param("i", $category_id); $stmt->execute();
+    $_SESSION['message'] = "Category deleted successfully."; $_SESSION['message_type'] = "success"; header("Location: events.php?tab=categories"); exit();
 }
-
 // MANAGER ASSIGNMENT
 if (isset($_POST['assign_manager'])) {
-    $event_id = (int)$_POST['event_id'];
-    $user_id = (int)$_POST['user_id']; 
-
-    $stmt_del = $conn->prepare("DELETE FROM event_manager_assignments WHERE event_id = ?");
-    $stmt_del->bind_param("i", $event_id);
-    $stmt_del->execute();
-    $stmt_del->close();
-
+    $event_id = (int)$_POST['event_id']; $user_id = (int)$_POST['user_id'];
+    $conn->query("DELETE FROM event_manager_assignments WHERE event_id = $event_id");
     if ($user_id > 0) {
         $stmt_ins = $conn->prepare("INSERT INTO event_manager_assignments (event_id, user_id) VALUES (?, ?)");
-        $stmt_ins->bind_param("ii", $event_id, $user_id);
-        $stmt_ins->execute();
-        $stmt_ins->close();
+        $stmt_ins->bind_param("ii", $event_id, $user_id); $stmt_ins->execute();
     }
-    
-    $_SESSION['message'] = "Manager assignment updated successfully.";
-    $_SESSION['message_type'] = "success";
-    header("Location: events.php?tab=events"); exit();
+    $_SESSION['message'] = "Manager assignment updated."; $_SESSION['message_type'] = "success"; header("Location: events.php?tab=events"); exit();
 }
-
 
 // --- FETCH DATA ---
 $games = $conn->query("SELECT * FROM games ORDER BY game_name")->fetch_all(MYSQLI_ASSOC);
-
 $events = $conn->query("SELECT e.*, g.game_name FROM game_events e JOIN games g ON e.game_id = g.game_id ORDER BY g.game_name, e.event_name")->fetch_all(MYSQLI_ASSOC);
+$categories = $conn->query("SELECT c.*, e.event_name, g.game_name, u.full_name as manager_name FROM categories c JOIN game_events e ON c.event_id = e.event_id JOIN games g ON e.game_id = g.game_id LEFT JOIN event_manager_assignments ema ON e.event_id = ema.event_id LEFT JOIN users u ON ema.user_id = u.id ORDER BY g.game_name, e.event_name, c.category_name")->fetch_all(MYSQLI_ASSOC);
+$events_with_managers = $conn->query("SELECT e.*, g.game_name, u.full_name as manager_name, ema.user_id FROM game_events e JOIN games g ON e.game_id = g.game_id LEFT JOIN event_manager_assignments ema ON e.event_id = ema.event_id LEFT JOIN users u ON ema.user_id = u.id ORDER BY g.game_name, e.event_name")->fetch_all(MYSQLI_ASSOC);
+$event_managers = $conn->query("SELECT id, full_name FROM users WHERE role = 'Event Manager' ORDER BY full_name")->fetch_all(MYSQLI_ASSOC);
 
-$sql_categories = "SELECT c.*, e.event_name, g.game_name, u.full_name as manager_name
-                   FROM categories c
-                   JOIN game_events e ON c.event_id = e.event_id
-                   JOIN games g ON e.game_id = g.game_id
-                   LEFT JOIN event_manager_assignments ema ON e.event_id = ema.event_id
-                   LEFT JOIN users u ON ema.user_id = u.id
-                   ORDER BY g.game_name, e.event_name, c.category_name";
-$categories = $conn->query($sql_categories)->fetch_all(MYSQLI_ASSOC);
+$message = $_SESSION['message'] ?? null;
+$message_type = $_SESSION['message_type'] ?? 'info';
+unset($_SESSION['message'], $_SESSION['message_type']);
 
-$events_with_managers = [];
-$sql_events_managers = "SELECT e.*, g.game_name, u.full_name as manager_name, ema.user_id
-                        FROM game_events e
-                        JOIN games g ON e.game_id = g.game_id
-                        LEFT JOIN event_manager_assignments ema ON e.event_id = ema.event_id
-                        LEFT JOIN users u ON ema.user_id = u.id
-                        ORDER BY g.game_name, e.event_name";
-$result_events_managers = $conn->query($sql_events_managers);
-if($result_events_managers) {
-    $events_with_managers = $result_events_managers->fetch_all(MYSQLI_ASSOC);
-}
-
-$event_managers = []; 
-$result_managers = $conn->query("SELECT id, full_name FROM users WHERE role = 'Event Manager' ORDER BY full_name");
-if ($result_managers) {
-    $event_managers = $result_managers->fetch_all(MYSQLI_ASSOC);
-}
-
-$message = null;
-$message_type = 'info';
-if (isset($_SESSION['message'])) {
-    $message = $_SESSION['message'];
-    $message_type = $_SESSION['message_type'];
-    unset($_SESSION['message']);
-    unset($_SESSION['message_type']);
-}
-
-// Sidebar Badges
-// Count pending requests for sidebar badge (Fixed: Counts unapproved users)
+// Counts
 $pending_requests_count = $conn->query("SELECT COUNT(*) FROM users WHERE is_approved = 0")->fetch_row()[0] ?? 0;
 $pending_results_count = $conn->query("SELECT COUNT(*) FROM categories WHERE status='Results Submitted'")->fetch_row()[0] ?? 0;
 ?>
@@ -283,58 +151,30 @@ $pending_results_count = $conn->query("SELECT COUNT(*) FROM categories WHERE sta
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" rel="stylesheet">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=Poppins:wght@400;500;600;700;800&display=swap" rel="stylesheet">
     <style>
-        /* --- Unified CSS from Dashboard --- */
-        :root { 
-            --sidebar-width: 260px; 
-            --header-height: 82px; 
-            --transition: all 0.3s ease; 
-            --card-shadow: 0 5px 20px rgba(0, 0, 0, 0.08); 
-            --bg-light: #F8F9FA; 
-            --primary-gradient: linear-gradient(135deg, #2c3e50 0%, #4ca1af 100%);
-            --accent-color: #1abc9c;
-        }
+        /* --- Unified CSS --- */
+        :root { --sidebar-width: 260px; --header-height: 82px; --transition: all 0.3s ease; --card-shadow: 0 5px 20px rgba(0, 0, 0, 0.08); --bg-light: #F8F9FA; --primary-gradient: linear-gradient(135deg, #2c3e50 0%, #4ca1af 100%); --accent-color: #1abc9c; }
         body { background-color: var(--bg-light); margin: 0; padding: 0; min-height: 100vh; font-family: 'Inter', sans-serif; display: flex; flex-direction: column; }
-        
-        /* Navbar */
         .navbar { background: linear-gradient(135deg, #1a1a1a 0%, #2d2d2d 100%) !important; box-shadow: 0 4px 20px rgba(0,0,0,0.15); padding: 1rem 1.5rem; height: var(--header-height); position: fixed; top: 0; left: 0; right: 0; z-index: 1050; }
         .user-dropdown .dropdown-toggle { color: white; display: flex; align-items: center; text-decoration: none; padding: 8px 12px; border-radius: 8px; transition: var(--transition); }
         .user-dropdown .dropdown-toggle:hover { background-color: rgba(255, 255, 255, 0.1); }
         .user-dropdown .dropdown-toggle img { width: 36px; height: 36px; border-radius: 50%; object-fit: cover; margin-right: 10px; }
-        
-        /* Sidebar */
         .sidebar { width: var(--sidebar-width); position: fixed; top: var(--header-height); left: 0; height: calc(100vh - var(--header-height)); background: #2c3e50; color: white; box-shadow: 5px 0 15px rgba(0,0,0,0.2); z-index: 1040; transition: width var(--transition); overflow-y: auto; }
         .sidebar-nav { padding: 20px 0; }
         .sidebar-nav .nav-link { color: rgba(255, 255, 255, 0.7); font-size: 1.05rem; font-weight: 500; padding: 12px 25px; transition: var(--transition); border-left: 5px solid transparent; margin: 2px 0; display: flex; align-items: center; text-decoration: none; }
-        .sidebar-nav .nav-link i { width: 30px; text-align: center; flex-shrink: 0; font-size: 0.95em; }
         .sidebar-nav .nav-link:hover { color: white; background: rgba(255, 255, 255, 0.05); border-left-color: var(--accent-color); }
         .sidebar-nav .nav-link.active { color: white; background: rgba(255, 255, 255, 0.1); border-left-color: #3498db; font-weight: 600; }
         .sidebar-nav .nav-title { padding: 15px 25px 5px; font-size: 0.75rem; font-weight: 700; color: rgba(255, 255, 255, 0.4); text-transform: uppercase; letter-spacing: 1px; }
-
         .main-content { flex: 1 0 auto; padding: 30px; margin-top: var(--header-height); margin-left: var(--sidebar-width); transition: margin-left var(--transition); min-height: calc(100vh - var(--header-height)); }
-        /* Footer */
-        footer {
-            flex-shrink: 0;
-            background: #2c3e50 !important;
-            box-shadow: 0 -2px 10px rgba(0,0,0,0.1);
-            padding-left: var(--sidebar-width); 
-            transition: padding-left var(--transition); 
-            position: relative;
-            z-index: 1041;
-        }
-                .sidebar.minimized ~ footer {
-            padding-left: var(--sidebar-min-width); 
-        }
-        /* Page Specific */
+        footer { flex-shrink: 0; background: #2c3e50 !important; box-shadow: 0 -2px 10px rgba(0,0,0,0.1); padding-left: var(--sidebar-width); transition: padding-left var(--transition); position: relative; z-index: 1041; }
         .section-title { font-family: 'Poppins', sans-serif; font-weight: 600; color: #333; }
         .card { border: none; border-radius: 15px; box-shadow: var(--card-shadow); }
         .sortable { cursor: pointer; user-select: none; }
         .sortable:hover { background-color: rgba(0,0,0,0.02); }
-        .sortable i { margin-left: 5px; color: #999; }
-        .table-hover th.sortable:hover i { color: #333; }
-        .table .text-end { white-space: nowrap; width: 1%; }
+        @media (max-width: 992px) { .sidebar { left: -260px; } .sidebar.show { left: 0; } .main-content, footer { margin-left: 0; } footer { padding-left: 0; } }
     </style>
 </head>
 <body>
+    
     <nav class="navbar navbar-dark bg-dark">
         <div class="container-fluid d-flex align-items-center justify-content-between">
             <a class="navbar-brand d-flex align-items-center" href="sports_director_dashboard.php">
@@ -349,7 +189,7 @@ $pending_results_count = $conn->query("SELECT COUNT(*) FROM categories WHERE sta
             </button>
             <div class="dropdown user-dropdown ms-auto me-2 me-lg-0">
                 <a href="#" class="dropdown-toggle" id="userDropdown" data-bs-toggle="dropdown" aria-expanded="false">
-                    <i class="fas fa-user-circle" style="font-size: 36px; margin-right: 10px;"></i>
+                    <i class="fas fa-user-circle" style="font-size: 36px; margin-right: 10px; color: rgba(255,255,255,0.8);"></i>
                     <span class="user-name d-none d-lg-inline"><?= htmlspecialchars($name); ?></span>
                 </a>
                 <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="userDropdown">
@@ -362,7 +202,6 @@ $pending_results_count = $conn->query("SELECT COUNT(*) FROM categories WHERE sta
         </div>
     </nav>
 
-    <!-- UNIFIED SUPER ADMIN SIDEBAR -->
     <div class="sidebar" id="sidebar">
         <ul class="nav flex-column sidebar-nav">
             <li class="nav-item">
@@ -418,10 +257,9 @@ $pending_results_count = $conn->query("SELECT COUNT(*) FROM categories WHERE sta
                 </a>
             </li>
             
-            <!-- NEW SECTION: SEASON MANAGEMENT -->
             <li class="nav-item mt-3"><span class="nav-title">Season Management</span></li>
             <li class="nav-item">
-                <a class="nav-link <?= ($current_page == 'manage_archives.php') ? 'active' : '' ?>" href="../manage_archives.php">
+                <a class="nav-link" href="../manage_archives.php">
                     <i class="fas fa-history me-2"></i> <span>Archives & Reset</span>
                 </a>
             </li>
@@ -435,16 +273,6 @@ $pending_results_count = $conn->query("SELECT COUNT(*) FROM categories WHERE sta
     </div>
     
     <div class="main-content">
-        
-        <div class="container-fluid">
-            
-            <nav aria-label="breadcrumb" class="mb-4">
-              <ol class="breadcrumb">
-                <li class="breadcrumb-item"><a href="sports_director_dashboard.php">Dashboard</a></li>
-                <li class="breadcrumb-item active" aria-current="page">Manage Events</li>
-              </ol>
-            </nav>
-
             <h1 class="section-title mb-4">Manage Events & Assignments</h1>
 
             <?php if ($message): ?>
@@ -471,20 +299,12 @@ $pending_results_count = $conn->query("SELECT COUNT(*) FROM categories WHERE sta
                 <div class="tab-pane fade show active" id="games" role="tabpanel">
                     <div class="card mt-3">
                         <div class="card-header d-flex justify-content-between align-items-center bg-white py-3">
-                            <h5 class="mb-0 fw-bold">Games</h5>
+                            <h5 class="mb-0 fw-bold">Games List</h5>
+                            <button class="btn btn-primary btn-sm" data-bs-toggle="modal" data-bs-target="#addGameModal">
+                                <i class="fas fa-plus me-1"></i> Add New Game
+                            </button>
                         </div>
-                        <div class="card-body bg-light border-bottom">
-                            <form action="events.php" method="POST" class="row g-3 align-items-end">
-                                <input type="hidden" name="add_game">
-                                <div class="col-md-10">
-                                    <label for="game_name" class="form-label">Game Name (e.g., Athletics)</label>
-                                    <input type="text" class="form-control" id="game_name" name="game_name" required>
-                                </div>
-                                <div class="col-md-2">
-                                    <button type="submit" class="btn btn-primary w-100">Add Game</button>
-                                </div>
-                            </form>
-                        </div>
+                        
                         <div class="table-responsive">
                             <table class="table table-hover mb-0 align-middle">
                                 <thead class="table-light">
@@ -521,55 +341,11 @@ $pending_results_count = $conn->query("SELECT COUNT(*) FROM categories WHERE sta
 
                 <div class="tab-pane fade" id="events" role="tabpanel">
                     <div class="card mt-3">
-                        <div class="card-header bg-white py-3"><h5 class="mb-0 fw-bold">Game Events & Manager Assignments</h5></div>
-                        
-                        <!-- UPDATED ADD EVENT FORM -->
-                        <div class="card-body bg-light border-bottom">
-                            <form action="events.php" method="POST" class="row g-3">
-                                <input type="hidden" name="add_event">
-                                
-                                <!-- Row 1: Basic Info -->
-                                <div class="col-md-6">
-                                    <label for="game_id" class="form-label">Parent Game (L1)</label>
-                                    <select class="form-select" id="game_id" name="game_id" required>
-                                        <option value="" disabled selected>-- Select Game --</option>
-                                        <?php foreach ($games as $game): ?>
-                                        <option value="<?= $game['game_id'] ?>"><?= htmlspecialchars($game['game_name']) ?></option>
-                                        <?php endforeach; ?>
-                                    </select>
-                                </div>
-                                <div class="col-md-6">
-                                    <label for="event_name" class="form-label">Event Name (e.g., Runs & Jumps)</label>
-                                    <input type="text" class="form-control" id="event_name" name="event_name" required>
-                                </div>
-
-                                <!-- Row 2: Structure Toggle (UPDATED TERMS) -->
-                               <div class="col-md-9">
-                                    <label class="form-label fw-bold text-primary mb-2"><i class="fas fa-layer-group me-1"></i> Event Structure</label>
-                                    <div class="d-flex gap-4 align-items-center p-2 border rounded bg-white">
-                                        <div class="form-check">
-                                            <input class="form-check-input" type="radio" name="structure_type" id="struct_multi" value="multi" checked>
-                                            <label class="form-check-label" for="struct_multi">
-                                                <strong>Multiple Divisions</strong> (e.g., Men, Women, Weight Classes)
-                                            </label>
-                                        </div>
-                                        <div class="form-check">
-                                            <input class="form-check-input" type="radio" name="structure_type" id="struct_single" value="single">
-                                            <label class="form-check-label" for="struct_single">
-                                                <strong>Single Division</strong> (One open category)
-                                            </label>
-                                        </div>
-                                    </div>
-                                    <div class="form-text text-muted mt-2">
-                                        <span id="help_multi"><i class="fas fa-info-circle"></i> Standard mode. You will add specific categories (L3) manually after creating the event.</span>
-                                        <span id="help_single" style="display:none;"><i class="fas fa-magic text-success"></i> Simple mode. The Event Manager will see a button to initialize the <strong>Results Form</strong> immediately.</span>
-                                    </div>
-                                </div>
-
-                                <div class="col-md-3 align-self-end">
-                                    <button type="submit" class="btn btn-primary w-100">Add Event</button>
-                                </div>
-                            </form>
+                        <div class="card-header d-flex justify-content-between align-items-center bg-white py-3">
+                            <h5 class="mb-0 fw-bold">Game Events (L2)</h5>
+                            <button class="btn btn-primary btn-sm" data-bs-toggle="modal" data-bs-target="#addEventModal">
+                                <i class="fas fa-plus me-1"></i> Add New Event
+                            </button>
                         </div>
                         
                         <div class="p-3 border-bottom bg-white">
@@ -591,11 +367,11 @@ $pending_results_count = $conn->query("SELECT COUNT(*) FROM categories WHERE sta
                                     <tr>
                                         <td><?= htmlspecialchars($event['game_name']) ?></td>
                                         <td><strong><?= htmlspecialchars($event['event_name']) ?></strong></td>
-                                        <td>
+                                        <td class="fw-bold">
                                             <?php if($event['manager_name']): ?>
-                                                <span class="badge bg-success"><?= htmlspecialchars($event['manager_name']) ?></span>
+                                                <span class="text-dark"><?= htmlspecialchars($event['manager_name']) ?></span>
                                             <?php else: ?>
-                                                <span class="badge bg-secondary">Unassigned</span>
+                                                <span class="text-secondary opacity-50">Unassigned</span>
                                             <?php endif; ?>
                                         </td>
                                         <td class="text-end">
@@ -630,27 +406,11 @@ $pending_results_count = $conn->query("SELECT COUNT(*) FROM categories WHERE sta
 
                 <div class="tab-pane fade" id="categories" role="tabpanel">
                     <div class="card mt-3">
-                        <div class="card-header bg-white py-3"><h5 class="mb-0 fw-bold">Specific Categories (L3)</h5></div>
-                        <div class="card-body bg-light border-bottom">
-                            <form action="events.php" method="POST" class="row g-3">
-                                <input type="hidden" name="add_category">
-                                <div class="col-md-5">
-                                    <label for="event_id" class="form-label">Parent Event (L2)</label>
-                                    <select class="form-select" id="event_id" name="event_id" required>
-                                        <option value="" disabled selected>-- Select Event --</option>
-                                        <?php foreach ($events as $event): ?>
-                                        <option value="<?= $event['event_id'] ?>"><?= htmlspecialchars($event['game_name']) ?> - <?= htmlspecialchars($event['event_name']) ?></option>
-                                        <?php endforeach; ?>
-                                    </select>
-                                </div>
-                                <div class="col-md-5">
-                                    <label for="category_name" class="form-label">Category Name (e.g., 100m Dash)</label>
-                                    <input type="text" class="form-control" id="category_name" name="category_name" required>
-                                </div>
-                                <div class="col-md-2 align-self-end">
-                                    <button type="submit" class="btn btn-primary w-100">Add Category</button>
-                                </div>
-                            </form>
+                        <div class="card-header d-flex justify-content-between align-items-center bg-white py-3">
+                            <h5 class="mb-0 fw-bold">Specific Categories (L3)</h5>
+                            <button class="btn btn-primary btn-sm" data-bs-toggle="modal" data-bs-target="#addCategoryModal">
+                                <i class="fas fa-plus me-1"></i> Add Category
+                            </button>
                         </div>
                         
                         <div class="p-3 border-bottom bg-white">
@@ -673,26 +433,25 @@ $pending_results_count = $conn->query("SELECT COUNT(*) FROM categories WHERE sta
                                     <tr>
                                         <td><?= htmlspecialchars($category['game_name']) ?></td>
                                         <td><?= htmlspecialchars($category['event_name']) ?></td>
-                                        
-                                        <!-- DISPLAY LOGIC: Fetch Single Division Properly -->
                                         <td>
-                                            <?php 
+                                        <?php 
                                             $catName = $category['category_name'];
+                                            
+                                            // Check if it is Single or Open Division
                                             if ($catName === 'Single Division' || $catName === 'Open Division') {
-                                                echo '<span class="badge bg-primary px-3 py-2">Single Division (Open)</span>';
-                                            } elseif ($catName === 'Main Event') {
-                                                echo '<span class="badge bg-secondary">Main Event (Legacy)</span>';
+                                                // Display just the text (I kept <strong> to match the style of other categories)
+                                                echo '<strong>Single Division</strong>';
                                             } else {
+                                                // Display specific category name
                                                 echo '<strong>' . htmlspecialchars($catName) . '</strong>';
                                             }
                                             ?>
                                         </td>
-                                        
-                                        <td>
+                                        <td class="fw-bold">
                                             <?php if($category['manager_name']): ?>
-                                                <span class="badge bg-success"><?= htmlspecialchars($category['manager_name']) ?></span>
+                                                <span class="text-dark"><?= htmlspecialchars($category['manager_name']) ?></span>
                                             <?php else: ?>
-                                                <span class="badge bg-secondary">Unassigned</span>
+                                                <span class="text-secondary opacity-50">Unassigned</span>
                                             <?php endif; ?>
                                         </td>
                                         <td class="text-end">
@@ -720,21 +479,116 @@ $pending_results_count = $conn->query("SELECT COUNT(*) FROM categories WHERE sta
             </div>
         </div>
 
-        <!-- MODALS -->
+        <div class="modal fade" id="addGameModal" tabindex="-1">
+            <div class="modal-dialog">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h5 class="modal-title">Add New Game Category</h5>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                    </div>
+                    <form action="events.php" method="POST">
+                        <div class="modal-body">
+                            <input type="hidden" name="add_game">
+                            <div class="mb-3">
+                                <label class="form-label fw-bold">Game Name</label>
+                                <input type="text" class="form-control" name="game_name" placeholder="e.g. Ball Games, Board Games, Athletics" required>
+                                <div class="form-text text-muted">This groups multiple Events together (e.g., all Ball Games).</div>
+                            </div>
+                        </div>
+                        <div class="modal-footer">
+                            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                            <button type="submit" class="btn btn-primary">Save Game</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+
+        <div class="modal fade" id="addEventModal" tabindex="-1">
+            <div class="modal-dialog">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h5 class="modal-title">Add New Sport / Event</h5>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                    </div>
+                    <form action="events.php" method="POST">
+                        <div class="modal-body">
+                            <input type="hidden" name="add_event">
+                            
+                            <div class="mb-3">
+                                <label class="form-label fw-bold">Select Game Category</label>
+                                <select class="form-select" name="game_id" required>
+                                    <option value="" disabled selected>-- Select Category --</option>
+                                    <?php foreach ($games as $game): ?>
+                                    <option value="<?= $game['game_id'] ?>"><?= htmlspecialchars($game['game_name']) ?></option>
+                                    <?php endforeach; ?>
+                                </select>
+                            </div>
+
+                            <div class="mb-3">
+                                <label class="form-label fw-bold">Sport Name</label>
+                                <input type="text" class="form-control" name="event_name" placeholder="e.g. Basketball, Chess, 100m Dash" required>
+                            </div>
+                            
+                        </div>
+                        <div class="modal-footer">
+                            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                            <button type="submit" class="btn btn-primary">Create Event</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+
+        <div class="modal fade" id="addCategoryModal" tabindex="-1">
+            <div class="modal-dialog">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h5 class="modal-title">Add Specific Division</h5>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                    </div>
+                    <form action="events.php" method="POST">
+                        <div class="modal-body">
+                            <input type="hidden" name="add_category">
+                            <div class="mb-3">
+                                <label class="form-label fw-bold">Select Event</label>
+                                <select class="form-select" name="event_id" required>
+                                    <option value="" disabled selected>-- Select Event --</option>
+                                    <?php foreach ($events as $event): ?>
+                                    <option value="<?= $event['event_id'] ?>">
+                                        <?= htmlspecialchars($event['game_name']) ?> &raquo; <?= htmlspecialchars($event['event_name']) ?>
+                                    </option>
+                                    <?php endforeach; ?>
+                                </select>
+                            </div>
+                            <div class="mb-3">
+                                <label class="form-label fw-bold">Division / Category Name</label>
+                                <input type="text" class="form-control" name="category_name" placeholder="e.g. Men's Division, Lightweight" required>
+                            </div>
+                        </div>
+                        <div class="modal-footer">
+                            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                            <button type="submit" class="btn btn-primary">Save Category</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+
         <div class="modal fade" id="assignManagerModal" tabindex="-1">
             <div class="modal-dialog">
                 <div class="modal-content">
                     <div class="modal-header">
-                        <h5 class="modal-title">Assign Manager</h5>
+                        <h5 class="modal-title">Assign Event Manager</h5>
                         <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
                     </div>
                     <form action="events.php" method="POST">
                         <div class="modal-body">
                             <input type="hidden" name="assign_manager">
                             <input type="hidden" name="event_id" id="assign_event_id">
-                            <p>Assigning manager for event: <strong id="assign_event_name"></strong></p>
+                            <p>Assigning manager for: <strong id="assign_event_name" class="text-primary"></strong></p>
                             <div class="mb-3">
-                                <label for="user_id" class="form-label">Event Manager</label>
+                                <label for="user_id" class="form-label fw-bold">Select Manager</label>
                                 <select class="form-select" id="assign_user_id" name="user_id">
                                     <option value="0">-- Unassign --</option>
                                     <?php foreach ($event_managers as $manager): ?>
@@ -756,7 +610,7 @@ $pending_results_count = $conn->query("SELECT COUNT(*) FROM categories WHERE sta
             <div class="modal-dialog">
                 <div class="modal-content">
                     <div class="modal-header">
-                        <h5 class="modal-title">Edit Game (L1)</h5>
+                        <h5 class="modal-title">Edit Game Category</h5>
                         <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
                     </div>
                     <form action="events.php" method="POST">
@@ -764,7 +618,7 @@ $pending_results_count = $conn->query("SELECT COUNT(*) FROM categories WHERE sta
                             <input type="hidden" name="update_game">
                             <input type="hidden" name="game_id" id="edit_game_id">
                             <div class="mb-3">
-                                <label for="edit_game_name" class="form-label">Game Name</label>
+                                <label for="edit_game_name" class="form-label fw-bold">Game Name</label>
                                 <input type="text" class="form-control" id="edit_game_name" name="game_name" required>
                             </div>
                         </div>
@@ -781,15 +635,15 @@ $pending_results_count = $conn->query("SELECT COUNT(*) FROM categories WHERE sta
             <div class="modal-dialog">
                 <div class="modal-content">
                     <div class="modal-header">
-                        <h5 class="modal-title">Delete Game (L1)</h5>
+                        <h5 class="modal-title">Delete Game</h5>
                         <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
                     </div>
                     <form action="events.php" method="POST">
                         <div class="modal-body">
                             <input type="hidden" name="delete_game">
                             <input type="hidden" name="game_id" id="delete_game_id">
-                            <p>Are you sure you want to delete the game <strong id="delete_game_name"></strong>?</p>
-                            <p class="text-danger"><small>This action cannot be undone. You cannot delete a game that has events linked to it.</small></p>
+                            <p>Are you sure you want to delete <strong id="delete_game_name"></strong>?</p>
+                            <p class="text-danger"><small><i class="fas fa-exclamation-triangle"></i> This action cannot be undone. You cannot delete a game that contains events/events.</small></p>
                         </div>
                         <div class="modal-footer">
                             <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
@@ -804,7 +658,7 @@ $pending_results_count = $conn->query("SELECT COUNT(*) FROM categories WHERE sta
             <div class="modal-dialog">
                 <div class="modal-content">
                     <div class="modal-header">
-                        <h5 class="modal-title">Edit Event (L2)</h5>
+                        <h5 class="modal-title">Edit Sport / Event</h5>
                         <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
                     </div>
                     <form action="events.php" method="POST">
@@ -813,7 +667,7 @@ $pending_results_count = $conn->query("SELECT COUNT(*) FROM categories WHERE sta
                             <input type="hidden" name="event_id" id="edit_event_id">
                             
                             <div class="mb-3">
-                                <label for="edit_game_id_select" class="form-label">Parent Game (L1)</label>
+                                <label for="edit_game_id_select" class="form-label fw-bold">Game Category</label>
                                 <select class="form-select" id="edit_game_id_select" name="game_id" required>
                                     <?php foreach ($games as $game): ?>
                                     <option value="<?= $game['game_id'] ?>"><?= htmlspecialchars($game['game_name']) ?></option>
@@ -821,7 +675,7 @@ $pending_results_count = $conn->query("SELECT COUNT(*) FROM categories WHERE sta
                                 </select>
                             </div>
                             <div class="mb-3">
-                                <label for="edit_event_name" class="form-label">Event Name</label>
+                                <label for="edit_event_name" class="form-label fw-bold">Event Name</label>
                                 <input type="text" class="form-control" id="edit_event_name" name="event_name" required>
                             </div>
                         </div>
@@ -838,19 +692,19 @@ $pending_results_count = $conn->query("SELECT COUNT(*) FROM categories WHERE sta
             <div class="modal-dialog">
                 <div class="modal-content">
                     <div class="modal-header">
-                        <h5 class="modal-title">Delete Event (L2)</h5>
+                        <h5 class="modal-title">Delete Sport</h5>
                         <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
                     </div>
                     <form action="events.php" method="POST">
                         <div class="modal-body">
                             <input type="hidden" name="delete_event">
                             <input type="hidden" name="event_id" id="delete_event_id">
-                            <p>Are you sure you want to delete the event <strong id="delete_event_name"></strong>?</p>
-                            <p class="text-danger"><small>This action cannot be undone. You cannot delete an event that has categories linked to it.</small></p>
+                            <p>Are you sure you want to delete <strong id="delete_event_name"></strong>?</p>
+                            <p class="text-danger"><small><i class="fas fa-exclamation-triangle"></i> This action cannot be undone. You cannot delete a sport that has active divisions/categories.</small></p>
                         </div>
                         <div class="modal-footer">
                             <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-                            <button type="submit" class="btn btn-danger">Delete Event</button>
+                            <button type="submit" class="btn btn-danger">Delete Sport</button>
                         </div>
                     </form>
                 </div>
@@ -861,7 +715,7 @@ $pending_results_count = $conn->query("SELECT COUNT(*) FROM categories WHERE sta
             <div class="modal-dialog">
                 <div class="modal-content">
                     <div class="modal-header">
-                        <h5 class="modal-title">Edit Category (L3)</h5>
+                        <h5 class="modal-title">Edit Division</h5>
                         <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
                     </div>
                     <form action="events.php" method="POST">
@@ -870,18 +724,18 @@ $pending_results_count = $conn->query("SELECT COUNT(*) FROM categories WHERE sta
                             <input type="hidden" name="category_id" id="edit_category_id">
                             
                             <div class="mb-3">
-                                <label for="edit_event_id_select_cat" class="form-label">Parent Event (L2)</label>
+                                <label for="edit_event_id_select_cat" class="form-label fw-bold">Belongs to Sport</label>
                                 <select class="form-select" id="edit_event_id_select_cat" name="event_id" required>
-                                    <option value="" disabled>-- Select Event --</option>
+                                    <option value="" disabled>-- Select Sport --</option>
                                     <?php foreach ($events as $event): ?>
                                     <option value="<?= $event['event_id'] ?>">
-                                        <?= htmlspecialchars($event['game_name']) ?> - <?= htmlspecialchars($event['event_name']) ?>
+                                        <?= htmlspecialchars($event['game_name']) ?> &raquo; <?= htmlspecialchars($event['event_name']) ?>
                                     </option>
                                     <?php endforeach; ?>
                                 </select>
                             </div>
                             <div class="mb-3">
-                                <label for="edit_category_name" class="form-label">Category Name</label>
+                                <label for="edit_category_name" class="form-label fw-bold">Division Name</label>
                                 <input type="text" class="form-control" id="edit_category_name" name="category_name" required>
                             </div>
                         </div>
@@ -898,19 +752,19 @@ $pending_results_count = $conn->query("SELECT COUNT(*) FROM categories WHERE sta
             <div class="modal-dialog">
                 <div class="modal-content">
                     <div class="modal-header">
-                        <h5 class="modal-title">Delete Category (L3)</h5>
+                        <h5 class="modal-title">Delete Division</h5>
                         <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
                     </div>
                     <form action="events.php" method="POST">
                         <div class="modal-body">
                             <input type="hidden" name="delete_category">
                             <input type="hidden" name="category_id" id="delete_category_id">
-                            <p>Are you sure you want to delete the category <strong id="delete_category_name"></strong>?</p>
-                            <p class="text-danger"><small>This action cannot be undone.</small></p>
+                            <p>Are you sure you want to delete <strong id="delete_category_name"></strong>?</p>
+                            <p class="text-danger"><small><i class="fas fa-exclamation-triangle"></i> This action cannot be undone.</small></p>
                         </div>
                         <div class="modal-footer">
                             <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-                            <button type="submit" class="btn btn-danger">Delete Category</button>
+                            <button type="submit" class="btn btn-danger">Delete Division</button>
                         </div>
                     </form>
                 </div>
@@ -932,17 +786,6 @@ $pending_results_count = $conn->query("SELECT COUNT(*) FROM categories WHERE sta
         
         // --- JS FEATURES ---
         
-        // Feature 0: Help Text Toggle for Structure Radio Buttons
-        const radioButtons = document.querySelectorAll('input[name="structure_type"]');
-        radioButtons.forEach(radio => {
-            radio.addEventListener('change', function() {
-                if (this.checked) {
-                    document.getElementById('help_multi').style.display = (this.value === 'multi') ? 'inline' : 'none';
-                    document.getElementById('help_single').style.display = (this.value === 'single') ? 'inline' : 'none';
-                }
-            });
-        });
-
         // Feature 1: Search Functionality
         function setupTableSearch(inputId, tableBodyId) {
             const searchInput = document.getElementById(inputId);

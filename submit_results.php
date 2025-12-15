@@ -129,6 +129,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $bronze_team = !empty($_POST['bronze_winner_id']) ? (int)$_POST['bronze_winner_id'] : null;
             $bronze_count = !empty($_POST['bronze_count']) ? (int)$_POST['bronze_count'] : 0;
 
+            // 1. Check for Duplicate Teams (Runs on Draft AND Submit)
             if ($category_info['category_type'] == 'medal') {
                 $winners = array_filter([$gold_team, $silver_team, $bronze_team]);
                 if (count($winners) !== count(array_unique($winners))) {
@@ -138,18 +139,26 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
             $new_status = $category_info['status']; 
             
+            // 2. Submission Specific Validations
             if ($action === 'submit_for_approval') {
                 $new_status = 'Results Submitted'; 
+                
                 if ($category_info['category_type'] == 'medal') {
+                    // Check if teams are selected
                     if (empty($gold_team) || empty($silver_team) || empty($bronze_team)) {
                         throw new Exception("All medal winners must be selected.");
                     }
+
+                    // [NEW FIX] Block submission if any count is zero
+                    if ($gold_count <= 0 || $silver_count <= 0 || $bronze_count <= 0) {
+                        throw new Exception("Medal counts cannot be zero. Please enter a valid value (minimum 1).");
+                    }
                 }
+                
                 if (empty($tally_sheet_url)) {
                     throw new Exception("You must upload the Official Tally Sheet as evidence.");
                 }
-            } 
-
+            }
             // --- 3D. UPDATE DATABASE (With New Column) ---
             $stmt = $conn->prepare(
                 "UPDATE categories SET 
@@ -422,7 +431,7 @@ $current_submission = $conn->query("SELECT * FROM categories WHERE category_id =
                                 </div>
 
                                 <div class="mb-4">
-                                    <label class="form-label fw-bold small text-uppercase text-muted">Podium Photo (Optional)</label>
+                                    <label class="form-label fw-bold small text-uppercase text-muted">Victory / Action Photo (Optional)</label>
                                     <div class="upload-zone position-relative">
                                         <?php if (!empty($category_info['podium_photo_url'])): ?>
                                             <div class="text-center mb-2">
@@ -432,7 +441,7 @@ $current_submission = $conn->query("SELECT * FROM categories WHERE category_id =
                                             <p class="small text-muted mb-2">Change photo:</p>
                                         <?php else: ?>
                                             <i class="fas fa-camera fa-2x text-secondary mb-2"></i>
-                                            <p class="small text-muted mb-2">Upload winners' photo (JPG/PNG)</p>
+                                            <p class="small text-muted mb-2">Upload a winning moment or team photo</p>
                                         <?php endif; ?>
                                         <input class="form-control form-control-sm" type="file" name="podium_photo" accept="image/*" <?php if ($is_locked) echo 'disabled'; ?>>
                                     </div>
@@ -537,6 +546,8 @@ $current_submission = $conn->query("SELECT * FROM categories WHERE category_id =
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
     <script>
         document.addEventListener('DOMContentLoaded', function () {
+            
+            // --- 1. Sidebar Toggle ---
             const mobileToggle = document.getElementById('mobileToggle');
             if (mobileToggle) {
                 mobileToggle.addEventListener('click', function() {
@@ -544,6 +555,7 @@ $current_submission = $conn->query("SELECT * FROM categories WHERE category_id =
                 });
             }
             
+            // --- 2. Footer/Sidebar Adjustment ---
             const footer = document.querySelector('footer');
             const sidebar = document.getElementById('sidebar');
             const navbar = document.querySelector('.navbar');
@@ -566,6 +578,20 @@ $current_submission = $conn->query("SELECT * FROM categories WHERE category_id =
                 window.addEventListener('resize', adjustSidebarHeight);
                 setTimeout(adjustSidebarHeight, 100);
             }
+
+            // --- 3. [NEW] AUTO-SELECT NUMBER INPUTS ---
+            // This fixes the issue: clicking the box highlights the number so typing replaces it instantly.
+            const numberInputs = document.querySelectorAll('input[type="number"]');
+            numberInputs.forEach(input => {
+                // Select text on focus (tabbing in)
+                input.addEventListener('focus', function() {
+                    this.select();
+                });
+                // Select text on click
+                input.addEventListener('click', function() {
+                    this.select();
+                });
+            });
         });
     </script>
 </body>

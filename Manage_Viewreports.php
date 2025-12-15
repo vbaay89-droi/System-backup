@@ -423,11 +423,6 @@ function getStatusBadge($status) {
                     <i class="fas fa-calendar-alt me-2"></i> <span>Manage Events (L1-L3)</span>
                 </a>
             </li>
-            <li class="nav-item">
-                <a class="nav-link" href="sd/Manage_Matches.php">
-                    <i class="fas fa-trophy me-2"></i> <span>Manage Matches</span>
-                </a>
-            </li>
 
             <li class="nav-item mt-3"><span class="nav-title">Administration</span></li>
             <li class="nav-item">

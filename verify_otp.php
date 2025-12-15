@@ -1,6 +1,56 @@
 <?php
 session_start();
 
+// --- LOAD PHPMAILER ---
+require __DIR__ . '/PHPMailer-master/src/Exception.php';
+require __DIR__ . '/PHPMailer-master/src/PHPMailer.php';
+require __DIR__ . '/PHPMailer-master/src/SMTP.php';
+
+use PHPMailer\PHPMailer\PHPMailer;
+use PHPMailer\PHPMailer\Exception;
+
+// --- LOGIC: RESEND OTP ---
+if (isset($_POST['resend_otp'])) {
+    try {
+        // 1. Generate NEW OTP
+        $new_otp = random_int(100000, 999999);
+        $_SESSION['otp'] = $new_otp;
+        $_SESSION['otp_expiry'] = time() + (5 * 60); // Reset timer to 5 minutes
+
+        // 2. Send Email
+        $mail = new PHPMailer(true);
+        $mail->isSMTP();
+        $mail->Host       = 'smtp.gmail.com';
+        $mail->SMTPAuth   = true;
+        $mail->Username   = 'vbaay89@gmail.com'; // Your email
+        $mail->Password   = 'vthz porq dnhj frdc'; // Your App Password
+        $mail->SMTPSecure = PHPMailer::ENCRYPTION_STARTTLS;
+        $mail->Port       = 587;
+
+        $mail->setFrom('vbaay89@gmail.com', 'PIT Sports Tallying');
+        
+        // Ensure email is available (Add this to login.php if missing: $_SESSION['email_for_otp'] = $user['email'];)
+        $recipient = $_SESSION['email_for_otp'] ?? $_SESSION['pending_username']; 
+        $mail->addAddress($recipient); 
+
+        $mail->isHTML(true);
+        $mail->Subject = 'New OTP Request - PIT Sports Tallying';
+        $mail->Body    = '
+        <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #ddd; border-radius: 8px;">
+            <h2 style="color: #2E7D32; text-align: center;">New OTP Request</h2>
+            <p style="text-align: center; color: #555;">Here is your new verification code:</p>
+            <div style="background: #f0fdf4; color: #2E7D32; font-size: 32px; font-weight: bold; text-align: center; padding: 15px; border: 2px dashed #4CAF50; letter-spacing: 5px; margin: 20px 0;">' . $new_otp . '</div>
+            <p style="text-align: center; color: #777;">This code expires in 5 minutes.</p>
+        </div>';
+
+        $mail->send();
+        $resend_success = "A new OTP has been sent to your email!";
+        
+    } catch (Exception $e) {
+        $error_message = "Failed to send OTP. Please try again.";
+    }
+}
+
 // Check if pending login session exists
 if (!isset($_SESSION['pending_user_id'], $_SESSION['pending_username'], $_SESSION['pending_user_role'])) {
     header("Location: login.php");
@@ -8,7 +58,8 @@ if (!isset($_SESSION['pending_user_id'], $_SESSION['pending_username'], $_SESSIO
 }
 
 // Handle OTP submission
-if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+// Only try to verify if we are NOT resending
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && !isset($_POST['resend_otp'])) {
     $userOtp = $_POST['otp'] ?? '';
 
     if (isset($_SESSION['otp'], $_SESSION['otp_expiry'])) {
@@ -94,7 +145,7 @@ if (!isset($_SESSION['otp_expiry'])) {
         /* Background with overlay */
         body::before {
             content: ''; position: fixed; top: 0; left: 0; width: 100%; height: 100%;
-            background: url('siglakas_cover.png'); background-size: cover;
+            background: url('images/featured_image.png'); background-size: cover;
             z-index: -2;
         }
         body::after {
@@ -386,7 +437,7 @@ if (!isset($_SESSION['otp_expiry'])) {
                         <a class="nav-link" href="college_team.php">Colleges</a>
                     </li>
                     <li class="nav-item">
-                        <a href="login.php" class="btn btn-success ms-3">Login</a>
+                        <a href="login.php" class="btn btn-success ms-3">Admin Login</a>
                     </li>
                 </ul>
             </div>
@@ -400,40 +451,52 @@ if (!isset($_SESSION['otp_expiry'])) {
                 
                 <div class="col-lg-6 col-md-8">
                     <div class="verify-container text-center">
-                        <div class="form-logos">
-                            <img src="imageslogo.png" alt="PIT Logo" class="form-logo-img">
-                            
-                        </div>
-                        <h2>Enter OTP Code</h2>
-                        
-                        
+    <div class="form-logos">
+        <img src="imageslogo.png" alt="PIT Logo" class="form-logo-img">
+    </div>
+    
+    <h2 class="fw-bold mb-2">Enter OTP Code</h2>
+    
+    <p class="verify-subtext">
+        We've sent a code to the email for<br>
+        <strong class="text-dark"><?= htmlspecialchars($_SESSION['pending_username']); ?></strong>
+    </p>
+    
+    <?php if (isset($resend_success)): ?>
+        <div class="alert alert-success py-2 mb-4 shadow-sm">
+            <i class="fas fa-check-circle me-1"></i> <?= $resend_success ?>
+        </div>
+    <?php endif; ?>
 
-                        <p class="verify-subtext">
-                            We've sent a code to the email for<br>
-                            <strong class="text-dark"><?= htmlspecialchars($_SESSION['pending_username']); ?></strong>
-                        </p>
-                        
-                        <?php if (isset($error_message)): ?>
-                            <div class="alert alert-danger py-2 mb-4"><?= $error_message ?></div>
-                        <?php endif; ?>
+    <?php if (isset($error_message)): ?>
+        <div class="alert alert-danger py-2 mb-4 shadow-sm"><?= $error_message ?></div>
+    <?php endif; ?>
 
-                        <form method="POST" id="otp-form">
-                            <div class="otp-inputs">
-                                <input type="text" maxlength="1" pattern="\d" required>
-                                <input type="text" maxlength="1" pattern="\d" required>
-                                <input type="text" maxlength="1" pattern="\d" required>
-                                <input type="text" maxlength="1" pattern="\d" required>
-                                <input type="text" maxlength="1" pattern="\d" required>
-                                <input type="text" maxlength="1" pattern="\d" required>
-                            </div>
-                            <input type="hidden" name="otp" id="otp">
-                            
-                            <button type="submit" class="btn btn-verify">
-                                <i class="fas fa-shield-alt me-2"></i> Verify & Login
-                            </button>
-                            <div id="countdown">Expires in 05:00</div>
-                        </form>
-                    </div>
+    <form method="POST" id="otp-form">
+        <div class="otp-inputs">
+            <input type="text" maxlength="1" pattern="\d" required>
+            <input type="text" maxlength="1" pattern="\d" required>
+            <input type="text" maxlength="1" pattern="\d" required>
+            <input type="text" maxlength="1" pattern="\d" required>
+            <input type="text" maxlength="1" pattern="\d" required>
+            <input type="text" maxlength="1" pattern="\d" required>
+        </div>
+        <input type="hidden" name="otp" id="otp">
+        
+        <button type="submit" class="btn btn-verify" id="verifyBtn">
+            <i class="fas fa-shield-alt me-2"></i> Verify & Login
+        </button>
+    </form>
+
+    <div id="countdown" class="mt-3 fw-bold text-danger">Expires in 05:00</div>
+
+    <form method="POST" id="resend-form" style="display: none; margin-top: 15px;">
+        <input type="hidden" name="resend_otp" value="1"> <p class="text-danger fw-bold small mb-2">Code Expired</p>
+        <button type="submit" class="btn btn-success w-30 rounded-pill fw-bold">
+            <i class="fas fa-sync-alt me-2"></i> Resend Code
+        </button>
+    </form>
+</div>
                 </div>
 
             </div>
@@ -446,5 +509,74 @@ if (!isset($_SESSION['otp_expiry'])) {
     </footer>
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        document.addEventListener("DOMContentLoaded", () => {
+            // --- OTP INPUT LOGIC ---
+            const inputs = document.querySelectorAll(".otp-inputs input");
+            const hiddenInput = document.getElementById("otp");
+            const verifyForm = document.getElementById("otp-form");
+
+            inputs.forEach((input, index) => {
+                input.addEventListener("input", () => {
+                    if (input.value.length === 1 && index < inputs.length - 1) inputs[index + 1].focus();
+                });
+                input.addEventListener("keydown", (e) => {
+                    if (e.key === "Backspace" && input.value === "" && index > 0) inputs[index - 1].focus();
+                });
+                input.addEventListener("paste", (e) => {
+                    e.preventDefault();
+                    const pasteData = (e.clipboardData || window.clipboardData).getData("text");
+                    if (/^\d+$/.test(pasteData)) {
+                        pasteData.split("").forEach((char, i) => {
+                            if (i < inputs.length) inputs[i].value = char;
+                        });
+                        const last = Math.min(pasteData.length, inputs.length) - 1;
+                        if(last >= 0) inputs[last].focus();
+                    }
+                });
+            });
+
+            verifyForm.addEventListener("submit", () => {
+                hiddenInput.value = Array.from(inputs).map(i => i.value).join("");
+            });
+
+            // --- COUNTDOWN & RESEND LOGIC ---
+            const otpExpiry = <?= $_SESSION['otp_expiry'] ?? '0' ?> * 1000;
+            const countdownEl = document.getElementById("countdown");
+            const verifyBtn = document.getElementById("verifyBtn");
+            const resendForm = document.getElementById("resend-form");
+            
+            const timer = setInterval(() => {
+                const now = new Date().getTime();
+                const distance = otpExpiry - now;
+
+                if (distance <= 0) {
+                    clearInterval(timer);
+                    
+                    // 1. Hide Countdown Text
+                    countdownEl.style.display = 'none';
+
+                    // 2. DISABLE Verify Button (Instead of hiding it)
+                    if(verifyBtn) {
+                        verifyBtn.disabled = true;       // Make it unclickable
+                        verifyBtn.style.opacity = '0.6'; // Make it look faded/disabled
+                        verifyBtn.style.cursor = 'not-allowed';
+                    }
+
+                    // 3. Disable Inputs
+                    inputs.forEach(i => i.disabled = true);
+
+                    // 4. Show Resend Form
+                    if(resendForm) resendForm.style.display = 'block';
+                    
+                    return;
+                }
+
+                const minutes = Math.floor((distance % (1000 * 60 * 60)) / (1000 * 60));
+                const seconds = Math.floor((distance % (1000 * 60)) / 1000);
+                countdownEl.textContent = `Expires in ${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
+            }, 1000);
+        });
+    </script>
 </body>
 </html>
