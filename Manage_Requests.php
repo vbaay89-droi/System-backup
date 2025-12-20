@@ -403,22 +403,22 @@ $pending_results_count = $conn->query("SELECT COUNT(*) FROM categories WHERE sta
                                     <td class="fw-bold text-dark"><?= htmlspecialchars($request['role']) ?></td>
                                     <td><?= date('M d, Y h:i A', strtotime($request['created_at'])) ?></td>
                                     <td>
-    <div class="d-flex gap-2">
-        <a href="Manage_Requests.php?action=approve&id=<?= $request['id'] ?>" 
-           class="btn btn-success btn-sm d-inline-flex align-items-center shadow-sm"
-           title="Approve User"
-           onclick="return confirm('Approve this user? An email will be sent.')">
-            <i class="fas fa-check me-1"></i> Approve
-        </a>
+                                        <div class="d-flex gap-2">
+                                            <a href="Manage_Requests.php?action=approve&id=<?= $request['id'] ?>" 
+                                            class="btn btn-success btn-sm d-inline-flex align-items-center shadow-sm"
+                                            title="Approve User"
+                                            onclick="return confirm('Approve this user? An email will be sent.')">
+                                                <i class="fas fa-check me-1"></i> Approve
+                                            </a>
 
-        <a href="Manage_Requests.php?action=reject&id=<?= $request['id'] ?>" 
-           class="btn btn-danger btn-sm d-inline-flex align-items-center shadow-sm"
-           title="Reject Request"
-           onclick="return confirm('Reject and delete this request?')">
-            <i class="fas fa-trash-alt me-1"></i> Reject
-        </a>
-    </div>
-</td>
+                                            <a href="Manage_Requests.php?action=reject&id=<?= $request['id'] ?>" 
+                                            class="btn btn-danger btn-sm d-inline-flex align-items-center shadow-sm"
+                                            title="Reject Request"
+                                            onclick="return confirm('Reject and delete this request?')">
+                                                <i class="fas fa-trash-alt me-1"></i> Reject
+                                            </a>
+                                        </div>
+                                    </td>
                                 </tr>
                                 <?php endforeach; ?>
                                 <?php if (empty($pending_requests)): ?>

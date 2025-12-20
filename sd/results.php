@@ -167,6 +167,116 @@ $approved_results = ($result_approved) ? $result_approved->fetch_all(MYSQLI_ASSO
 $pending_requests_count = $conn->query("SELECT COUNT(*) FROM users WHERE is_approved = 0")->fetch_row()[0] ?? 0;
 $pending_results_count = count($pending_results); 
 $approved_results_count = count($approved_results); // Count for history tab
+
+// --- AJAX REAL-TIME UPDATE HANDLER ---
+if (isset($_GET['ajax_update']) && $_GET['ajax_update'] == '1') {
+    // 1. Fetch Pending Results
+    $sql_pending = "SELECT 
+            c.category_id, c.category_name, c.category_type, c.tally_sheet_url,
+            c.gold_winner_college_id, c.gold_count,
+            c.silver_winner_college_id, c.silver_count,
+            c.bronze_winner_college_id, c.bronze_count,
+            c.updated_at AS submission_date, 
+            ge.event_name, g.game_name, 
+            COALESCE(u.full_name, u.username) AS submitted_by_name
+        FROM categories c
+        JOIN game_events ge ON c.event_id = ge.event_id
+        JOIN games g ON ge.game_id = g.game_id
+        LEFT JOIN event_manager_assignments ema ON c.event_id = ema.event_id
+        LEFT JOIN users u ON ema.user_id = u.id
+        WHERE c.status = 'Results Submitted'
+        GROUP BY c.category_id
+        ORDER BY c.updated_at DESC";
+    $pending_results = $conn->query($sql_pending)->fetch_all(MYSQLI_ASSOC);
+
+    // 2. Fetch Approved Results
+    $sql_approved = "SELECT 
+            c.category_id, c.category_name, c.category_type, c.tally_sheet_url,
+            c.approved_at, ge.event_name, g.game_name, 
+            COALESCE(u.full_name, u.username) AS approved_by_name
+        FROM categories c
+        JOIN game_events ge ON c.event_id = ge.event_id
+        JOIN games g ON ge.game_id = g.game_id
+        LEFT JOIN users u ON c.approved_by_user_id = u.id
+        WHERE c.status = 'Results Approved'
+        ORDER BY c.approved_at DESC";
+    $approved_results = $conn->query($sql_approved)->fetch_all(MYSQLI_ASSOC);
+
+    // 3. Generate HTML for Pending Table
+    ob_start();
+    if (empty($pending_results)) {
+        echo '<tr><td colspan="3" class="text-center py-5 text-muted"><i class="fas fa-inbox fa-3x mb-3 opacity-25"></i><br>All caught up! No pending results.</td></tr>';
+    } else {
+        foreach ($pending_results as $row) {
+            // Re-use your existing logic to generate the row. 
+            // NOTE: Ensure variable names match exactly what you use in the main HTML.
+            $gold = getCollegeName($row['gold_winner_college_id'], $college_map);
+            $silver = getCollegeName($row['silver_winner_college_id'], $college_map);
+            $bronze = getCollegeName($row['bronze_winner_college_id'], $college_map);
+            $evidence = !empty($row['tally_sheet_url']) ? '../' . htmlspecialchars($row['tally_sheet_url']) : '';
+            
+            echo '<tr>
+                <td>
+                    <div class="fw-bold text-dark">' . htmlspecialchars($row['game_name']) . '</div>
+                    <div class="text-primary small fw-semibold">' . htmlspecialchars($row['event_name']) . '</div>
+                    <div class="text-muted small">' . htmlspecialchars($row['category_name']) . '</div>
+                </td>
+                <td>
+                    <div class="fw-bold text-dark"><i class="fas fa-user-circle me-1"></i> ' . htmlspecialchars($row['submitted_by_name'] ?? 'Unknown') . '</div>
+                    <div class="small text-muted">' . date('M d, h:i A', strtotime($row['submission_date'])) . '</div>
+                </td>
+                <td class="text-end">
+                    <button type="button" class="btn btn-primary btn-sm px-3 shadow-sm rounded-pill review-btn"
+                        data-bs-toggle="modal" data-bs-target="#verificationModal"
+                        data-id="' . $row['category_id'] . '"
+                        data-event="' . htmlspecialchars($row['event_name'] . ' - ' . $row['category_name']) . '"
+                        data-gold-name="' . $gold . '" data-gold-count="' . $row['gold_count'] . '"
+                        data-silver-name="' . $silver . '" data-silver-count="' . $row['silver_count'] . '"
+                        data-bronze-name="' . $bronze . '" data-bronze-count="' . $row['bronze_count'] . '"
+                        data-evidence="' . $evidence . '">
+                        <i class="fas fa-search me-1"></i> Review Submission
+                    </button>
+                </td>
+            </tr>';
+        }
+    }
+    $pending_html = ob_get_clean();
+
+    // 4. Generate HTML for Approved Table
+    ob_start();
+    if (empty($approved_results)) {
+        echo '<tr><td colspan="4" class="text-center py-5 text-muted">No approved results yet.</td></tr>';
+    } else {
+        foreach ($approved_results as $row) {
+            $proof_btn = !empty($row['tally_sheet_url']) 
+                ? '<a href="' . htmlspecialchars('../' . $row['tally_sheet_url']) . '" target="_blank" class="btn btn-sm btn-outline-secondary"><i class="fas fa-file-image me-1"></i> View Proof</a>'
+                : '<span class="badge bg-light text-muted border">No Evidence</span>';
+
+            echo '<tr>
+                <td><span class="fw-bold">' . htmlspecialchars($row['event_name']) . '</span><br><span class="small text-muted">' . htmlspecialchars($row['category_name']) . '</span></td>
+                <td><span class="fw-bold">' . htmlspecialchars($row['approved_by_name'] ?? 'System') . '</span><br><span class="small text-muted">' . date('M d, Y', strtotime($row['approved_at'])) . '</span></td>
+                <td>' . $proof_btn . '</td>
+                <td class="text-end">
+                    <button type="button" class="btn btn-warning btn-sm" data-bs-toggle="modal" data-bs-target="#revokeModal"
+                            data-id="' . $row['category_id'] . '" data-name="' . htmlspecialchars($row['category_name']) . '">
+                        <i class="fas fa-undo"></i> Revoke
+                    </button>
+                </td>
+            </tr>';
+        }
+    }
+    $approved_html = ob_get_clean();
+
+    // 5. Return JSON Response
+    header('Content-Type: application/json');
+    echo json_encode([
+        'pending_count' => count($pending_results),
+        'approved_count' => count($approved_results),
+        'pending_html' => $pending_html,
+        'approved_html' => $approved_html
+    ]);
+    exit; // Stop script execution here
+}
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -740,6 +850,59 @@ $approved_results_count = count($approved_results); // Count for history tab
                 setTimeout(adjustSidebarHeight, 100);
             }
         });
+
+        // --- REAL-TIME UPDATES (AJAX POLLING) ---
+            function fetchResultsUpdates() {
+                fetch('results.php?ajax_update=1')
+                    .then(response => response.json())
+                    .then(data => {
+                        // 1. Update Tab Badges (Inner Page)
+                        const pendingTabBadge = document.querySelector('#resultsTab button[data-bs-target="#pending"] .badge');
+                        const approvedTabBadge = document.querySelector('#resultsTab button[data-bs-target="#approved"] .badge');
+                        
+                        if(pendingTabBadge) pendingTabBadge.textContent = data.pending_count;
+                        if(approvedTabBadge) approvedTabBadge.textContent = data.approved_count;
+
+                        // 2. Update Sidebar Badge (Left Menu) - "Approve Results"
+                        const sidebarLink = document.querySelector('.sidebar-nav .nav-link[href="results.php"]');
+                        if (sidebarLink) {
+                            let sidebarBadge = sidebarLink.querySelector('.badge');
+                            
+                            if (data.pending_count > 0) {
+                                // If count > 0, ensure badge exists and has correct number
+                                if (sidebarBadge) {
+                                    sidebarBadge.textContent = data.pending_count;
+                                } else {
+                                    // Badge doesn't exist yet? Create it!
+                                    sidebarBadge = document.createElement('span');
+                                    sidebarBadge.className = 'badge bg-warning text-dark ms-auto rounded-pill';
+                                    sidebarBadge.textContent = data.pending_count;
+                                    sidebarLink.appendChild(sidebarBadge);
+                                }
+                            } else {
+                                // If count is 0, remove the badge if it exists
+                                if (sidebarBadge) sidebarBadge.remove();
+                            }
+                        }
+
+                        // 3. Update Table Content (Only if not hovering)
+                        if (!document.querySelector('.results-table:hover')) {
+                            const pendingTbody = document.querySelector('#pending tbody');
+                            const approvedTbody = document.querySelector('#approved tbody');
+                            
+                            if (pendingTbody && pendingTbody.innerHTML !== data.pending_html) {
+                                pendingTbody.innerHTML = data.pending_html;
+                            }
+                            if (approvedTbody && approvedTbody.innerHTML !== data.approved_html) {
+                                approvedTbody.innerHTML = data.approved_html;
+                            }
+                        }
+                    })
+                    .catch(err => console.error('Error fetching updates:', err));
+            }
+
+            // Start polling every 5 seconds
+            setInterval(fetchResultsUpdates, 5000);
     </script>
 </body>
 </html>

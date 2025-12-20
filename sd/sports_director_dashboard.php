@@ -86,28 +86,89 @@ function formatLogEntry($conn, $log, $current_user_id) {
     $icon = "fas fa-info-circle text-muted";
 
     switch ($action) {
-        // Game/Event Actions
-        case 'CREATED_GAME': $msg = "$actor created game <strong>" . htmlspecialchars($ctx['game_name']??'') . "</strong>."; $icon="fas fa-plus-circle text-success"; break;
-        case 'CREATED_EVENT': $msg = "$actor created event <strong>" . htmlspecialchars($ctx['event_name']??'') . "</strong>."; $icon="fas fa-calendar-plus text-success"; break;
+        // --- Game/Event Actions ---
+        case 'CREATED_GAME': 
+            $msg = "$actor created a new game: <strong>" . htmlspecialchars($ctx['game_name']??'') . "</strong>."; 
+            $icon = "fas fa-plus-circle text-success"; 
+            break;
+        case 'CREATED_EVENT': 
+            $msg = "$actor created the event <strong>" . htmlspecialchars($ctx['event_name']??'') . "</strong>."; 
+            $icon = "fas fa-calendar-plus text-success"; 
+            break;
         
-        // Team Actions
-        case 'CREATED_COLLEGE': $msg = "$actor added team <strong>" . htmlspecialchars($ctx['college_name']??'') . "</strong>."; $icon="fas fa-users text-info"; break;
-        case 'UPDATED_COLLEGE': $msg = "$actor updated team info for <strong>" . htmlspecialchars($ctx['college_name']??'') . "</strong>."; $icon="fas fa-pen text-info"; break;
+        // --- Team Actions ---
+        case 'CREATED_COLLEGE': 
+            $msg = "$actor added a new team: <strong>" . htmlspecialchars($ctx['college_name']??'') . "</strong>."; 
+            $icon = "fas fa-users text-info"; 
+            break;
+        case 'UPDATED_COLLEGE': 
+            $msg = "$actor updated team info for <strong>" . htmlspecialchars($ctx['college_name']??'') . "</strong>."; 
+            $icon = "fas fa-pen text-info"; 
+            break;
         
-        // Result Actions
-        case 'APPROVED_RESULT': $msg = "$actor approved results for <strong>" . htmlspecialchars($ctx['event_name']??'') . "</strong>."; $icon="fas fa-check-double text-success"; break;
-        case 'REVOKED_RESULT': $msg = "$actor **revoked** results for <strong>" . htmlspecialchars($ctx['event_name']??'') . "</strong>."; $icon="fas fa-undo text-danger"; break;
-        case 'REJECTED_RESULT': $msg = "$actor rejected results for <strong>" . htmlspecialchars($ctx['event_name']??'') . "</strong>."; $icon="fas fa-times-circle text-warning"; break;
+        // --- Result Actions ---
+        case 'APPROVED_RESULT': 
+            $msg = "$actor approved the results for <strong>" . htmlspecialchars($ctx['event_name']??'') . "</strong>."; 
+            $icon = "fas fa-check-double text-success"; 
+            break;
+        case 'REVOKED_RESULT': 
+            // FIXED: Changed **revoked** to HTML so it looks right
+            $msg = "$actor <span class='text-danger fw-bold'>revoked</span> the results for <strong>" . htmlspecialchars($ctx['event_name']??'') . "</strong>."; 
+            $icon = "fas fa-undo text-danger"; 
+            break;
+        case 'REJECTED_RESULT': 
+            $msg = "$actor rejected the results for <strong>" . htmlspecialchars($ctx['event_name']??'') . "</strong>."; 
+            $icon = "fas fa-times-circle text-warning"; 
+            break;
 
-        // Admin Actions
-        case 'UPDATED_USER': $msg = "$actor updated a user profile."; $icon="fas fa-user-edit text-warning"; break;
-        case 'APPROVED_REQUEST': $msg = "$actor approved an account request."; $icon="fas fa-user-check text-success"; break;
+        // --- Admin Actions ---
+        case 'UPDATED_USER': 
+            // Slightly friendlier wording
+            $msg = "$actor updated a user account profile."; 
+            $icon = "fas fa-user-edit text-warning"; 
+            break;
+        case 'APPROVED_REQUEST': 
+            $msg = "$actor approved a new account request."; 
+            $icon = "fas fa-user-check text-success"; 
+            break;
         
-        // Archive Actions
-        case 'ARCHIVED_SEASON': $msg = "$actor archived the season and reset the system."; $icon="fas fa-archive text-primary"; break;
+        // --- Archive Actions ---
+        case 'ARCHIVED_SEASON': 
+            $msg = "$actor archived the season and reset the system."; 
+            $icon = "fas fa-archive text-primary"; 
+            break;
 
-        default: $msg = "$actor performed <strong>$action</strong>."; break;
+        // --- EVENT MANAGER ACTIONS ---
+        case 'SUBMITTED_RESULTS':
+            $cat_name = htmlspecialchars($ctx['category_name'] ?? 'an event');
+            $msg = "$actor submitted results for <strong>$cat_name</strong>.";
+            $icon = "fas fa-paper-plane text-warning"; 
+            break;
+
+        case 'CREATED_CATEGORY':
+            $cat_name = htmlspecialchars($ctx['category_name'] ?? 'a new category');
+            $msg = "$actor added a new category: <strong>$cat_name</strong>.";
+            $icon = "fas fa-plus-circle text-success";
+            break;
+
+        case 'DELETED_CATEGORY':
+            $cat_name = htmlspecialchars($ctx['deleted_category_name'] ?? 'a category');
+            $msg = "$actor deleted the category <strong>$cat_name</strong>.";
+            $icon = "fas fa-trash-alt text-danger";
+            break;
+
+        case 'UPDATED_CATEGORY':
+             $cat_name = htmlspecialchars($ctx['new_category_name'] ?? 'a category');
+             $msg = "$actor updated details for <strong>$cat_name</strong>.";
+             $icon = "fas fa-edit text-info";
+             break;
+
+        // --- Default Case (Always Last) ---
+        default: 
+            $msg = "$actor performed <strong>$action</strong>."; 
+            break;
     }
+    
     return ['icon' => $icon, 'message' => $msg, 'time' => date('M d, h:i A', strtotime($log['created_at']))];
 }
 

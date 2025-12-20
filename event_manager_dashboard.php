@@ -47,52 +47,98 @@ function getUserNameById_EM($conn, $id) {
     return "Unknown User";
 }
 
+// --- HELPER: FORMAT LOGS FOR DASHBOARD (USER-FRIENDLY VERSION) ---
 function formatLogEntry_EM($conn, $log, $current_user_id) {
-    $actor_name = "<strong>You</strong>";
+    $actor_name = "<strong>You</strong>"; // Since it's your dashboard, always say "You"
     $context = json_decode($log['log_context'], true) ?? [];
     $message = "";
     $icon = "fas fa-info-circle text-muted"; 
+    $bg_class = "bg-light"; 
     $time = date('M d, h:i A', strtotime($log['created_at']));
 
     switch (trim($log['action_type'])) {
+        // --- 1. ADD (CREATE) ---
         case 'CREATED_CATEGORY':
-            $cat_name = htmlspecialchars($context['category_name'] ?? 'a new category');
-            $status_msg = !empty($context['status']) ? " (Status: " . htmlspecialchars($context['status']) . ")" : "";
-            $message = "$actor_name initialized the event <strong>\"$cat_name\"</strong>$status_msg.";
-            $icon = "fas fa-plus-circle text-success";
+            $cat_name = htmlspecialchars($context['category_name'] ?? 'an event');
+            $message = "$actor_name added a new event: <strong>\"$cat_name\"</strong>.";
+            $icon = "fas fa-plus text-success";
+            $bg_class = "bg-success bg-opacity-10";
             break;
 
+        // --- 2. EDIT (UPDATE) ---
         case 'UPDATED_CATEGORY':
-            $cat_name = htmlspecialchars($context['new_category_name'] ?? 'a category');
-            $status_msg = !empty($context['new_status']) ? " and updated status to <strong>" . htmlspecialchars($context['new_status']) . "</strong>" : "";
-            $message = "$actor_name updated details for <strong>\"$cat_name\"</strong>$status_msg.";
-            $icon = "fas fa-pencil-alt text-info";
+            $cat_name = htmlspecialchars($context['new_category_name'] ?? 'an event');
+            $changes = [];
+
+            // Check what specifically changed to make it detailed
+            if (!empty($context['new_status']) && ($context['old_status'] ?? '') !== $context['new_status']) {
+                $changes[] = "status to <strong>" . htmlspecialchars($context['new_status']) . "</strong>";
+            }
+            if (!empty($context['new_venue']) && ($context['old_venue'] ?? '') !== $context['new_venue']) {
+                $changes[] = "venue to <strong>" . htmlspecialchars($context['new_venue']) . "</strong>";
+            }
+            if (!empty($context['new_event_date']) && ($context['old_event_date'] ?? '') !== $context['new_event_date']) {
+                $changes[] = "date to <strong>" . htmlspecialchars($context['new_event_date']) . "</strong>";
+            }
+            if (!empty($context['new_event_time']) && ($context['old_event_time'] ?? '') !== $context['new_event_time']) {
+                $changes[] = "time to <strong>" . htmlspecialchars($context['new_event_time']) . "</strong>";
+            }
+
+            if (!empty($changes)) {
+                $message = "$actor_name updated <strong>\"$cat_name\"</strong>: Changed " . implode(', ', $changes) . ".";
+            } else {
+                $message = "$actor_name updated the details for <strong>\"$cat_name\"</strong>.";
+            }
+            $icon = "fas fa-edit text-info";
+            $bg_class = "bg-info bg-opacity-10";
             break;
 
+        // --- 3. DELETE ---
         case 'DELETED_CATEGORY':
             $cat_name = htmlspecialchars($context['deleted_category_name'] ?? 'a category');
-            $message = "$actor_name deleted the category <strong>\"$cat_name\"</strong>.";
+            $message = "$actor_name deleted the event: <strong>\"$cat_name\"</strong>.";
             $icon = "fas fa-trash-alt text-danger";
+            $bg_class = "bg-danger bg-opacity-10";
             break;
 
+        // --- 4. SUBMIT RESULTS ---
         case 'SUBMITTED_RESULTS': 
             $cat_name = htmlspecialchars($context['category_name'] ?? 'a category');
-            $message = "$actor_name submitted results for <strong>\"$cat_name\"</strong>.";
+            $winners = [];
+            
+            if (!empty($context['gold']) && $context['gold'] !== 'N/A') {
+                $winners[] = "<span class='text-warning'>Gold: " . htmlspecialchars($context['gold']) . "</span>";
+            }
+            if (!empty($context['silver']) && $context['silver'] !== 'N/A') {
+                $winners[] = "<span class='text-secondary'>Silver: " . htmlspecialchars($context['silver']) . "</span>";
+            }
+            if (!empty($context['bronze']) && $context['bronze'] !== 'N/A') {
+                $winners[] = "<span class='text-danger'>Bronze: " . htmlspecialchars($context['bronze']) . "</span>";
+            }
+            
+            $winner_text = !empty($winners) ? "<br><small class='mt-1 d-block'>" . implode(' • ', $winners) . "</small>" : "";
+            
+            $message = "$actor_name submitted official results for <strong>\"$cat_name\"</strong>.$winner_text";
             $icon = "fas fa-paper-plane text-primary";
+            $bg_class = "bg-primary bg-opacity-10";
+            break;
+
+        // --- 5. LOGIN ---
+        case 'LOGIN':
+            $message = "$actor_name logged in successfully.";
+            $icon = "fas fa-sign-in-alt text-secondary";
+            $bg_class = "bg-secondary bg-opacity-10";
             break;
             
         default:
-            if (!empty($log['action_type'])) {
-                 $message = "$actor_name performed an action: <strong>" . htmlspecialchars(trim($log['action_type'])) . "</strong>";
-            } else {
-                 $message = "$actor_name performed an unknown action.";
-                 $icon = "fas fa-question-circle text-muted";
-            }
+            $action_clean = ucwords(strtolower(str_replace('_', ' ', $log['action_type'])));
+            $message = "$actor_name performed action: <strong>$action_clean</strong>";
             break;
     }
 
     return [
         'icon' => $icon,
+        'bg_class' => $bg_class,
         'message' => $message,
         'time' => $time
     ];
@@ -355,7 +401,7 @@ try {
                                         View My Profile
                                     </div>
                                     <i class="fas fa-chevron-right text-muted small"></i>
-                                </a>
+                                </a> 
                             </div>
                         </div>
                     </div>
@@ -376,7 +422,7 @@ try {
                                 <?php else: ?>
                                     <?php foreach ($processed_logs as $log_entry): ?>
                                         <div class="activity-log-item">
-                                            <div class="activity-log-icon shadow-sm">
+                                            <div class="activity-log-icon shadow-sm <?= $log_entry['bg_class'] ?? 'bg-light' ?>">
                                                 <i class="<?= $log_entry['icon'] ?>"></i>
                                             </div>
                                             <div class="activity-log-content">

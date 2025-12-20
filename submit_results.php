@@ -149,7 +149,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                         throw new Exception("All medal winners must be selected.");
                     }
 
-                    // [NEW FIX] Block submission if any count is zero
+                    // Check if counts are valid
                     if ($gold_count <= 0 || $silver_count <= 0 || $bronze_count <= 0) {
                         throw new Exception("Medal counts cannot be zero. Please enter a valid value (minimum 1).");
                     }
@@ -159,7 +159,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     throw new Exception("You must upload the Official Tally Sheet as evidence.");
                 }
             }
-            // --- 3D. UPDATE DATABASE (With New Column) ---
+
+            // --- 3D. UPDATE DATABASE ---
             $stmt = $conn->prepare(
                 "UPDATE categories SET 
                     event_date = ?, event_time = ?, venue = ?,
@@ -185,32 +186,52 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
             if ($action === 'submit_for_approval') {
                 try {
-                    $context = ['category_name' => $category_info['category_name'], 'status' => 'Submitted'];
+                    // 1. Fetch Team Names for Logging
+                    $log_gold = $log_silver = $log_bronze = 'N/A';
+                    
+                    if($gold_team) {
+                        $q = $conn->query("SELECT college_name FROM colleges WHERE college_id = $gold_team");
+                        if($q && $row = $q->fetch_assoc()) $log_gold = $row['college_name'];
+                    }
+                    if($silver_team) {
+                        $q = $conn->query("SELECT college_name FROM colleges WHERE college_id = $silver_team");
+                        if($q && $row = $q->fetch_assoc()) $log_silver = $row['college_name'];
+                    }
+                    if($bronze_team) {
+                        $q = $conn->query("SELECT college_name FROM colleges WHERE college_id = $bronze_team");
+                        if($q && $row = $q->fetch_assoc()) $log_bronze = $row['college_name'];
+                    }
+
+                    // 2. Detailed Context
+                    $context = [
+                        'category_name' => $category_info['category_name'], 
+                        'status' => 'Submitted',
+                        'gold' => $log_gold,
+                        'silver' => $log_silver,
+                        'bronze' => $log_bronze
+                    ];
+                    
                     log_activity($conn, $user_id, 'SUBMITTED_RESULTS', $category_id, 'category', null, null, $context);
                 } catch (Exception $log_e) {}
-
-                $_SESSION['alert_message'] = "Results submitted with evidence!";
-                $_SESSION['alert_type'] = 'success';
-                header('Location: my_events.php'); 
-                exit();
-            } else {
-                $alert_message = "Draft saved successfully.";
             }
-            
+        
+        // --- THIS WAS MISSING IN YOUR CODE ---
         } catch (Exception $e) {
             $alert_message = "Error: " . $e->getMessage();
             $alert_type = 'danger';
         }
-    }
-    
+    } // End of ELSE
+
     // Refresh Data
     $updated_cat = $conn->query("SELECT status, tally_sheet_url, podium_photo_url FROM categories WHERE category_id = $category_id")->fetch_assoc();
-    $category_info['status'] = ($updated_cat['status'] == 'Results Approved') ? 'Completed' : $updated_cat['status'];
-    $category_info['tally_sheet_url'] = $updated_cat['tally_sheet_url'];
-    $category_info['podium_photo_url'] = $updated_cat['podium_photo_url']; // Refresh new field
-    
-    $is_locked = (strtolower($category_info['status']) == 'completed');
-}
+    if ($updated_cat) {
+        $category_info['status'] = ($updated_cat['status'] == 'Results Approved') ? 'Completed' : $updated_cat['status'];
+        $category_info['tally_sheet_url'] = $updated_cat['tally_sheet_url'];
+        $category_info['podium_photo_url'] = $updated_cat['podium_photo_url']; 
+        
+        $is_locked = (strtolower($category_info['status']) == 'completed');
+    }
+} // --- END OF POST BLOCK (Line 85 matches here)
 
 // 4. FETCH DATA
 $teams = $conn->query("SELECT college_id AS team_id, college_name AS team_name FROM colleges ORDER BY college_name")->fetch_all(MYSQLI_ASSOC);

@@ -93,10 +93,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                         error_log("Failed to log CREATED_CATEGORY: " . $log_e->getMessage());
                     }
                     
+                    // USER-FRIENDLY ADD MESSAGE
                     if ($category_name === 'Main Event' || $category_name === 'Main Competition') {
-                        $alert_message = "Success! Event initialized successfully.";
+                        $alert_message = "Great! The event has been initialized and is ready for results.";
                     } else {
-                        $alert_message = "Success! Category '{$category_name}' created successfully.";
+                        $alert_message = "Success! You added a new category: <strong>" . htmlspecialchars($category_name) . "</strong>.";
                     }
                     
                 } else {
@@ -184,7 +185,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                         error_log("Failed to log DELETED_CATEGORY: " . $log_e->getMessage());
                     }
                     
-                    $alert_message = "SUCCESS: Category was deleted.";
+                    // USER-FRIENDLY DELETE MESSAGE
+                    $alert_message = "Category deleted. <strong>" . htmlspecialchars($deleted_category_name) . "</strong> has been permanently removed.";
                 } else {
                     throw new Exception("Could not delete category.");
                 }
@@ -740,13 +742,11 @@ $status_options = [
                 </div>
             </div>
             
-            <!-- Alert Container -->
             <div id="alert-container">
             <?php if (!empty($alert_message)): ?>
                 <div class="alert alert-<?php echo $alert_type; ?> alert-dismissible fade show" role="alert">
                     <i class="fas fa-<?php echo $alert_type === 'success' ? 'check-circle' : 'exclamation-triangle'; ?> me-2"></i>
-                    <?php echo htmlspecialchars($alert_message); ?>
-                    <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                    <?php echo $alert_message; ?> <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
                 </div>
             <?php endif; ?>
             </div>
