@@ -871,21 +871,21 @@ $conn->close();
                                 <div class="col-4">
                                     <div class="stat-card text-center">
                                         <img src="images/EventsIcon.png" alt="Event Icon" style="width: 2.5em; height: 2.5em;">
-                                        <div class="fw-bold fs-3 mt-2"><?= $total_events ?></div>
+                                        <div class="fw-bold fs-3 mt-2" id="stat-total"><?= $total_events ?></div>
                                         <div class="text-muted small">Total Events</div>
                                     </div>
                                 </div>
                                 <div class="col-4">
                                     <div class="stat-card text-center">
                                         <img src="images/CompleteIcon.png" alt="Complete Icon" style="width: 2.5em; height: 2.5em;">
-                                        <div class="fw-bold fs-3 mt-2"><?= $completed_events ?></div>
+                                        <div class="fw-bold fs-3 mt-2" id="stat-completed"><?= $completed_events ?></div>
                                         <div class="text-muted small">Completed</div>
                                     </div>
                                 </div>
                                 <div class="col-4">
                                     <div class="stat-card text-center">
                                         <img src="images/OngoingIcon.png" alt="Ongoing Icon" style="width: 2.5em; height: 2.5em;">
-                                        <div class="fw-bold fs-3 mt-2"><?= $ongoing_events ?></div>
+                                        <div class="fw-bold fs-3 mt-2" id="stat-ongoing"><?= $ongoing_events ?></div>
                                         <div class="text-muted small">Ongoing</div>
                                     </div>
                                 </div>
@@ -1635,6 +1635,56 @@ $conn->close();
                 const map = { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#039;' };
                 return strText.replace(/[&<>"']/g, (m) => map[m]);
             }
+
+            // --- REAL-TIME UPDATES ENGINE ---
+            function startRealTimeUpdates() {
+                setInterval(() => {
+                    // 1. Fetch latest data from the API you created
+                    fetch('fetch_all_events_api.php')
+                        .then(response => response.json())
+                        .then(newEventsData => {
+                            
+                            // 2. Update the Grid
+                            // We re-use your existing render function!
+                            renderEvents(newEventsData);
+                            
+                            // 3. Re-apply user's filters
+                            // (So if they searched for "Basketball", it stays filtered!)
+                            applyAllFilters();
+                            
+                            // 4. Update the Top Counter Stats
+                            updateStatsCounters(newEventsData);
+                        })
+                        .catch(err => console.error('Auto-refresh error:', err));
+                }, 5000); // Runs every 5 seconds
+            }
+
+            function updateStatsCounters(events) {
+                let total = events.length;
+                let completed = 0;
+                let ongoing = 0;
+
+                events.forEach(e => {
+                    const s = (e.event_status || '').toLowerCase();
+                    if (s.includes('completed') || s.includes('approved')) {
+                        completed++;
+                    } else if (s === 'ongoing') {
+                        ongoing++;
+                    }
+                });
+
+                // Update the HTML numbers safely
+                const totalEl = document.getElementById('stat-total');
+                const compEl = document.getElementById('stat-completed');
+                const onEl = document.getElementById('stat-ongoing');
+
+                if (totalEl) totalEl.textContent = total;
+                if (compEl) compEl.textContent = completed;
+                if (onEl) onEl.textContent = ongoing;
+            }
+
+            // START THE ENGINE!
+            startRealTimeUpdates();
             
         }); 
     </script>

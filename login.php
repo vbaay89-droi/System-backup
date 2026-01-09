@@ -34,7 +34,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     } else {
         try {
             $stmt = $conn->prepare('
-                SELECT id, username, email, password, role 
+                SELECT id, username, email, password, role, status 
                 FROM users 
                 WHERE username = ? 
                 LIMIT 1
@@ -47,7 +47,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $stmt->close();
 
             if ($user && password_verify($password, $user['password'])) {
-                // OTP generation
+                
+                // --- NEW CHECK START ---
+                if ($user['status'] === 'inactive') {
+                    // If user is Inactive, STOP here and show error
+                    $error_message = "Your account is currently inactive. Please contact the Sports Director.";
+                } else {
                 $otp = random_int(100000, 999999);
                 $_SESSION['otp'] = $otp;
                 $_SESSION['otp_expiry'] = time() + 300;
@@ -121,6 +126,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     error_log("Mailer Error: {$mail->ErrorInfo}");
                     $error_message = "An error occurred while sending the OTP. Please try again later.";
                 }
+              }
             } else {
                 $error_message = "Invalid username or password.";
             }
@@ -371,14 +377,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     }
 
     .main-logo {
-      width: 100px;
-      height: 100px;
+      width: 120px; /* Increased slightly since background is gone */
+      height: 120px;
       object-fit: contain;
       filter: drop-shadow(0 5px 15px rgba(0,0,0,0.4)); 
       animation: logoFloat 3s ease-in-out infinite;
       transition: transform 0.3s ease;
-      border-radius: 50%; 
-      background: rgba(255,255,255,0.05); 
+      /* removed border-radius and background */
     }
 
     .main-logo:hover {
@@ -855,6 +860,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                   </div>
                 </div>
 
+                <div class="d-flex justify-content-end mb-3" style="margin-top: -10px; position: relative; z-index: 10;">
+                    <a href="javascript:void(0);" 
+                      class="small text-decoration-none fw-semibold" 
+                      style="color: var(--primary-green); transition: color 0.3s ease;" 
+                      onmouseover="this.style.color='var(--primary-dark)'" 
+                      onmouseout="this.style.color='var(--primary-green)'"
+                      data-bs-toggle="modal" data-bs-target="#forgotPasswordModal">Forgot Password?</a>
+                </div>
+
                 <div class="d-grid">
                   <button type="submit" class="btn btn-primary btn-login">
                     <i class="fas fa-sign-in-alt me-2"></i> LOGIN
@@ -913,6 +927,31 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             </div>
         </div>
     </footer>
+
+    <div class="modal fade" id="forgotPasswordModal" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content border-0 shadow-lg" style="border-radius: 20px;">
+      <div class="modal-header text-white" style="background: linear-gradient(135deg, #4CAF50 0%, #2E7D32 100%); border-radius: 20px 20px 0 0;">
+        <h5 class="modal-title"><i class="fas fa-lock me-2"></i>Account Recovery</h5>
+        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <div class="modal-body p-4 text-center">
+        <i class="fas fa-user-shield fa-3x text-secondary mb-3 opacity-50"></i>
+        <p class="mb-3">For security purposes, automatic password resets are disabled for administrative accounts.</p>
+        <div class="alert alert-light border text-start d-inline-block w-100">
+            <p class="mb-1 fw-bold"><i class="fas fa-building me-2 text-success"></i>Visit the Sports Coordinator Office</p>
+            <p class="mb-0 small text-muted ms-4">Cas Building, Physical Education Department</p>
+            <hr class="my-2">
+            <p class="mb-1 fw-bold"><i class="fas fa-envelope me-2 text-success"></i>Email Support</p>
+            <p class="mb-0 small text-muted ms-4">op@pit.edu.ph</p>
+        </div>
+      </div>
+      <div class="modal-footer border-0 justify-content-center pb-4">
+        <button type="button" class="btn btn-secondary px-4 rounded-pill" data-bs-dismiss="modal">Close</button>
+      </div>
+    </div>
+  </div>
+</div>
 
   <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
 

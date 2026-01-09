@@ -218,7 +218,15 @@ function getStatusBadge($status) {
         .section-title { font-family: 'Poppins', sans-serif; font-weight: 600; color: #333; }
         
         /* Footer */
-        footer { flex-shrink: 0; background: #2c3e50 !important; box-shadow: 0 -2px 10px rgba(0,0,0,0.1); padding-left: var(--sidebar-width); transition: padding-left var(--transition); position: relative; z-index: 1041; }
+        footer {
+            flex-shrink: 0;
+            /* REMOVED background color here so .footer-main can work */
+            box-shadow: 0 -2px 10px rgba(0,0,0,0.1);
+            padding-left: var(--sidebar-width);
+            transition: padding-left var(--transition);
+            position: relative;
+            z-index: 1041;
+        }
         @media (max-width: 992px) {
             .sidebar { left: -260px; }
             .sidebar.show { left: 0; }
@@ -372,6 +380,118 @@ function getStatusBadge($status) {
             .main-content { margin-left: 0 !important; padding: 0 !important; }
             .card { box-shadow: none !important; border: 1px solid #dee2e6 !important; }
             body { background-color: white; }
+        }
+
+        /* --- FOOTER STYLES (MATCHING HOME.PHP) --- */
+    .footer-main {
+        flex-shrink: 0;
+        background: linear-gradient(135deg, #1a1a1a 0%, #2d2d2d 100%);
+        color: rgba(255,255,255,0.7);
+        padding: 3rem 0 2rem 0;
+        box-shadow: 0 -4px 20px rgba(0,0,0,0.15);
+        position: relative;
+        z-index: 1;
+    }
+
+    .footer-main .footer-logo-group {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        margin-bottom: 1rem;
+    }
+
+    .footer-main .footer-logo-group img {
+        height: 50px !important;
+        width: 50px !important;
+        object-fit: contain;
+    }
+
+    .footer-main .footer-logo-group h5 {
+        margin: 0;
+        font-size: 1.1rem;
+        font-weight: 700;
+        color: #fff;
+        line-height: 1.2;
+    }
+
+    .footer-main p {
+        font-size: 0.9rem;
+        max-width: 400px;
+    }
+
+    .footer-main h6 {
+        font-family: 'Poppins', sans-serif;
+        color: #fff;
+        font-weight: 600;
+        margin-bottom: 1rem;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+    }
+
+    .footer-main .footer-links {
+        list-style: none;
+        padding: 0;
+    }
+
+    .footer-main .footer-links li {
+        margin-bottom: 0.5rem;
+    }
+
+    .footer-main .footer-links a {
+        text-decoration: none;
+        color: rgba(255,255,255,0.7);
+        transition: var(--transition);
+    }
+
+    .footer-main .footer-links a:hover {
+        color: #fff;
+        padding-left: 5px;
+    }
+
+    .footer-bottom {
+        border-top: 1px solid rgba(255,255,255,0.1);
+        padding-top: 1.5rem;
+        margin-top: 2rem;
+        text-align: center;
+        font-size: 0.85rem;
+    }
+
+    @media (max-width: 767.98px) {
+      .logo-container {
+        gap: 1rem;
+      }
+      .main-logo {
+        width: 80px;
+        height: 80px;
+      }
+      .brand-title {
+        font-size: 1.5rem;
+      }
+      .login-container h2 {
+        font-size: 1.5rem;
+      }
+    }
+
+    @media (max-width: 991px) {
+            /* 1. Center text on smaller screens */
+            .footer-main { 
+                text-align: center; 
+            }
+            
+            /* 2. Center the logo group (Image + Text) */
+            .footer-main .footer-logo-group { 
+                justify-content: center; 
+            }
+            
+            /* 3. Add spacing between columns so they don't look cramped */
+            .footer-main .row > div { 
+                margin-bottom: 2rem; 
+            }
+            
+            /* 4. Ensure the last column doesn't have extra margin */
+            .footer-main .row > div:last-child {
+                margin-bottom: 0;
+            }
         }
     </style>
 </head>
@@ -671,9 +791,41 @@ function getStatusBadge($status) {
         </div> 
     </div>
 
-    <footer class="bg-dark text-white py-4">
-        <div class="text-center">
-            <small>&copy; <?php echo date("Y"); ?> PIT SPORTS TALLYING. All rights reserved.</small>
+    <footer class="footer-main">
+        <div class="container">
+            <div class="row">
+                <div class="col-lg-5 col-md-12 mb-4 mb-lg-0">
+                    <div class="footer-logo-group">
+                        <img src="imageslogo.png" alt="Logo">
+                        <img src="images/Cote.png" alt="Logo">
+                        <h5> PIT SILAKAS MEDAL TALLY</h5>
+                    </div>
+                    <p>The official live medal tallying system for the Palompon Institute of Technology. Bringing you real-time results, event schedules, and team standings.</p>
+                </div>
+                <div class="col-lg-3 col-md-6 mb-4 mb-md-0">
+                    <h6>Quick Links</h6>
+                    <ul class="footer-links">
+                        <li><a href="home.php">Home (Standings)</a></li>
+                        <li><a href="Eventpage.php">Events Schedule</a></li>
+                        <li><a href="college_team.php">Teams & Rosters</a></li>
+                    </ul>
+                </div>
+                <div class="col-lg-4 col-md-6">
+                    <h6>Contact Us</h6>
+                    <div style="color: rgba(255,255,255,0.7); font-size: 0.9rem; line-height: 1.6;">
+                        <p class="mb-1 fw-bold text-white">Palompon Institute of Technology</p>
+                        <p class="mb-2">Evangelista Street, Brgy. Guiwan II,<br>Palompon, Leyte 6538</p>
+                        <p class="mb-0">
+                            <i class="fas fa-phone-alt me-2"></i>(053) 555-9841<br>
+                            <i class="fas fa-envelope me-2"></i>op@pit.edu.ph
+                        </p>
+                    </div>
+                </div>
+            </div>
+            <div class="footer-bottom">
+                <small>&copy; <?php echo date("Y"); ?> PIT SILAKAS MEDAL TALLY. All rights reserved.</small><br>
+                <small>Developed by Jayvee Baybyon</small>
+            </div>
         </div>
     </footer>
 

@@ -113,14 +113,25 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
     }
 }
 
-// 3. FETCH DATA & HELPERS
-// College Map Helper
-$colleges_result = $conn->query("SELECT college_id, college_name FROM colleges");
-$college_map = [];
-while ($c = $colleges_result->fetch_assoc()) { $college_map[$c['college_id']] = $c['college_name']; }
+// 1. Fetch Name AND Code
+$colleges_result = $conn->query("SELECT college_id, college_name, college_code FROM colleges");
 
+$college_map = [];
+$college_code_map = []; // New Map for Codes
+
+while ($c = $colleges_result->fetch_assoc()) { 
+    $college_map[$c['college_id']] = $c['college_name']; 
+    $college_code_map[$c['college_id']] = $c['college_code']; // Store COTE, CAS, etc.
+}
+
+// Helper to safely get the code (e.g., COTE)
+function getCollegeCode($id, $map) {
+    return (!empty($id) && isset($map[$id])) ? htmlspecialchars($map[$id]) : 'N/A';
+}
+
+// Helper to safely get the full name (e.g., College of Technology...)
 function getCollegeName($id, $map) {
-    return (!empty($id) && isset($map[$id])) ? htmlspecialchars($map[$id]) : '<span class="text-muted fst-italic">N/A</span>';
+    return (!empty($id) && isset($map[$id])) ? htmlspecialchars($map[$id]) : 'N/A';
 }
 
 // FETCH PENDING RESULTS
@@ -203,67 +214,175 @@ if (isset($_GET['ajax_update']) && $_GET['ajax_update'] == '1') {
     $approved_results = $conn->query($sql_approved)->fetch_all(MYSQLI_ASSOC);
 
     // 3. Generate HTML for Pending Table
+    // 3. Generate HTML for Pending (RICH CARDS)
     ob_start();
     if (empty($pending_results)) {
-        echo '<tr><td colspan="3" class="text-center py-5 text-muted"><i class="fas fa-inbox fa-3x mb-3 opacity-25"></i><br>All caught up! No pending results.</td></tr>';
+        echo '<div class="text-center py-5 text-muted"><i class="fas fa-inbox fa-3x mb-3 opacity-25"></i><br>All caught up! No pending results.</div>';
     } else {
         foreach ($pending_results as $row) {
-            // Re-use your existing logic to generate the row. 
-            // NOTE: Ensure variable names match exactly what you use in the main HTML.
-            $gold = getCollegeName($row['gold_winner_college_id'], $college_map);
-            $silver = getCollegeName($row['silver_winner_college_id'], $college_map);
-            $bronze = getCollegeName($row['bronze_winner_college_id'], $college_map);
+            // 1. Full Names (For the Modal/Data Attributes)
+$gold = getCollegeName($row['gold_winner_college_id'], $college_map);
+$silver = getCollegeName($row['silver_winner_college_id'], $college_map);
+$bronze = getCollegeName($row['bronze_winner_college_id'], $college_map);
+
+// 2. Initialisms/Codes (For the Result Preview Card)
+$gold_code = getCollegeCode($row['gold_winner_college_id'], $college_code_map);
+$silver_code = getCollegeCode($row['silver_winner_college_id'], $college_code_map);
+$bronze_code = getCollegeCode($row['bronze_winner_college_id'], $college_code_map);
             $evidence = !empty($row['tally_sheet_url']) ? '../' . htmlspecialchars($row['tally_sheet_url']) : '';
             
-            echo '<tr>
-                <td>
-                    <div class="fw-bold text-dark">' . htmlspecialchars($row['game_name']) . '</div>
-                    <div class="text-primary small fw-semibold">' . htmlspecialchars($row['event_name']) . '</div>
-                    <div class="text-muted small">' . htmlspecialchars($row['category_name']) . '</div>
-                </td>
-                <td>
-                    <div class="fw-bold text-dark"><i class="fas fa-user-circle me-1"></i> ' . htmlspecialchars($row['submitted_by_name'] ?? 'Unknown') . '</div>
-                    <div class="small text-muted">' . date('M d, h:i A', strtotime($row['submission_date'])) . '</div>
-                </td>
-                <td class="text-end">
-                    <button type="button" class="btn btn-primary btn-sm px-3 shadow-sm rounded-pill review-btn"
-                        data-bs-toggle="modal" data-bs-target="#verificationModal"
-                        data-id="' . $row['category_id'] . '"
-                        data-event="' . htmlspecialchars($row['event_name'] . ' - ' . $row['category_name']) . '"
-                        data-gold-name="' . $gold . '" data-gold-count="' . $row['gold_count'] . '"
-                        data-silver-name="' . $silver . '" data-silver-count="' . $row['silver_count'] . '"
-                        data-bronze-name="' . $bronze . '" data-bronze-count="' . $row['bronze_count'] . '"
-                        data-evidence="' . $evidence . '">
-                        <i class="fas fa-search me-1"></i> Review Submission
-                    </button>
-                </td>
-            </tr>';
+            // --- SMART ICON LOGIC ---
+$icon = 'fas fa-trophy'; // Default fallback
+
+// 1. ATHLETICS (Running, Dash, Relay)
+if (stripos($row['game_name'], 'Athletics') !== false || stripos($row['game_name'], 'Run') !== false) {
+    $icon = 'fas fa-running';
+} 
+// 2. BALL GAMES (Basketball, Volleyball, Sepak Takraw)
+elseif (stripos($row['game_name'], 'Ball') !== false || stripos($row['event_name'], 'Ball') !== false || stripos($row['event_name'], 'Takraw') !== false) {
+    $icon = 'fas fa-basketball-ball';
+} 
+// 3. WATER SPORTS (Swimming)
+elseif (stripos($row['game_name'], 'Swim') !== false) {
+    $icon = 'fas fa-swimmer';
+} 
+// 4. RACKET GAMES (Badminton, Table Tennis, Lawn Tennis)
+elseif (stripos($row['game_name'], 'Racket') !== false || stripos($row['event_name'], 'Badminton') !== false || stripos($row['event_name'], 'Tennis') !== false) {
+    $icon = 'fas fa-table-tennis-paddle-ball';
+} 
+// 5. MIND & BOARD GAMES (Chess, Scrabble, Word Factory) -> PUZZLE PIECE
+elseif (stripos($row['event_name'], 'Chess') !== false || stripos($row['event_name'], 'Scrabble') !== false || stripos($row['event_name'], 'Word') !== false || stripos($row['event_name'], 'Board') !== false) {
+    $icon = 'fas fa-puzzle-piece'; 
+} 
+// 6. E-SPORTS (Mobile Legends, Valorant, etc.) -> GAMEPAD
+elseif (stripos($row['event_name'], 'E-sports') !== false || stripos($row['event_name'], 'Mobile') !== false || stripos($row['event_name'], 'Game') !== false) {
+    $icon = 'fas fa-gamepad';
+}
+// 7. CULTURAL / ARTS (Dance, Vocal, Pageants) -> MUSIC/STAR
+elseif (stripos($row['event_name'], 'Dance') !== false || stripos($row['event_name'], 'Vocal') !== false || stripos($row['event_name'], 'Sing') !== false) {
+    $icon = 'fas fa-music';
+}
+// 8. CATCH-ALL FOR "OTHER GAMES" (If it doesn't match above)
+elseif (stripos($row['game_name'], 'Other') !== false) {
+    $icon = 'fas fa-medal'; // A generic medal icon for miscellaneous events
+}
+
+            echo '
+            <div class="card mb-3 shadow-sm border-0" style="border-left: 5px solid #198754 !important; border-radius: 10px;">
+    <div class="card-body d-flex align-items-center justify-content-between p-4 flex-wrap gap-3">
+        
+        <div class="d-flex align-items-center" style="flex: 1; min-width: 250px;">
+            <div class="bg-success bg-opacity-10 rounded-circle p-3 me-3 d-flex align-items-center justify-content-center" style="width: 60px; height: 60px;">
+                <i class="'.$icon.' fa-lg text-success"></i>
+            </div>
+                        <div>
+                            <h6 class="mb-1 text-uppercase text-muted small fw-bold" style="letter-spacing: 1px;">'.htmlspecialchars($row['game_name']).'</h6>
+                            <h5 class="mb-1 fw-bold text-dark">'.htmlspecialchars($row['event_name']).'</h5>
+                            <small class="text-secondary fw-bold">'.htmlspecialchars($row['category_name']).'</small>
+                        </div>
+                    </div>
+
+                    <div class="d-flex flex-column justify-content-center border-start border-end px-4 d-none d-xl-flex" style="flex: 1;">
+                        <small class="text-muted text-uppercase fw-bold mb-2" style="font-size: 0.7rem;">Result Preview</small>
+                        <div class="d-flex gap-3">
+    <div class="d-flex align-items-center" title="Gold">
+        <i class="fas fa-medal text-warning me-2"></i> <span class="fw-bold text-dark">'.$gold_code.'</span>
+    </div>
+    <div class="d-flex align-items-center" title="Silver">
+        <i class="fas fa-medal text-secondary me-2"></i> <span class="fw-bold text-muted">'.$silver_code.'</span>
+    </div>
+    <div class="d-flex align-items-center" title="Bronze">
+        <i class="fas fa-medal me-2" style="color: #cd7f32;"></i> <span class="fw-bold text-muted">'.$bronze_code.'</span>
+    </div>
+</div>
+                    </div>
+
+                    <div class="d-flex align-items-center justify-content-end gap-3" style="flex: 1; min-width: 280px;">
+                        <div class="text-end me-4" style="min-width: 150px;">
+    <div class="text-uppercase text-muted fw-bold mb-1" style="font-size: 0.65rem; letter-spacing: 1px;">Submitted By</div>
+    <div class="fw-bold text-dark text-truncate mb-1" 
+     style="font-size: 1rem; max-width: 150px; margin-left: auto;" 
+     title="'.htmlspecialchars($row['submitted_by_name'] ?? 'Unknown').'">
+    '.htmlspecialchars($row['submitted_by_name'] ?? 'Unknown').'
+</div>
+    <div class="text-secondary small" style="font-size: 0.75rem;">
+        <i class="far fa-clock me-1"></i> '.date('M d, h:i A', strtotime($row['submission_date'])).'
+    </div>
+</div>
+                        
+                        <button type="button" class="btn btn-primary px-4 py-2 rounded-pill shadow-sm fw-bold review-btn"
+    data-bs-toggle="modal" data-bs-target="#verificationModal"
+    data-id="' . $row['category_id'] . '"
+    data-event="' . htmlspecialchars($row['event_name'] . ' - ' . $row['category_name']) . '"
+    data-submitted-by="' . htmlspecialchars($row['submitted_by_name'] ?? 'Unknown') . '"
+    data-gold-name="' . $gold . '" data-gold-count="' . $row['gold_count'] . '"
+    data-silver-name="' . $silver . '" data-silver-count="' . $row['silver_count'] . '"
+    data-bronze-name="' . $bronze . '" data-bronze-count="' . $row['bronze_count'] . '"
+    data-evidence="' . $evidence . '">
+    Review <i class="fas fa-arrow-right ms-2"></i>
+</button>
+                    </div>
+
+                </div>
+            </div>';
         }
     }
     $pending_html = ob_get_clean();
 
-    // 4. Generate HTML for Approved Table
+    // 4. Generate HTML for Approved Table (Modern Grid)
     ob_start();
     if (empty($approved_results)) {
-        echo '<tr><td colspan="4" class="text-center py-5 text-muted">No approved results yet.</td></tr>';
+        echo '<tr><td colspan="4" class="text-center py-5 text-muted"><i class="fas fa-history fa-2x mb-3 opacity-25"></i><br>No approved results yet.</td></tr>';
     } else {
         foreach ($approved_results as $row) {
-            $proof_btn = !empty($row['tally_sheet_url']) 
-                ? '<a href="' . htmlspecialchars('../' . $row['tally_sheet_url']) . '" target="_blank" class="btn btn-sm btn-outline-secondary"><i class="fas fa-file-image me-1"></i> View Proof</a>'
-                : '<span class="badge bg-light text-muted border">No Evidence</span>';
+    // 1. Re-use the Icon Logic (Copy this from the Pending section)
+    $icon = 'fas fa-trophy'; // Default
+    if (stripos($row['game_name'], 'Athletics') !== false || stripos($row['game_name'], 'Run') !== false) { $icon = 'fas fa-running'; } 
+    elseif (stripos($row['game_name'], 'Ball') !== false) { $icon = 'fas fa-basketball-ball'; } 
+    elseif (stripos($row['game_name'], 'Swim') !== false) { $icon = 'fas fa-swimmer'; } 
+    elseif (stripos($row['game_name'], 'Racket') !== false || stripos($row['event_name'], 'Badminton') !== false) { $icon = 'fas fa-table-tennis-paddle-ball'; } 
+    elseif (stripos($row['event_name'], 'Chess') !== false) { $icon = 'fas fa-puzzle-piece'; } 
+    elseif (stripos($row['event_name'], 'E-sports') !== false || stripos($row['event_name'], 'Mobile') !== false) { $icon = 'fas fa-gamepad'; }
+    elseif (stripos($row['event_name'], 'Dance') !== false || stripos($row['event_name'], 'Vocal') !== false) { $icon = 'fas fa-music'; }
 
-            echo '<tr>
-                <td><span class="fw-bold">' . htmlspecialchars($row['event_name']) . '</span><br><span class="small text-muted">' . htmlspecialchars($row['category_name']) . '</span></td>
-                <td><span class="fw-bold">' . htmlspecialchars($row['approved_by_name'] ?? 'System') . '</span><br><span class="small text-muted">' . date('M d, Y', strtotime($row['approved_at'])) . '</span></td>
-                <td>' . $proof_btn . '</td>
-                <td class="text-end">
-                    <button type="button" class="btn btn-warning btn-sm" data-bs-toggle="modal" data-bs-target="#revokeModal"
-                            data-id="' . $row['category_id'] . '" data-name="' . htmlspecialchars($row['category_name']) . '">
-                        <i class="fas fa-undo"></i> Revoke
-                    </button>
-                </td>
-            </tr>';
-        }
+    $proof_btn = !empty($row['tally_sheet_url']) 
+        ? '<a href="' . htmlspecialchars('../' . $row['tally_sheet_url']) . '" target="_blank" class="btn btn-sm btn-outline-secondary border-0 bg-light"><i class="fas fa-file-image me-1"></i> View Proof</a>'
+        : '<span class="badge bg-light text-muted fw-normal">No Proof</span>';
+
+    echo '<tr class="align-middle approved-row" style="background: white; border-bottom: 1px solid #f1f3f5;">
+        <td class="ps-0 py-3" style="border-left: 5px solid #198754;">
+            <div class="d-flex align-items-center ps-3">
+                <div class="me-3 d-flex align-items-center justify-content-center text-success bg-success bg-opacity-10 rounded-circle" style="width: 40px; height: 40px;">
+                    <i class="'.$icon.'"></i>
+                </div>
+                <div class="d-flex flex-column">
+                    <small class="text-uppercase text-muted fw-bold" style="font-size:0.7rem;">' . htmlspecialchars($row['game_name']) . '</small>
+                    <span class="fw-bold text-dark text-capitalize">' . htmlspecialchars($row['event_name']) . '</span>
+                    <small class="text-secondary">' . htmlspecialchars($row['category_name']) . '</small>
+                </div>
+            </div>
+        </td>
+        
+        <td>
+            <div class="d-flex flex-column">
+                <span class="fw-bold text-dark small"><i class="fas fa-user-check text-success me-1"></i> ' . htmlspecialchars($row['approved_by_name'] ?? 'System') . '</span>
+                <small class="text-muted ps-3">' . date('M d, h:i A', strtotime($row['approved_at'])) . '</small>
+            </div>
+        </td>
+
+        <td class="text-center">' . $proof_btn . '</td>
+
+        <td class="text-end pe-3">
+            <button type="button" class="btn btn-light btn-sm text-danger hover-shadow" 
+                    data-bs-toggle="modal" data-bs-target="#revokeModal"
+                    data-id="' . $row['category_id'] . '" 
+                    data-name="' . htmlspecialchars($row['event_name']) . '"
+                    title="Revoke Approval">
+                <i class="fas fa-undo-alt"></i>
+            </button>
+        </td>
+    </tr>';
+}
     }
     $approved_html = ob_get_clean();
 
@@ -321,13 +440,14 @@ if (isset($_GET['ajax_update']) && $_GET['ajax_update'] == '1') {
         /* Footer */
         footer {
             flex-shrink: 0;
-            background: #2c3e50 !important;
+            /* REMOVED background color here so .footer-main can work */
             box-shadow: 0 -2px 10px rgba(0,0,0,0.1);
             padding-left: var(--sidebar-width);
             transition: padding-left var(--transition);
             position: relative;
             z-index: 1041;
-        }
+        }   z-index: 1041;
+        
         .sidebar.minimized ~ footer {
             padding-left: var(--sidebar-min-width);
         }
@@ -389,6 +509,118 @@ if (isset($_GET['ajax_update']) && $_GET['ajax_update'] == '1') {
         
         .verification-arrow { display: flex; align-items: center; justify-content: center; color: #2563eb; font-weight: 700; font-size: 0.9rem; margin: 1rem 0; text-transform: uppercase; letter-spacing: 1px; }
         .verification-arrow::before, .verification-arrow::after { content: ''; flex: 1; border-bottom: 1px dashed #cbd5e1; margin: 0 10px; }
+
+        /* --- FOOTER STYLES (MATCHING HOME.PHP) --- */
+    .footer-main {
+        flex-shrink: 0;
+        background: linear-gradient(135deg, #1a1a1a 0%, #2d2d2d 100%);
+        color: rgba(255,255,255,0.7);
+        padding: 3rem 0 2rem 0;
+        box-shadow: 0 -4px 20px rgba(0,0,0,0.15);
+        position: relative;
+        z-index: 1;
+    }
+
+    .footer-main .footer-logo-group {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        margin-bottom: 1rem;
+    }
+
+    .footer-main .footer-logo-group img {
+        height: 50px !important;
+        width: 50px !important;
+        object-fit: contain;
+    }
+
+    .footer-main .footer-logo-group h5 {
+        margin: 0;
+        font-size: 1.1rem;
+        font-weight: 700;
+        color: #fff;
+        line-height: 1.2;
+    }
+
+    .footer-main p {
+        font-size: 0.9rem;
+        max-width: 400px;
+    }
+
+    .footer-main h6 {
+        font-family: 'Poppins', sans-serif;
+        color: #fff;
+        font-weight: 600;
+        margin-bottom: 1rem;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+    }
+
+    .footer-main .footer-links {
+        list-style: none;
+        padding: 0;
+    }
+
+    .footer-main .footer-links li {
+        margin-bottom: 0.5rem;
+    }
+
+    .footer-main .footer-links a {
+        text-decoration: none;
+        color: rgba(255,255,255,0.7);
+        transition: var(--transition);
+    }
+
+    .footer-main .footer-links a:hover {
+        color: #fff;
+        padding-left: 5px;
+    }
+
+    .footer-bottom {
+        border-top: 1px solid rgba(255,255,255,0.1);
+        padding-top: 1.5rem;
+        margin-top: 2rem;
+        text-align: center;
+        font-size: 0.85rem;
+    }
+
+    @media (max-width: 767.98px) {
+      .logo-container {
+        gap: 1rem;
+      }
+      .main-logo {
+        width: 80px;
+        height: 80px;
+      }
+      .brand-title {
+        font-size: 1.5rem;
+      }
+      .login-container h2 {
+        font-size: 1.5rem;
+      }
+    }
+
+    @media (max-width: 991px) {
+            /* 1. Center text on smaller screens */
+            .footer-main { 
+                text-align: center; 
+            }
+            
+            /* 2. Center the logo group (Image + Text) */
+            .footer-main .footer-logo-group { 
+                justify-content: center; 
+            }
+            
+            /* 3. Add spacing between columns so they don't look cramped */
+            .footer-main .row > div { 
+                margin-bottom: 2rem; 
+            }
+            
+            /* 4. Ensure the last column doesn't have extra margin */
+            .footer-main .row > div:last-child {
+                margin-bottom: 0;
+            }
+        }
     </style>
 </head>
 <body>
@@ -526,93 +758,220 @@ if (isset($_GET['ajax_update']) && $_GET['ajax_update'] == '1') {
                 <div class="tab-content">
                     <!-- PENDING TAB -->
                     <div class="tab-pane fade show active" id="pending">
-                        <div class="table-responsive">
-                            <table class="table results-table table-hover mb-0 align-middle">
-                                <thead>
-                                    <tr>
-                                        <th>Event Information</th>
-                                        <th>Submitted By</th>
-                                        <th class="text-end">Verification</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    <?php if (empty($pending_results)): ?>
-                                        <tr><td colspan="3" class="text-center py-5 text-muted"><i class="fas fa-inbox fa-3x mb-3 opacity-25"></i><br>All caught up! No pending results.</td></tr>
-                                    <?php else: ?>
-                                        <?php foreach ($pending_results as $row): ?>
-                                            <tr>
-                                                <td>
-                                                    <div class="fw-bold text-dark"><?= htmlspecialchars($row['game_name']) ?></div>
-                                                    <div class="text-primary small fw-semibold"><?= htmlspecialchars($row['event_name']) ?></div>
-                                                    <div class="text-muted small"><?= htmlspecialchars($row['category_name']) ?></div>
-                                                </td>
-                                                <td>
-                                                    <div class="fw-bold text-dark"><i class="fas fa-user-circle me-1"></i> <?= htmlspecialchars($row['submitted_by_name'] ?? 'Unknown') ?></div>
-                                                    <div class="small text-muted"><?= date('M d, h:i A', strtotime($row['submission_date'])) ?></div>
-                                                </td>
-                                                <td class="text-end">
-                                                    <!-- REVIEW BUTTON: Triggers the Evidence Modal -->
-                                                    <button type="button" class="btn btn-primary btn-sm px-3 shadow-sm rounded-pill review-btn"
-                                                        data-bs-toggle="modal" data-bs-target="#verificationModal"
-                                                        data-id="<?= $row['category_id'] ?>"
-                                                        data-event="<?= htmlspecialchars($row['event_name'] . ' - ' . $row['category_name']) ?>"
-                                                        data-gold-name="<?= getCollegeName($row['gold_winner_college_id'], $college_map) ?>"
-                                                        data-gold-count="<?= $row['gold_count'] ?>"
-                                                        data-silver-name="<?= getCollegeName($row['silver_winner_college_id'], $college_map) ?>"
-                                                        data-silver-count="<?= $row['silver_count'] ?>"
-                                                        data-bronze-name="<?= getCollegeName($row['bronze_winner_college_id'], $college_map) ?>"
-                                                        data-bronze-count="<?= $row['bronze_count'] ?>"
-                                                        data-evidence="<?= !empty($row['tally_sheet_url']) ? '../' . htmlspecialchars($row['tally_sheet_url']) : '' ?>">
-                                                        <i class="fas fa-search me-1"></i> Review Submission
-                                                    </button>
-                                                </td>
-                                            </tr>
-                                        <?php endforeach; ?>
-                                    <?php endif; ?>
-                                </tbody>
-                            </table>
+    <div id="pending-container" class="p-4" style="background: #f8f9fa;">
+        <?php if (empty($pending_results)): ?>
+            <div class="text-center py-5 text-muted">
+                <i class="fas fa-inbox fa-3x mb-3 opacity-25"></i><br>All caught up! No pending results.
+            </div>
+        <?php else: ?>
+            <?php foreach ($pending_results as $row): 
+                // Copy the EXACT Logic from Part 1 here for the initial load
+                // 1. Full Names
+$gold = getCollegeName($row['gold_winner_college_id'], $college_map);
+$silver = getCollegeName($row['silver_winner_college_id'], $college_map);
+$bronze = getCollegeName($row['bronze_winner_college_id'], $college_map);
+
+// 2. Codes for Preview
+$gold_code = getCollegeCode($row['gold_winner_college_id'], $college_code_map);
+$silver_code = getCollegeCode($row['silver_winner_college_id'], $college_code_map);
+$bronze_code = getCollegeCode($row['bronze_winner_college_id'], $college_code_map);
+                $evidence = !empty($row['tally_sheet_url']) ? '../' . htmlspecialchars($row['tally_sheet_url']) : '';
+                
+                // --- SMART ICON LOGIC ---
+                    $icon = 'fas fa-trophy'; // Default fallback
+
+                    // 1. ATHLETICS (Running, Dash, Relay)
+                    if (stripos($row['game_name'], 'Athletics') !== false || stripos($row['game_name'], 'Run') !== false) {
+                        $icon = 'fas fa-running';
+                    } 
+                    // 2. BALL GAMES (Basketball, Volleyball, Sepak Takraw)
+                    elseif (stripos($row['game_name'], 'Ball') !== false || stripos($row['event_name'], 'Ball') !== false || stripos($row['event_name'], 'Takraw') !== false) {
+                        $icon = 'fas fa-basketball-ball';
+                    } 
+                    // 3. WATER SPORTS (Swimming)
+                    elseif (stripos($row['game_name'], 'Swim') !== false) {
+                        $icon = 'fas fa-swimmer';
+                    } 
+                    // 4. RACKET GAMES (Badminton, Table Tennis, Lawn Tennis)
+                    elseif (stripos($row['game_name'], 'Racket') !== false || stripos($row['event_name'], 'Badminton') !== false || stripos($row['event_name'], 'Tennis') !== false) {
+                        $icon = 'fas fa-table-tennis-paddle-ball';
+                    } 
+                    // 5. MIND & BOARD GAMES (Chess, Scrabble, Word Factory) -> PUZZLE PIECE
+                    elseif (stripos($row['event_name'], 'Chess') !== false || stripos($row['event_name'], 'Scrabble') !== false || stripos($row['event_name'], 'Word') !== false || stripos($row['event_name'], 'Board') !== false) {
+                        $icon = 'fas fa-puzzle-piece'; 
+                    } 
+                    // 6. E-SPORTS (Mobile Legends, Valorant, etc.) -> GAMEPAD
+                    elseif (stripos($row['event_name'], 'E-sports') !== false || stripos($row['event_name'], 'Mobile') !== false || stripos($row['event_name'], 'Game') !== false) {
+                        $icon = 'fas fa-gamepad';
+                    }
+                    // 7. CULTURAL / ARTS (Dance, Vocal, Pageants) -> MUSIC/STAR
+                    elseif (stripos($row['event_name'], 'Dance') !== false || stripos($row['event_name'], 'Vocal') !== false || stripos($row['event_name'], 'Sing') !== false) {
+                        $icon = 'fas fa-music';
+                    }
+                    // 8. CATCH-ALL FOR "OTHER GAMES" (If it doesn't match above)
+                    elseif (stripos($row['game_name'], 'Other') !== false) {
+                        $icon = 'fas fa-medal'; // A generic medal icon for miscellaneous events
+                    }
+            ?>
+            <div class="card mb-3 shadow-sm border-0" style="border-left: 5px solid #198754 !important; border-radius: 10px;">
+    <div class="card-body d-flex align-items-center justify-content-between p-4 flex-wrap gap-3">
+        
+        <div class="d-flex align-items-center" style="flex: 1; min-width: 250px;">
+            <div class="bg-success bg-opacity-10 rounded-circle p-3 me-3 d-flex align-items-center justify-content-center" style="width: 60px; height: 60px;">
+                <i class="<?= $icon ?> fa-lg text-success"></i>
+            </div>
+                        <div>
+                            <h6 class="mb-1 text-uppercase text-muted small fw-bold" style="letter-spacing: 1px;"><?= htmlspecialchars($row['game_name']) ?></h6>
+                            <h5 class="mb-1 fw-bold text-dark"><?= htmlspecialchars($row['event_name']) ?></h5>
+                            <small class="text-secondary fw-bold"><?= htmlspecialchars($row['category_name']) ?></small>
                         </div>
                     </div>
 
+                    <div class="d-flex flex-column justify-content-center border-start border-end px-4 d-none d-xl-flex" style="flex: 1;">
+                        <small class="text-muted text-uppercase fw-bold mb-2" style="font-size: 0.7rem;">Result Preview</small>
+                        <div class="d-flex gap-3">
+    <div class="d-flex align-items-center" title="Gold">
+        <i class="fas fa-medal text-warning me-2"></i> <span class="fw-bold text-dark"><?= $gold_code ?></span>
+    </div>
+    <div class="d-flex align-items-center" title="Silver">
+        <i class="fas fa-medal text-secondary me-2"></i> <span class="fw-bold text-muted"><?= $silver_code ?></span>
+    </div>
+    <div class="d-flex align-items-center" title="Bronze">
+        <i class="fas fa-medal me-2" style="color: #cd7f32;"></i> <span class="fw-bold text-muted"><?= $bronze_code ?></span>
+    </div>
+</div>
+                    </div>
+
+                    <div class="d-flex align-items-center justify-content-end gap-3" style="flex: 1; min-width: 280px;">
+                        <div class="text-end me-4" style="min-width: 150px;">
+    <div class="text-uppercase text-muted fw-bold mb-1" style="font-size: 0.65rem; letter-spacing: 1px;">Submitted By</div>
+<div class="fw-bold text-dark text-truncate mb-1" 
+     style="font-size: 1rem; max-width: 150px; margin-left: auto;" 
+     title="<?= htmlspecialchars($row['submitted_by_name'] ?? 'Unknown') ?>">
+    <?= htmlspecialchars($row['submitted_by_name'] ?? 'Unknown') ?>
+</div>
+    <div class="text-secondary small" style="font-size: 0.75rem;">
+        <i class="far fa-clock me-1"></i> <?= date('M d, h:i A', strtotime($row['submission_date'])) ?>
+    </div>
+</div>
+                        
+                        <button type="button" class="btn btn-primary px-4 py-2 rounded-pill shadow-sm fw-bold review-btn"
+    data-bs-toggle="modal" data-bs-target="#verificationModal"
+    data-id="<?= $row['category_id'] ?>"
+    data-event="<?= htmlspecialchars($row['event_name'] . ' - ' . $row['category_name']) ?>"
+    data-submitted-by="<?= htmlspecialchars($row['submitted_by_name'] ?? 'Unknown') ?>"
+    data-gold-name="<?= $gold ?>" data-gold-count="<?= $row['gold_count'] ?>"
+    data-silver-name="<?= $silver ?>" data-silver-count="<?= $row['silver_count'] ?>"
+    data-bronze-name="<?= $bronze ?>" data-bronze-count="<?= $row['bronze_count'] ?>"
+    data-evidence="<?= $evidence ?>">
+    Review <i class="fas fa-arrow-right ms-2"></i>
+</button>
+                    </div>
+
+                </div>
+            </div>
+            <?php endforeach; ?>
+        <?php endif; ?>
+    </div>
+</div>
+
+
                     <!-- APPROVED TAB -->
                     <div class="tab-pane fade" id="approved">
-                        <div class="table-responsive">
-                            <table class="table results-table table-hover mb-0 align-middle">
-                                <thead><tr><th>Event</th><th>Approved By</th><th>Evidence</th><th class="text-end">Actions</th></tr></thead>
-                                <tbody>
-                                    <?php if (empty($approved_results)): ?>
-                                        <tr><td colspan="4" class="text-center py-5 text-muted">No approved results yet.</td></tr>
-                                    <?php else: ?>
-                                        <?php foreach ($approved_results as $row): ?>
-                                            <tr>
-                                                <td>
-                                                    <span class="fw-bold"><?= htmlspecialchars($row['event_name']) ?></span><br>
-                                                    <span class="small text-muted"><?= htmlspecialchars($row['category_name']) ?></span>
-                                                </td>
-                                                <td>
-                                                    <span class="fw-bold"><?= htmlspecialchars($row['approved_by_name'] ?? 'System') ?></span><br>
-                                                    <span class="small text-muted"><?= date('M d, Y', strtotime($row['approved_at'])) ?></span>
-                                                </td>
-                                                <td>
-                                                    <?php if(!empty($row['tally_sheet_url'])): ?>
-                                                        <a href="<?= htmlspecialchars('../' . $row['tally_sheet_url']) ?>" target="_blank" class="btn btn-sm btn-outline-secondary"><i class="fas fa-file-image me-1"></i> View Proof</a>
-                                                    <?php else: ?>
-                                                        <span class="badge bg-light text-muted border">No Evidence</span>
-                                                    <?php endif; ?>
-                                                </td>
-                                                <td class="text-end">
-                                                    <button type="button" class="btn btn-warning btn-sm" data-bs-toggle="modal" data-bs-target="#revokeModal"
-                                                            data-id="<?= $row['category_id'] ?>" data-name="<?= htmlspecialchars($row['category_name']) ?>">
-                                                        <i class="fas fa-undo"></i> Revoke
-                                                    </button>
-                                                </td>
-                                            </tr>
-                                        <?php endforeach; ?>
-                                    <?php endif; ?>
-                                </tbody>
-                            </table>
-                        </div>
+    <div class="table-responsive">
+        <div class="d-flex justify-content-between align-items-center p-3 border-bottom bg-white">
+    <div class="text-muted small fw-bold text-uppercase">
+        <i class="fas fa-list me-2"></i>Approved Records
+    </div>
+    
+    <div class="input-group" style="width: 250px;">
+        <span class="input-group-text bg-light border-end-0">
+            <i class="fas fa-search text-secondary small"></i>
+        </span>
+        <input type="text" id="approvedSearch" class="form-control bg-light border-start-0 small" 
+               placeholder="Search event, team..." 
+               style="font-size: 0.9rem;"
+               onkeyup="filterHistory()">
+    </div>
+</div>
+        <table class="table table-hover mb-0 align-middle" style="border-collapse: separate; border-spacing: 0 8px;">
+            <thead class="bg-light">
+                <tr>
+                    <th class="ps-3 text-uppercase text-muted small fw-bold border-0">Event Details</th>
+                    <th class="text-uppercase text-muted small fw-bold border-0">Approved By</th>
+                    <th class="text-center text-uppercase text-muted small fw-bold border-0">Evidence</th>
+                    <th class="text-end pe-3 text-uppercase text-muted small fw-bold border-0">Action</th>
+                </tr>
+            </thead>
+            <tbody class="border-top-0">
+                <?php if (empty($approved_results)): ?>
+                    <tr><td colspan="4" class="text-center py-5 text-muted"><i class="fas fa-history fa-2x mb-3 opacity-25"></i><br>No approved results yet.</td></tr>
+                <?php else: ?>
+                    <?php foreach ($approved_results as $row): 
+    // 1. Icon Logic: Determine which icon to show based on the Game/Event Name
+    $icon = 'fas fa-trophy'; // Default fallback
+    if (stripos($row['game_name'], 'Athletics') !== false || stripos($row['game_name'], 'Run') !== false) { $icon = 'fas fa-running'; } 
+    elseif (stripos($row['game_name'], 'Ball') !== false) { $icon = 'fas fa-basketball-ball'; } 
+    elseif (stripos($row['game_name'], 'Swim') !== false) { $icon = 'fas fa-swimmer'; } 
+    elseif (stripos($row['game_name'], 'Racket') !== false || stripos($row['event_name'], 'Badminton') !== false) { $icon = 'fas fa-table-tennis-paddle-ball'; } 
+    elseif (stripos($row['event_name'], 'Chess') !== false) { $icon = 'fas fa-puzzle-piece'; } 
+    elseif (stripos($row['event_name'], 'E-sports') !== false || stripos($row['event_name'], 'Mobile') !== false) { $icon = 'fas fa-gamepad'; }
+    elseif (stripos($row['event_name'], 'Dance') !== false || stripos($row['event_name'], 'Vocal') !== false) { $icon = 'fas fa-music'; }
+
+    // 2. Proof Button Logic
+    $proof_btn = !empty($row['tally_sheet_url']) 
+        ? '<a href="' . htmlspecialchars('../' . $row['tally_sheet_url']) . '" target="_blank" class="btn btn-sm btn-outline-secondary border-0 bg-light"><i class="fas fa-file-image me-1"></i> View Proof</a>'
+        : '<span class="badge bg-light text-muted fw-normal">No Proof</span>';
+?>
+    <tr class="align-middle approved-row" style="background: white; border-bottom: 1px solid #f1f3f5;">
+        
+        <td class="ps-0 py-3 rounded-start" style="border-left: 5px solid #198754;">
+            <div class="d-flex align-items-center ps-3">
+                <div class="me-3 d-flex align-items-center justify-content-center text-success bg-success bg-opacity-10 rounded-circle" style="width: 40px; height: 40px;">
+                    <i class="<?= $icon ?>"></i>
+                </div>
+                <div class="d-flex flex-column">
+                    <small class="text-uppercase text-muted fw-bold" style="font-size:0.7rem;"><?= htmlspecialchars($row['game_name']) ?></small>
+                    <span class="fw-bold text-dark text-capitalize"><?= htmlspecialchars($row['event_name']) ?></span>
+                    <div class="mt-1">
+                        <small class="text-secondary fw-bold px-2 py-1 bg-light rounded"><?= htmlspecialchars($row['category_name']) ?></small>
                     </div>
+                </div>
+            </div>
+        </td>
+        
+        <td>
+            <div class="d-flex align-items-center">
+                <div class="bg-success bg-opacity-10 rounded-circle p-2 me-2 d-flex justify-content-center align-items-center" style="width:35px; height:35px;">
+                    <i class="fas fa-user-check text-success small"></i>
+                </div>
+                <div class="d-flex flex-column">
+                    <span class="fw-bold text-dark small"><?= htmlspecialchars($row['approved_by_name'] ?? 'System') ?></span>
+                    <small class="text-muted" style="font-size:0.75rem;"><?= date('M d, h:i A', strtotime($row['approved_at'])) ?></small>
+                </div>
+            </div>
+        </td>
+
+        <td class="text-center">
+            <?= $proof_btn ?>
+        </td>
+
+        <td class="text-end pe-3 rounded-end">
+            <button type="button" class="btn btn-light btn-sm text-danger hover-shadow" 
+                    data-bs-toggle="modal" data-bs-target="#revokeModal"
+                    data-id="<?= $row['category_id'] ?>" 
+                    data-name="<?= htmlspecialchars($row['event_name'] . ' - ' . $row['category_name']) ?>"
+                    title="Revoke Approval">
+                <i class="fas fa-undo-alt"></i>
+            </button>
+        </td>
+    </tr>
+<?php endforeach; ?>
+                <?php endif; ?>
+            </tbody>
+        </table>
+    </div>
+</div>
                 </div>
             </div>
         </div>
@@ -640,66 +999,85 @@ if (isset($_GET['ajax_update']) && $_GET['ajax_update'] == '1') {
 
                         <!-- RIGHT COL: DIGITAL DATA -->
                         <div class="col-lg-5 data-col bg-white p-4 d-flex flex-column">
-                            <h6 class="text-uppercase text-muted fw-bold small mb-3">Digital Entry Comparison</h6>
-                            <h4 class="fw-bold text-dark mb-4" id="modalEventTitle">Event Name</h4>
+    
+    <div class="mb-4 border-bottom pb-3">
+        <h6 class="text-uppercase text-muted fw-bold small mb-2" style="letter-spacing: 1px;">Digital Entry Comparison</h6>
+        <h4 class="fw-bold text-dark mb-2" id="modalEventTitle">Event Name</h4>
+        
+        <div class="d-flex align-items-center text-muted small">
+            <i class="fas fa-user-circle me-2 text-primary opacity-50"></i>
+            <span class="me-1">Submitted by:</span>
+            <span class="fw-bold text-dark" id="modalSubmittedBy">Loading...</span>
+        </div>
+    </div>
 
-                            <div class="winner-card gold">
-                                <i class="fas fa-medal winner-icon text-gold"></i>
-                                <div class="flex-grow-1">
-                                    <div class="small fw-bold text-muted text-uppercase">Gold Winner</div>
-                                    <div class="fw-bold fs-5" id="modalGoldName">Team A</div>
-                                </div>
-                                <div class="badge bg-warning text-dark rounded-pill fs-6" id="modalGoldCount">0</div>
-                            </div>
+    <div class="winner-card gold mb-3">
+        <i class="fas fa-medal winner-icon text-gold fa-2x"></i>
+        <div class="flex-grow-1 ps-3">
+            <div class="small fw-bold text-warning text-uppercase" style="font-size: 0.7rem;">Gold Winner</div>
+            <div class="fw-bold text-dark fs-6" id="modalGoldName">Team A</div>
+        </div>
+        <div class="text-end ps-2">
+            <div class="badge bg-warning text-dark rounded-pill mb-1" id="modalGoldCount" style="min-width: 40px;">0</div>
+            <div class="text-muted fw-bold text-uppercase" style="font-size: 0.6rem;">Medals</div>
+        </div>
+    </div>
 
-                            <div class="winner-card silver">
-                                <i class="fas fa-medal winner-icon text-silver"></i>
-                                <div class="flex-grow-1">
-                                    <div class="small fw-bold text-muted text-uppercase">Silver Winner</div>
-                                    <div class="fw-bold fs-5" id="modalSilverName">Team B</div>
-                                </div>
-                                <div class="badge bg-secondary text-white rounded-pill fs-6" id="modalSilverCount">0</div>
-                            </div>
+    <div class="winner-card silver mb-3">
+        <i class="fas fa-medal winner-icon text-silver fa-2x"></i>
+        <div class="flex-grow-1 ps-3">
+            <div class="small fw-bold text-secondary text-uppercase" style="font-size: 0.7rem;">Silver Winner</div>
+            <div class="fw-bold text-dark fs-6" id="modalSilverName">Team B</div>
+        </div>
+        <div class="text-end ps-2">
+            <div class="badge bg-secondary text-white rounded-pill mb-1" id="modalSilverCount" style="min-width: 40px;">0</div>
+            <div class="text-muted fw-bold text-uppercase" style="font-size: 0.6rem;">Medals</div>
+        </div>
+    </div>
 
-                            <div class="winner-card bronze">
-                                <i class="fas fa-medal winner-icon text-bronze"></i>
-                                <div class="flex-grow-1">
-                                    <div class="small fw-bold text-muted text-uppercase">Bronze Winner</div>
-                                    <div class="fw-bold fs-5" id="modalBronzeName">Team C</div>
-                                </div>
-                                <div class="badge bg-light text-dark border rounded-pill fs-6" id="modalBronzeCount">0</div>
-                            </div>
+    <div class="winner-card bronze mb-4">
+        <i class="fas fa-medal winner-icon fa-2x" style="color: #cd7f32;"></i>
+        <div class="flex-grow-1 ps-3">
+            <div class="small fw-bold text-uppercase" style="font-size: 0.7rem; color: #cd7f32;">Bronze Winner</div>
+            <div class="fw-bold text-dark fs-6" id="modalBronzeName">Team C</div>
+        </div>
+        <div class="text-end ps-2">
+            <div class="badge bg-light text-dark border rounded-pill mb-1" id="modalBronzeCount" style="min-width: 40px;">0</div>
+            <div class="text-muted fw-bold text-uppercase" style="font-size: 0.6rem;">Medals</div>
+        </div>
+    </div>
 
-                            <div class="verification-arrow">Does this match the image?</div>
+    <div class="verification-arrow mb-3 text-primary bg-light py-2 rounded fw-bold small">
+        Does the data match the evidence?
+    </div>
 
-                            <div class="mt-auto d-grid gap-2">
-                                <form method="POST" id="approveForm">
-                                    <input type="hidden" name="action" value="approve_result">
-                                    <input type="hidden" name="category_id" id="approveCatId">
-                                    <button type="submit" class="btn btn-success w-100 py-2 fw-bold shadow-sm">
-                                        <i class="fas fa-check-circle me-2"></i> YES, Approve Result
-                                    </button>
-                                </form>
-                                <button type="button" class="btn btn-outline-danger w-100 fw-bold" id="btnShowReject">
-                                    <i class="fas fa-times-circle me-2"></i> NO, Reject (Mismatch)
-                                </button>
-                            </div>
+    <div class="mt-auto d-grid gap-2">
+        <form method="POST" id="approveForm">
+            <input type="hidden" name="action" value="approve_result">
+            <input type="hidden" name="category_id" id="approveCatId">
+            <button type="submit" class="btn btn-success w-100 py-2 fw-bold shadow-sm text-uppercase" style="letter-spacing: 0.5px;">
+                <i class="fas fa-check-circle me-2"></i> YES, Approve Result
+            </button>
+        </form>
+        <button type="button" class="btn btn-outline-danger w-100 fw-bold text-uppercase" id="btnShowReject" style="letter-spacing: 0.5px;">
+            <i class="fas fa-times-circle me-2"></i> NO, Reject (Mismatch)
+        </button>
+    </div>
 
-                            <!-- Hidden Reject Form -->
-                            <div id="rejectSection" class="d-none mt-3 p-3 bg-light rounded border border-danger">
-                                <form method="POST">
-                                    <input type="hidden" name="action" value="reject_result">
-                                    <input type="hidden" name="category_id" id="rejectCatId">
-                                    <label class="form-label text-danger fw-bold small">Reason for Rejection:</label>
-                                    <textarea name="rejection_reason" class="form-control mb-2" rows="2" placeholder="e.g. Image shows Team B won Gold..." required></textarea>
-                                    <div class="d-flex gap-2">
-                                        <button type="submit" class="btn btn-danger btn-sm flex-grow-1">Confirm Reject</button>
-                                        <button type="button" class="btn btn-light btn-sm border" id="btnCancelReject">Cancel</button>
-                                    </div>
-                                </form>
-                            </div>
+    <div id="rejectSection" class="d-none mt-3 p-3 bg-light rounded border border-danger">
+        <form method="POST">
+            <input type="hidden" name="action" value="reject_result">
+            <input type="hidden" name="category_id" id="rejectCatId">
+            <label class="form-label text-danger fw-bold small">Reason for Rejection:</label>
+            <textarea name="rejection_reason" class="form-control mb-2" rows="2" placeholder="e.g. Image shows Team B won Gold..." required></textarea>
+            <div class="d-flex gap-2">
+                <button type="submit" class="btn btn-danger btn-sm flex-grow-1">Confirm Reject</button>
+                <button type="button" class="btn btn-light btn-sm border" id="btnCancelReject">Cancel</button>
+            </div>
+        </form>
+    </div>
 
-                        </div>
+</div>
                     </div>
                 </div>
             </div>
@@ -730,10 +1108,41 @@ if (isset($_GET['ajax_update']) && $_GET['ajax_update'] == '1') {
         </div>
     </div>
     
-    <footer class="bg-dark text-white py-4">
-        <div class="text-center">
-            <small>&copy; <?php echo date("Y"); ?> PIT SPORTS TALLYING. All rights reserved.</small><br>
-            <small class="text-muted">Developed by Tsunayoshi Sawada</small>
+    <footer class="footer-main">
+        <div class="container">
+            <div class="row">
+                <div class="col-lg-5 col-md-12 mb-4 mb-lg-0">
+                    <div class="footer-logo-group">
+                        <img src="../imageslogo.png" alt="Logo">
+                        <img src="../images/Cote.png" alt="Logo">
+                        <h5> PIT SILAKAS MEDAL TALLY</h5>
+                    </div>
+                    <p>The official live medal tallying system for the Palompon Institute of Technology. Bringing you real-time results, event schedules, and team standings.</p>
+                </div>
+                <div class="col-lg-3 col-md-6 mb-4 mb-md-0">
+                    <h6>Quick Links</h6>
+                    <ul class="footer-links">
+                        <li><a href="home.php">Home (Standings)</a></li>
+                        <li><a href="Eventpage.php">Events Schedule</a></li>
+                        <li><a href="college_team.php">Teams & Rosters</a></li>
+                    </ul>
+                </div>
+                <div class="col-lg-4 col-md-6">
+                    <h6>Contact Us</h6>
+                    <div style="color: rgba(255,255,255,0.7); font-size: 0.9rem; line-height: 1.6;">
+                        <p class="mb-1 fw-bold text-white">Palompon Institute of Technology</p>
+                        <p class="mb-2">Evangelista Street, Brgy. Guiwan II,<br>Palompon, Leyte 6538</p>
+                        <p class="mb-0">
+                            <i class="fas fa-phone-alt me-2"></i>(053) 555-9841<br>
+                            <i class="fas fa-envelope me-2"></i>op@pit.edu.ph
+                        </p>
+                    </div>
+                </div>
+            </div>
+            <div class="footer-bottom">
+                <small>&copy; <?php echo date("Y"); ?> PIT SILAKAS MEDAL TALLY. All rights reserved.</small><br>
+                <small>Developed by Jayvee Baybyon</small>
+            </div>
         </div>
     </footer>
 
@@ -750,6 +1159,7 @@ if (isset($_GET['ajax_update']) && $_GET['ajax_update'] == '1') {
 
                 // Populate Text
                 document.getElementById('modalEventTitle').textContent = btn.getAttribute('data-event');
+                document.getElementById('modalSubmittedBy').textContent = btn.getAttribute('data-submitted-by');
                 document.getElementById('modalGoldName').textContent = btn.getAttribute('data-gold-name');
                 document.getElementById('modalGoldCount').textContent = btn.getAttribute('data-gold-count');
                 document.getElementById('modalSilverName').textContent = btn.getAttribute('data-silver-name');
@@ -886,23 +1296,49 @@ if (isset($_GET['ajax_update']) && $_GET['ajax_update'] == '1') {
                         }
 
                         // 3. Update Table Content (Only if not hovering)
-                        if (!document.querySelector('.results-table:hover')) {
-                            const pendingTbody = document.querySelector('#pending tbody');
-                            const approvedTbody = document.querySelector('#approved tbody');
-                            
-                            if (pendingTbody && pendingTbody.innerHTML !== data.pending_html) {
-                                pendingTbody.innerHTML = data.pending_html;
-                            }
-                            if (approvedTbody && approvedTbody.innerHTML !== data.approved_html) {
-                                approvedTbody.innerHTML = data.approved_html;
-                            }
-                        }
+                        // 3. Update Content (Only if not hovering to avoid UI jumps)
+// Note: We check if the user is hovering over the cards container OR the approved table
+const isHovering = document.querySelector('#pending-container:hover') || document.querySelector('#approved .results-table:hover');
+
+if (!isHovering) {
+    const pendingContainer = document.getElementById('pending-container');
+    const approvedTbody = document.querySelector('#approved tbody');
+    
+    // Update Pending Cards
+    if (pendingContainer && pendingContainer.innerHTML !== data.pending_html) {
+        pendingContainer.innerHTML = data.pending_html;
+    }
+    
+    // Update Approved Table
+if (approvedTbody && approvedTbody.innerHTML !== data.approved_html) {
+    approvedTbody.innerHTML = data.approved_html;
+    
+    // ADD THIS LINE: Re-run the filter so the user's search doesn't disappear
+    filterHistory(); 
+}
+}
                     })
                     .catch(err => console.error('Error fetching updates:', err));
             }
 
             // Start polling every 5 seconds
             setInterval(fetchResultsUpdates, 5000);
+
+    // --- SMART FILTER FUNCTION ---
+function filterHistory() {
+    const input = document.getElementById('approvedSearch');
+    if (!input) return; // Safety check
+
+    const filter = input.value.toLowerCase();
+    const rows = document.querySelectorAll('.approved-row'); // Targets your table rows
+
+    rows.forEach(row => {
+        // Get the text content of the row
+        const text = row.textContent.toLowerCase();
+        // Show if it matches, Hide if it doesn't
+        row.style.display = text.includes(filter) ? '' : 'none';
+    });
+}
     </script>
 </body>
 </html>

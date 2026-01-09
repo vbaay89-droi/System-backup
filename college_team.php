@@ -478,21 +478,21 @@ function truncate_text($text, $length = 100, $suffix = '...') {
                             <div class="col-4">
                                 <div class="stat-card-new text-center">
                                     <i class="fas fa-flag fs-2 text-primary"></i>
-                                    <div class="fw-bold mt-2 text-white"><?= $total_teams ?></div>
+                                    <div class="fw-bold mt-2 text-white" id="hero-total-teams"><?= $total_teams ?></div>
                                     <div class="text-muted small">Total Teams</div>
                                 </div>
                             </div>
                             <div class="col-4">
                                 <div class="stat-card-new text-center">
                                     <i class="fas fa-star fs-2 text-success"></i>
-                                    <div class="fw-bold mt-2 text-white"><?= $topPerformersCount ?></div>
+                                    <div class="fw-bold mt-2 text-white" id="hero-top-performers"><?= $topPerformersCount ?></div>
                                     <div class="text-muted small">Top Performers</div>
                                 </div>
                             </div>
                             <div class="col-4">
                                 <div class="stat-card-new text-center">
                                     <i class="fas fa-medal fs-2 text-warning"></i>
-                                    <div class="fw-bold mt-2 text-white"><?= $total_medals ?></div>
+                                    <div class="fw-bold mt-2 text-white" id="hero-total-medals"><?= $total_medals ?></div>
                                     <div class="text-muted small">Medals Awarded</div>
                                 </div>
                             </div>
@@ -1022,5 +1022,113 @@ function truncate_text($text, $length = 100, $suffix = '...') {
             if (!text) return '';
             return text.toString().replace(/[&<>"']/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'}[m]));
         }
+
+        // --- REAL-TIME UPDATES FOR TEAMS ---
+        function startTeamUpdates() {
+            setInterval(() => {
+                fetch('fetch_teams_api.php')
+                    .then(response => response.json())
+                    .then(newTeamData => {
+                        // 1. Update Hero Stats
+                        updateHeroStats(newTeamData);
+
+                        // 2. Re-render the Team Cards
+                        renderTeamCards(newTeamData);
+
+                        // 3. Re-initialize Search/Sort (Vital!)
+                        // We must update the 'allCards' list because the HTML elements just changed
+                        allCards = Array.from(grid.querySelectorAll('.college-card-wrapper'));
+                        filterAndSort(); // Re-apply current search if any
+                    })
+                    .catch(err => console.error('Team update error:', err));
+            }, 5000); // 5 Seconds
+        }
+
+        function updateHeroStats(data) {
+            let totalMedals = 0;
+            let topPerformers = 0;
+
+            data.forEach(team => {
+                let total = parseInt(team.TotalMedals) || 0;
+                totalMedals += total;
+                if (parseInt(team.GoldCount) > 0) topPerformers++;
+            });
+
+            const elTeams = document.getElementById('hero-total-teams');
+            const elPerf = document.getElementById('hero-top-performers');
+            const elMedals = document.getElementById('hero-total-medals');
+
+            if (elTeams) elTeams.textContent = data.length;
+            if (elPerf) elPerf.textContent = topPerformers;
+            if (elMedals) elMedals.textContent = totalMedals;
+        }
+
+        function renderTeamCards(data) {
+            const grid = document.getElementById('college-roster-grid');
+            const noRes = document.getElementById('no-results-message'); // Keep reference
+            
+            // Build HTML for all cards
+            let html = '';
+            
+            if (data.length === 0) {
+                html = '<div class="col-12"><div class="alert alert-info text-center">No teams have been added yet.</div></div>';
+            } else {
+                data.forEach((college, index) => {
+                    const rank = index + 1;
+                    const logo = college.logo_url || 'images/default_avatar.png';
+                    const slogan = (college.slogan || 'No slogan.').substring(0, 60) + '...';
+                    const unitColor = college.unit_color || '#cccccc';
+
+                    // Rank Logic
+                    let rankClass = '';
+                    let rankIcon = `#${rank}`;
+                    if (rank === 1) { rankClass = 'rank-1-card'; rankIcon = '<i class="fas fa-trophy"></i> Champion'; }
+                    else if (rank === 2) { rankClass = 'rank-2-card'; rankIcon = '<i class="fas fa-medal"></i> 2nd Place'; }
+                    else if (rank === 3) { rankClass = 'rank-3-card'; rankIcon = '<i class="fas fa-medal"></i> 3rd Place'; }
+
+                    html += `
+                    <div class="col-12 col-md-6 col-lg-4 d-flex college-card-wrapper" 
+                            data-name="${(college.college_name || '').toLowerCase()}"
+                            data-code="${(college.college_code || '').toLowerCase()}"
+                            data-rank="${rank}"
+                            data-total-medals="${college.TotalMedals}">
+                            
+                        <div class="college-card d-flex flex-column w-100 ${rankClass}" style="--team-color: ${escapeHtml(unitColor)};">
+                            
+                            <div class="rank-badge">${rankIcon}</div>
+
+                            <img src="${escapeHtml(logo)}" class="college-logo mt-3" onerror="this.src='images/default_avatar.png'">
+                            
+                            <div class="text-center mt-2">
+                                <h5 class="college-name mb-1 text-dark">${escapeHtml(college.college_name)}</h5>
+                                <span class="badge bg-light text-dark border mb-2">${escapeHtml(college.college_code)}</span>
+                                <p class="text-muted small truncate-text fst-italic mb-2" style="height: 40px;">"${escapeHtml(slogan)}"</p>
+                            </div>
+
+                            <div class="medal-mini-stat">
+                                <div title="Gold" class="text-warning"><i class="fas fa-medal"></i> <span>${college.GoldCount}</span></div>
+                                <div title="Silver" class="text-secondary"><i class="fas fa-medal"></i> <span>${college.SilverCount}</span></div>
+                                <div title="Bronze" style="color: #cd7f32;"><i class="fas fa-medal"></i> <span>${college.BronzeCount}</span></div>
+                                <div title="Total" class="text-dark border-start ps-3">Total <span>${college.TotalMedals}</span></div>
+                            </div>
+
+                            <div class="mt-auto d-grid gap-2">
+                                <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#detailsModal" data-college-id="${college.college_id}">
+                                    <i class="fas fa-info-circle me-1"></i> Full Details
+                                </button>
+                            </div>
+                        </div>
+                    </div>`;
+                });
+            }
+
+            // Update the grid content
+            // We append the 'no-results-message' div back at the end because we wiped it out
+            grid.innerHTML = html;
+            if (noRes) grid.appendChild(noRes);
+        }
+
+        // START
+        startTeamUpdates();
     });
     </script>

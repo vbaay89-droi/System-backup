@@ -3,7 +3,7 @@ session_start();
 
 // 1. --- SECURITY & DATABASE CONNECTION (MySQLi) ---
 // This file should create a mysqli object named $conn
-require_once 'db_connect.php'; 
+require_once 'config.php'; 
 
 // Strict Role-Based Access Control
 if (!isset($_SESSION['logged_in']) || $_SESSION['logged_in'] !== true || !isset($_SESSION['role']) || $_SESSION['role'] !== 'Administrator') {
