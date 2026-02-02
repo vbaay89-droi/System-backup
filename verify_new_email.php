@@ -1,6 +1,6 @@
 <?php
 // This script does NOT use sessions. It is stateless.
-require_once 'db_connect.php'; // Your MySQLi connection
+require_once 'config.php'; // Your MySQLi connection
 
 $status_redirect_url = 'login.php'; // Page to show messages
 $token_from_url = $_GET['token'] ?? null;

@@ -113,8 +113,26 @@ function truncate_text($text, $length = 100, $suffix = '...') {
         .navbar-brand:hover { transform: translateY(-2px); }
         .brand-logo { filter: drop-shadow(0 2px 4px rgba(255,255,255,0.1)); }
         .brand-heading { font-family: 'Poppins', sans-serif; font-weight: 700; }
-        .nav-link { font-weight: 500; font-size: 0.95rem; padding: 0.5rem 1.25rem !important; margin: 0 0.25rem; border-radius: 8px; transition: var(--transition); color: rgba(255,255,255,0.7) !important; }
-        .nav-link:hover, .nav-link.active { background: rgba(255,255,255,0.1); color: var(--primary-green) !important; }
+        .nav-link { 
+            font-weight: 500; 
+            font-size: 0.95rem; 
+            padding: 0.5rem 1.25rem !important; 
+            margin: 0 0.25rem; 
+            transition: var(--transition); 
+            /* Remove border-radius so the line is straight */
+            border-bottom: 3px solid transparent; 
+        }
+
+        .nav-link:hover, .nav-link.active { 
+            /* Remove the background box */
+            background: transparent !important; 
+            
+            /* Change text color */
+            color: var(--primary-green) !important; 
+            
+            /* Add the Underline */
+            border-bottom: 3px solid var(--primary-green); 
+        }
         
         /* BUTTONS */
         .btn-danger, .btn-success { padding: 0.6rem 1.5rem; border-radius: 10px; font-weight: 600; transition: var(--transition); border: none; box-shadow: 0 4px 12px rgba(0,0,0,0.15); }
@@ -193,10 +211,59 @@ function truncate_text($text, $length = 100, $suffix = '...') {
             font-size: 0.85rem;
         }
         /* CARDS */
-        .hero-section { background: linear-gradient(135deg, rgba(255,255,255,0.9) 0%, rgba(233,236,239,0.9) 100%); border-radius: 16px; padding: 32px; box-shadow: var(--shadow-md); }
-        .stat-card-new { background: white; border-radius: 12px; padding: 20px 15px; box-shadow: var(--shadow-sm); transition: var(--transition); height: 100%; }
-        .stat-card-new:hover { transform: translateY(-4px); box-shadow: var(--shadow-md); }
-        .stat-card-new .fw-bold { font-family: 'Poppins', sans-serif; font-size: 2.25rem; }
+        /* --- NEW HERO & WIDGET STYLES (Matches Events Page) --- */
+.hero-section {
+    background: linear-gradient(135deg, #ffffff 0%, #f8fcf9 100%);
+    border: 1px solid rgba(0,0,0,0.04);
+    /* Blue Accent Line for Teams Page */
+    border-left: 5px solid #0d6efd; 
+    border-radius: 16px;
+    padding: 40px;
+    box-shadow: 0 10px 30px rgba(0,0,0,0.03);
+    margin-bottom: 2.5rem;
+}
+
+.stat-card-widget {
+    background: white;
+    border-radius: 12px;
+    padding: 20px;
+    border: 1px solid rgba(0,0,0,0.06);
+    box-shadow: 0 4px 12px rgba(0,0,0,0.02);
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    height: 100%;
+    display: flex;
+    align-items: center; 
+    text-align: left;
+}
+
+.stat-card-widget:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 15px 30px rgba(0,0,0,0.08);
+    border-color: rgba(13, 110, 253, 0.3); /* Blue glow on hover */
+}
+
+/* Icon Circle Container */
+.stat-icon-circle {
+    width: 64px;
+    height: 64px;
+    min-width: 64px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin-right: 1.25rem;
+    transition: transform 0.3s ease;
+    font-size: 1.75rem; /* Icon size */
+}
+
+.stat-card-widget:hover .stat-icon-circle {
+    transform: scale(1.1);
+}
+
+/* Theme Colors */
+.stat-theme-teams { background: rgba(13, 110, 253, 0.1); color: #0d6efd; }       /* Blue */
+.stat-theme-performers { background: rgba(25, 135, 84, 0.1); color: #198754; }   /* Green */
+.stat-theme-medals { background: rgba(255, 193, 7, 0.1); color: #ffc107; }       /* Gold */
         
         /* COLLEGE CARD */
         .college-card { background-color: var(--bg-light); border-radius: 12px; box-shadow: var(--shadow-sm); transition: var(--transition); height: 100%; padding: 24px; position: relative; overflow: hidden; border: 1px solid rgba(0,0,0,0.05); display: flex; flex-direction: column; --team-color: var(--primary-green); }
@@ -324,88 +391,96 @@ function truncate_text($text, $length = 100, $suffix = '...') {
         .medal-mini-stat div { text-align: center; }
         .medal-mini-stat span { font-size: 1.1rem; display: block; }
 
-        /* --- DARK HERO SECTION --- */
-.hero-section {
-    /* Matches the Navbar/Sidebar Dark Theme */
-    background: linear-gradient(135deg, #1a1a1a 0%, #2d2d2d 100%);
-    color: white;
-    border-radius: 16px;
-    padding: 3rem;
-    box-shadow: 0 10px 30px rgba(0,0,0,0.2);
-    margin-bottom: 2.5rem;
-    position: relative;
-    overflow: hidden;
-    border: 1px solid rgba(255,255,255,0.1);
-}
+        /* --- NEW WHITE HERO SECTION (Matches Siglakas Events) --- */
+        .hero-section {
+            background: linear-gradient(135deg, #ffffff 0%, #f8fcf9 100%);
+            border: 1px solid rgba(0,0,0,0.04);
+            border-radius: 16px;
+            padding: 40px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.03);
+            margin-bottom: 2.5rem;
+            position: relative;
+            overflow: hidden;
+            color: #333; /* Dark text for white background */
+        }
 
-/* Subtle Glow Effect */
-.hero-section::before {
-    content: '';
-    position: absolute;
-    top: -50%;
-    right: -10%;
-    width: 400px;
-    height: 400px;
-    background: radial-gradient(circle, rgba(76, 175, 80, 0.15) 0%, transparent 70%);
-    border-radius: 50%;
-    pointer-events: none;
-}
+        /* Remove the old dark glow effect */
+        .hero-section::before { display: none; }
 
-/* Update Stat Cards to look good on Dark Background */
-.stat-card-new {
-    background: rgba(255, 255, 255, 0.1); /* Glassmorphism */
-    backdrop-filter: blur(10px);
-    border: 1px solid rgba(255, 255, 255, 0.1);
-    border-radius: 12px;
-    padding: 20px 15px;
-    transition: transform 0.3s ease;
-}
+        /* --- WIDGET CARDS (Clean White Style) --- */
+        .stat-card-widget {
+            background: white;
+            border-radius: 12px;
+            padding: 20px;
+            border: 1px solid rgba(0,0,0,0.06);
+            box-shadow: 0 4px 12px rgba(0,0,0,0.02);
+            transition: all 0.3s ease;
+            height: 100%;
+            display: flex; /* Horizontal Layout */
+            align-items: center; 
+            text-align: left;
+        }
 
-.stat-card-new:hover {
-    transform: translateY(-5px);
-    background: rgba(255, 255, 255, 0.15);
-}
+        .stat-card-widget:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 15px 30px rgba(0,0,0,0.08);
+            border-color: rgba(13, 110, 253, 0.3); /* Blue glow */
+        }
 
-.stat-card-new .text-muted {
-    color: rgba(255, 255, 255, 0.7) !important; /* Lighten muted text */
-}
+        /* Icon Circles */
+        .stat-icon-circle {
+            width: 64px;
+            height: 64px;
+            min-width: 64px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin-right: 1.25rem;
+            font-size: 1.75rem;
+        }
 
-/* --- DIGITAL VICTORY CARD (Fallback for Silver/Bronze) --- */
-.digital-victory-card {
-    width: 100%;
-    height: 100%;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    position: relative;
-    overflow: hidden;
-    /* Uses the team color via inline style */
-    background-color: var(--card-bg); 
-}
+        /* Theme Colors for Icons */
+        .stat-theme-blue { background: rgba(13, 110, 253, 0.1); color: #0d6efd; }
+        .stat-theme-green { background: rgba(25, 135, 84, 0.1); color: #198754; }
+        .stat-theme-gold  { background: rgba(255, 193, 7, 0.1); color: #ffc107; }
 
-/* Glassy Texture Overlay */
-.digital-victory-card::after {
-    content: '';
-    position: absolute;
-    top: 0; left: 0; right: 0; bottom: 0;
-    background: linear-gradient(135deg, rgba(255,255,255,0.3) 0%, rgba(0,0,0,0.1) 100%);
-    z-index: 1;
-}
+        /* --- DIGITAL VICTORY CARD (Fallback for Silver/Bronze) --- */
+        .digital-victory-card {
+            width: 100%;
+            height: 100%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            position: relative;
+            overflow: hidden;
+            /* Uses the team color via inline style */
+            background-color: var(--card-bg); 
+        }
 
-/* Centered Floating Logo */
-.digital-victory-card img {
-    width: 55%;
-    height: 55%;
-    object-fit: contain;
-    filter: drop-shadow(0 10px 20px rgba(0,0,0,0.3));
-    z-index: 2;
-    transition: transform 0.4s ease;
-}
+        /* Glassy Texture Overlay */
+        .digital-victory-card::after {
+            content: '';
+            position: absolute;
+            top: 0; left: 0; right: 0; bottom: 0;
+            background: linear-gradient(135deg, rgba(255,255,255,0.3) 0%, rgba(0,0,0,0.1) 100%);
+            z-index: 1;
+        }
 
-/* Hover Effect */
-.gallery-card:hover .digital-victory-card img {
-    transform: scale(1.15) rotate(5deg);
-}
+        /* Centered Floating Logo */
+        .digital-victory-card img {
+            width: 55%;
+            height: 55%;
+            object-fit: contain;
+            filter: drop-shadow(0 10px 20px rgba(0,0,0,0.3));
+            z-index: 2;
+            transition: transform 0.4s ease;
+        }
+
+        /* Hover Effect */
+        .gallery-card:hover .digital-victory-card img {
+            transform: scale(1.15) rotate(5deg);
+        }
 
 @media (max-width: 991px) {
             /* 1. Center text on smaller screens */
@@ -465,39 +540,77 @@ function truncate_text($text, $length = 100, $suffix = '...') {
         <div class="container">
             
             <div class="hero-section mb-5">
-                <div class="row align-items-center position-relative" style="z-index: 1;">
+                <div class="row align-items-center">
+                    
                     <div class="col-lg-6 mb-4 mb-lg-0">
-                        <h1 class="display-4 fw-bold mb-3 text-white" style="font-family: 'Poppins', sans-serif;">
-                        <img src="images/team.png" alt="Team Icon" class="me-2" style="height: 80px; width: auto; object-fit: contain; vertical-align: middle;">
-                        Participating Teams
-                    </h1>
-                        <p class="lead text-white-50">A comprehensive look at all teams competing in the Siglakas.</p>
+                        <h1 class="display-5 fw-bold mb-3 text-dark" style="letter-spacing: -1px;">
+                            <i class="fas fa-users-cog me-3 text-primary" style="font-size: 3.5rem; vertical-align: middle;"></i>
+                            Participating Teams
+                        </h1>
+                        <p class="lead text-muted" style="font-size: 1.1rem; line-height: 1.8;">
+                            A comprehensive look at all teams competing in the Siglakas. Track rosters, view medal history, and see the top performing colleges.
+                        </p>
                     </div>
+
                     <div class="col-lg-6">
                         <div class="row g-3">
-                            <div class="col-4">
-                                <div class="stat-card-new text-center">
-                                    <i class="fas fa-flag fs-2 text-primary"></i>
-                                    <div class="fw-bold mt-2 text-white" id="hero-total-teams"><?= $total_teams ?></div>
-                                    <div class="text-muted small">Total Teams</div>
+                            
+                            <div class="col-md-6 col-12">
+                                <div class="stat-card-widget">
+                                    <div class="stat-icon-circle stat-theme-teams">
+                                        <i class="fas fa-flag"></i>
+                                    </div>
+                                    <div>
+                                        <div class="fw-bold text-dark display-6 mb-0" id="hero-total-teams" style="line-height: 1;">
+                                            <?= $total_teams ?>
+                                        </div>
+                                        <small class="text-uppercase text-primary fw-bold opacity-75" style="font-size: 0.7rem; letter-spacing: 1px;">
+                                            Total Teams
+                                        </small>
+                                    </div>
                                 </div>
                             </div>
-                            <div class="col-4">
-                                <div class="stat-card-new text-center">
-                                    <i class="fas fa-star fs-2 text-success"></i>
-                                    <div class="fw-bold mt-2 text-white" id="hero-top-performers"><?= $topPerformersCount ?></div>
-                                    <div class="text-muted small">Top Performers</div>
+
+                            <div class="col-md-6 col-12">
+                                <div class="stat-card-widget">
+                                    <div class="stat-icon-circle stat-theme-performers">
+                                        <i class="fas fa-star"></i>
+                                    </div>
+                                    <div>
+                                        <div class="fw-bold text-dark display-6 mb-0" id="hero-top-performers" style="line-height: 1;">
+                                            <?= $topPerformersCount ?>
+                                        </div>
+                                        <small class="text-uppercase text-success fw-bold opacity-75" style="font-size: 0.7rem; letter-spacing: 1px;">
+                                            Top Performers
+                                        </small>
+                                    </div>
                                 </div>
                             </div>
-                            <div class="col-4">
-                                <div class="stat-card-new text-center">
-                                    <i class="fas fa-medal fs-2 text-warning"></i>
-                                    <div class="fw-bold mt-2 text-white" id="hero-total-medals"><?= $total_medals ?></div>
-                                    <div class="text-muted small">Medals Awarded</div>
+
+                            <div class="col-12">
+                                <div class="stat-card-widget">
+                                    <div class="stat-icon-circle stat-theme-medals">
+                                        <i class="fas fa-medal"></i>
+                                    </div>
+                                    <div>
+                                        <div class="d-flex align-items-center">
+                                            <div class="fw-bold text-dark display-6 mb-0 me-3" id="hero-total-medals" style="line-height: 1;">
+                                                <?= $total_medals ?>
+                                            </div>
+                                            <span class="badge bg-warning text-dark px-3 py-2 rounded-pill shadow-sm" style="font-size: 0.7rem;">
+                                                <i class="fas fa-chart-line me-1"></i> OFFICIAL TALLY
+                                            </span>
+                                        </div>
+                                        <small class="text-uppercase text-warning fw-bold opacity-75 mt-1 d-block" style="font-size: 0.7rem; letter-spacing: 1px;">
+                                            Medals Awarded
+                                        </small>
+                                    </div>
                                 </div>
                             </div>
+
                         </div>
                     </div>
+
                 </div>
             </div>
             

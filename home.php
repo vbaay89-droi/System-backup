@@ -172,8 +172,26 @@ $conn->close();
         .navbar-brand:hover { transform: translateY(-2px); }
         .brand-logo { filter: drop-shadow(0 2px 4px rgba(255,255,255,0.1)); }
         .brand-heading { font-family: 'Poppins', sans-serif; font-weight: 700; letter-spacing: -0.5px; }
-        .nav-link { font-weight: 500; font-size: 0.95rem; padding: 0.5rem 1.25rem !important; margin: 0 0.25rem; border-radius: 8px; transition: var(--transition); }
-        .nav-link:hover, .nav-link.active { background: rgba(255,255,255,0.1); color: var(--primary-green) !important; }
+        .nav-link { 
+            font-weight: 500; 
+            font-size: 0.95rem; 
+            padding: 0.5rem 1.25rem !important; 
+            margin: 0 0.25rem; 
+            transition: var(--transition); 
+            /* Remove border-radius so the line is straight */
+            border-bottom: 3px solid transparent; 
+        }
+
+        .nav-link:hover, .nav-link.active { 
+            /* Remove the background box */
+            background: transparent !important; 
+            
+            /* Change text color */
+            color: var(--primary-green) !important; 
+            
+            /* Add the Underline */
+            border-bottom: 3px solid var(--primary-green); 
+        }
         .btn-danger, .btn-success { padding: 0.6rem 1.5rem; border-radius: 10px; font-weight: 600; transition: var(--transition); border: none; box-shadow: 0 4px 12px rgba(0,0,0,0.15); }
         .btn-danger:hover, .btn-success:hover { transform: translateY(-2px); box-shadow: 0 6px 20px rgba(0,0,0,0.2); }
         
@@ -432,13 +450,6 @@ $conn->close();
         .print-actions .btn-primary { background: linear-gradient(135deg, var(--primary-green), var(--primary-dark)); }
         .print-actions button:hover { transform: translateY(-2px); box-shadow: var(--shadow-md); }
         
-        /* --- MEDIA QUERIES --- */
-        @media print {
-            .print-overlay { display: block !important; position: static; background: none; }
-            .print-content { position: static; transform: none; max-width: none; max-height: none; box-shadow: none; overflow: visible; }
-            .print-actions { display: none; }
-            body > *:not(.print-overlay) { display: none; }
-        }
         @media (max-width: 991px) {
             .hero-header { flex-direction: column; text-align: center; }
             .hero-title-group h1 { font-size: 2rem; }
@@ -602,6 +613,86 @@ $conn->close();
                 padding-top: 140px !important; 
             }
         }
+
+        /* --- 2. MOBILE NAVBAR (STRICT 2-ROW LAYOUT) --- */
+
+/* Clean up the Hamburger Button */
+.navbar-toggler {
+    border: none !important; 
+    padding: 0;
+    color: white !important;
+    outline: none !important;
+}
+.navbar-toggler:focus {
+    box-shadow: none !important; 
+}
+
+@media (max-width: 991px) {
+    /* 1. Container Wrapper: Allows wrapping so we can make 2 distinct rows */
+    .navbar .container-fluid {
+        display: flex;
+        flex-wrap: wrap; 
+        align-items: center;
+        padding-bottom: 5px;
+    }
+
+    /* 2. ROW 1: Brand/Logo (Takes Full Width) */
+    .navbar-brand {
+        width: 100%;       
+        margin-right: 0;
+        margin-bottom: 5px; /* Tiny space between Title and Menu */
+        border-bottom: 1px solid rgba(255,255,255,0.1); /* Optional Divider */
+        padding-bottom: 10px;
+    }
+
+    
+
+    /* 4. ROW 2 Right: The Menu Container */
+    /* This forces the menu to sit NEXT TO the toggler, not below it */
+    .navbar-collapse {
+        width: auto !important; /* Let it fit the remaining space */
+        flex-grow: 1;           /* Fill the rest of the row */
+        margin-top: 0;
+        background: transparent;
+        box-shadow: none;
+        border: none;
+    }
+
+    /* When Open: Force Flex Layout (Side-by-Side) */
+    .navbar-collapse.show {
+        display: flex !important;
+        align-items: center;
+    }
+
+    /* 5. Force Links to be a Horizontal Row */
+    .navbar-nav {
+        flex-direction: row !important;
+        align-items: center;
+        width: 100%;
+        gap: 10px; /* Space between links */
+    }
+
+    /* 6. Link Styling (Compact for Mobile) */
+    .nav-item {
+        margin: 0;
+    }
+    .nav-link {
+        font-size: 0.9rem; 
+        margin: 0;
+        padding: 5px 8px !important;
+        white-space: nowrap; /* Prevent text from breaking */
+    }
+    
+    /* 7. Admin Button (Pushed to the right) */
+    .navbar-nav .btn {
+        margin: 0;
+        margin-left: auto; /* Pushes button to the far right */
+        padding: 5px 12px;
+        font-size: 0.8rem;
+        white-space: nowrap;
+    }
+}
+
 </style>
 </head>
 <body>
@@ -694,9 +785,9 @@ $conn->close();
                             <i class="far fa-clock me-2"></i><?= $formattedTime ?>
                         </div>
                         <span id="refresh-timer" class="badge bg-danger"></span>
-                        <button class="btn btn-primary print-btn" onclick="showPrintPreview()">
-                            <i class="fas fa-print me-2"></i>Print
-                        </button>
+                        <a href="print_standings.php" target="_blank" class="btn btn-primary print-btn text-decoration-none">
+    <i class="fas fa-print me-2"></i>Print
+</a>
                     </div>
                 </div>
 
@@ -769,39 +860,7 @@ $conn->close();
                             <p class="text-center text-muted m-0 w-100">No medal standings to display yet.</p>
                         </div>
                     <?php endif; ?>
-                </div> </div> </div> </div> <div class="print-overlay" id="printOverlay">
-        <div class="print-content">
-            <div class="print-header">
-                <h1>PIT SPORTS TALLYING</h1>
-                <h2>Live Medal Standings</h2>
-                <p><strong>Generated on:</strong> <?php echo date('F d, Y - g:i A'); ?></p>
-            </div>
-            
-            <table class="print-table">
-                <thead>
-                    <tr>
-                        <th>Rank</th>
-                        <th>College Name</th>
-                        <th>Gold</th>
-                        <th>Silver</th>
-                        <th>Bronze</th>
-                        <th>Total</th>
-                    </tr>
-                </thead>
-                <tbody id="print-table-body"> 
-                </tbody>
-            </table>
-            
-            <div class="print-actions">
-                <button class="btn btn-primary" onclick="window.print()">
-                    <i class="fas fa-print me-2"></i>Print
-                </button>
-                <button class="btn btn-secondary" onclick="hidePrintPreview()">
-                    <i class="fas fa-times me-2"></i>Close
-                </button>
-            </div>
-        </div>
-    </div>
+                </div> </div> </div> </div> 
 
     <footer class="footer-main">
         <div class="container">
@@ -1094,40 +1153,7 @@ $conn->close();
         startCountdown();
     });
 
-    function showPrintPreview() {
-        const printTableBody = document.getElementById('print-table-body');
-        const medalTally = <?php echo json_encode($medal_tally); ?>;
-        let printHtml = '';
-        let rank = 1;
-        if (medalTally.length > 0) {
-             medalTally.forEach(tally => {
-                printHtml += `
-                    <tr>
-                        <td>${rank}</td>
-                        <td>${tally.college_name}</td>
-                        <td>${tally.gold}</td>
-                        <td>${tally.silver}</td>
-                        <td>${tally.bronze}</td>
-                        <td>${tally.total}</td>
-                    </tr>
-                `;
-                rank++;
-            });
-        } else {
-            printHtml = '<tr><td colspan="6" class="text-center text-muted">No medal data available</td></tr>';
-        }
-        printTableBody.innerHTML = printHtml;
-        document.getElementById('printOverlay').style.display = 'block';
-        document.body.style.overflow = 'hidden';
-    }
     
-    function hidePrintPreview() {
-        document.getElementById('printOverlay').style.display = 'none';
-        document.body.style.overflow = 'auto';
-    }
-    
-    window.showPrintPreview = showPrintPreview;
-    window.hidePrintPreview = hidePrintPreview;
 </script>
 </body>
 </html>

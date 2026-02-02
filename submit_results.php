@@ -100,8 +100,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 }
             }
 
-            // --- 3B. HANDLE FILE 2: PODIUM PHOTO (NEW) ---
-            $podium_photo_url = $category_info['podium_photo_url']; // Keep existing
+            // --- 3B. HANDLE FILE 2: PODIUM PHOTO ---
+            $podium_photo_url = $category_info['podium_photo_url']; 
             if (isset($_FILES['podium_photo']) && $_FILES['podium_photo']['error'] === UPLOAD_ERR_OK) {
                 $file_tmp = $_FILES['podium_photo']['tmp_name'];
                 $file_ext = strtolower(pathinfo($_FILES['podium_photo']['name'], PATHINFO_EXTENSION));
@@ -118,6 +118,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $event_time = !empty($_POST['event_time']) ? $_POST['event_time'] : null;
             $venue = !empty($_POST['venue']) ? $_POST['venue'] : null;
             
+            // Check Certification
             if ($action === 'submit_for_approval' && !isset($_POST['certification'])) {
                 throw new Exception("You must certify the results before submitting.");
             }
@@ -129,7 +130,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $bronze_team = !empty($_POST['bronze_winner_id']) ? (int)$_POST['bronze_winner_id'] : null;
             $bronze_count = !empty($_POST['bronze_count']) ? (int)$_POST['bronze_count'] : 0;
 
-            // 1. Check for Duplicate Teams (Runs on Draft AND Submit)
+            // 1. General Check for Duplicate Teams (Happens for Draft & Submit)
             if ($category_info['category_type'] == 'medal') {
                 $winners = array_filter([$gold_team, $silver_team, $bronze_team]);
                 if (count($winners) !== count(array_unique($winners))) {
@@ -139,7 +140,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
             $new_status = $category_info['status']; 
             
-            // 2. Submission Specific Validations
+            // 2. Submission Specific Validations (YOUR FIX APPLIED HERE)
             if ($action === 'submit_for_approval') {
                 $new_status = 'Results Submitted'; 
                 
@@ -172,7 +173,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                  WHERE category_id = ?"
             );
             
-            // sssiiiiiisssi (13 chars)
             $stmt->bind_param("sssiiiiiisssi", 
                 $event_date, $event_time, $venue,
                 $gold_team, $gold_count, 
@@ -184,54 +184,47 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $stmt->execute();
             $stmt->close();
 
+            // --- 3E. POST-UPDATE ACTIONS ---
             if ($action === 'submit_for_approval') {
                 try {
-                    // 1. Fetch Team Names for Logging
+                    // Fetch names for logs
                     $log_gold = $log_silver = $log_bronze = 'N/A';
-                    
-                    if($gold_team) {
-                        $q = $conn->query("SELECT college_name FROM colleges WHERE college_id = $gold_team");
-                        if($q && $row = $q->fetch_assoc()) $log_gold = $row['college_name'];
-                    }
-                    if($silver_team) {
-                        $q = $conn->query("SELECT college_name FROM colleges WHERE college_id = $silver_team");
-                        if($q && $row = $q->fetch_assoc()) $log_silver = $row['college_name'];
-                    }
-                    if($bronze_team) {
-                        $q = $conn->query("SELECT college_name FROM colleges WHERE college_id = $bronze_team");
-                        if($q && $row = $q->fetch_assoc()) $log_bronze = $row['college_name'];
-                    }
+                    if($gold_team) { $q = $conn->query("SELECT college_name FROM colleges WHERE college_id = $gold_team"); if($q && $row = $q->fetch_assoc()) $log_gold = $row['college_name']; }
+                    if($silver_team) { $q = $conn->query("SELECT college_name FROM colleges WHERE college_id = $silver_team"); if($q && $row = $q->fetch_assoc()) $log_silver = $row['college_name']; }
+                    if($bronze_team) { $q = $conn->query("SELECT college_name FROM colleges WHERE college_id = $bronze_team"); if($q && $row = $q->fetch_assoc()) $log_bronze = $row['college_name']; }
 
-                    // 2. Detailed Context
-                    $context = [
-                        'category_name' => $category_info['category_name'], 
-                        'status' => 'Submitted',
-                        'gold' => $log_gold,
-                        'silver' => $log_silver,
-                        'bronze' => $log_bronze
-                    ];
-                    
+                    $context = ['category_name' => $category_info['category_name'], 'status' => 'Submitted', 'gold' => $log_gold, 'silver' => $log_silver, 'bronze' => $log_bronze];
                     log_activity($conn, $user_id, 'SUBMITTED_RESULTS', $category_id, 'category', null, null, $context);
                 } catch (Exception $log_e) {}
+
+                // *** REDIRECT TO LIST (The Fix) ***
+                $_SESSION['alert_message'] = "Results submitted successfully! Awaiting approval.";
+                $_SESSION['alert_type'] = 'success';
+                header("Location: my_events.php");
+                exit();
+            }
+            
+            // IF SAVING DRAFT, STAY HERE
+            if ($action === 'save_pending') {
+                $alert_message = "Draft saved successfully. You can continue editing.";
+                $alert_type = 'success';
             }
         
-        // --- THIS WAS MISSING IN YOUR CODE ---
         } catch (Exception $e) {
             $alert_message = "Error: " . $e->getMessage();
             $alert_type = 'danger';
         }
-    } // End of ELSE
+    } 
 
-    // Refresh Data
+    // Refresh Data for view
     $updated_cat = $conn->query("SELECT status, tally_sheet_url, podium_photo_url FROM categories WHERE category_id = $category_id")->fetch_assoc();
     if ($updated_cat) {
         $category_info['status'] = ($updated_cat['status'] == 'Results Approved') ? 'Completed' : $updated_cat['status'];
         $category_info['tally_sheet_url'] = $updated_cat['tally_sheet_url'];
         $category_info['podium_photo_url'] = $updated_cat['podium_photo_url']; 
-        
         $is_locked = (strtolower($category_info['status']) == 'completed');
     }
-} // --- END OF POST BLOCK (Line 85 matches here)
+}
 
 // 4. FETCH DATA
 $teams = $conn->query("SELECT college_id AS team_id, college_name AS team_name FROM colleges ORDER BY college_name")->fetch_all(MYSQLI_ASSOC);
@@ -247,45 +240,267 @@ $current_submission = $conn->query("SELECT * FROM categories WHERE category_id =
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" rel="stylesheet">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=Poppins:wght@400;500;600;700;800&display=swap" rel="stylesheet">
     <style>
-        /* ... Your Existing CSS ... */
-        :root { --sidebar-width: 260px; --header-height: 82px; --gold: #f59e0b; --silver: #64748b; --bronze: #ea580c; }
-        body { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); background-attachment: fixed; margin: 0; padding: 0; min-height: 100vh; font-family: 'Inter', sans-serif; display: flex; flex-direction: column; }
-        body::before { content: ''; position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: radial-gradient(circle at 20% 50%, rgba(120, 119, 198, 0.3), transparent 50%), radial-gradient(circle at 80% 80%, rgba(99, 102, 241, 0.2), transparent 50%); pointer-events: none; z-index: 0; }
-        .navbar { background: rgba(26, 26, 26, 0.95) !important; backdrop-filter: blur(10px); padding: 1rem 1.5rem; height: var(--header-height); position: fixed; top: 0; left: 0; right: 0; z-index: 1050; border-bottom: 1px solid rgba(255, 255, 255, 0.1); }
-        .user-dropdown .dropdown-toggle { color: white; display: flex; align-items: center; text-decoration: none; padding: 8px 16px; border-radius: 50px; background: rgba(255, 255, 255, 0.1); backdrop-filter: blur(10px); border: 1px solid rgba(255, 255, 255, 0.2); }
-        .sidebar { width: var(--sidebar-width); position: fixed; top: var(--header-height); left: 0; height: calc(100vh - var(--header-height)); background: rgba(44, 62, 80, 0.95); backdrop-filter: blur(10px); color: white; z-index: 1040; transition: all 0.3s ease; overflow-y: auto; }
-        .sidebar-nav .nav-link { color: rgba(255, 255, 255, 0.7); font-size: 1.05rem; padding: 12px 25px; display: flex; align-items: center; text-decoration: none; border-left: 5px solid transparent; }
-        .sidebar-nav .nav-link:hover { background: rgba(255, 255, 255, 0.05); }
-        .sidebar-nav .nav-link.active { background: linear-gradient(90deg, rgba(102, 126, 234, 0.2), transparent); border-left-color: #667eea; color: white; }
-        .main-content { margin-left: var(--sidebar-width); width: calc(100% - var(--sidebar-width)); padding: 30px; margin-top: var(--header-height); z-index: 1; }
-        footer { margin-left: var(--sidebar-width); width: calc(100% - var(--sidebar-width)); background: rgba(44, 62, 80, 0.95) !important; z-index: 1041; border-top: 1px solid rgba(255, 255, 255, 0.1); }
-        .page-header { background: rgba(255, 255, 255, 0.95); backdrop-filter: blur(10px); border-radius: 20px; padding: 2rem; margin-bottom: 2rem; box-shadow: 0 10px 40px rgba(0, 0, 0, 0.1); border: 1px solid rgba(255, 255, 255, 0.3); overflow: hidden; position: relative; }
-        .page-header::before { content: ''; position: absolute; top: 0; left: 0; right: 0; height: 5px; background: linear-gradient(90deg, #667eea 0%, #764ba2 100%); }
-        .page-title { font-family: 'Poppins', sans-serif; font-weight: 700; font-size: 2rem; color: #333; }
-        .card { border: none; border-radius: 16px; box-shadow: 0 10px 30px rgba(0,0,0,0.08); overflow: hidden; margin-bottom: 1.5rem; }
-        .card-header { background: linear-gradient(135deg, #ffffff 0%, #f8f9fa 100%); border-bottom: 1px solid #e9ecef; padding: 1.25rem 1.5rem; }
-        .medal-row { padding: 1.25rem; border-radius: 12px; margin-bottom: 1rem; border: 1px solid transparent; transition: transform 0.2s ease; box-shadow: 0 2px 5px rgba(0,0,0,0.03); }
-        .medal-row.gold-row { background: linear-gradient(to right, #fffbf0, #fff); border-color: #fcebb6; }
-        .medal-row.silver-row { background: linear-gradient(to right, #f8f9fa, #fff); border-color: #e9ecef; }
-        .medal-row.bronze-row { background: linear-gradient(to right, #fff7ed, #fff); border-color: #fed7aa; }
-        .medal-label { font-weight: 800; font-size: 1.1rem; }
-        .text-gold { color: var(--gold); } .text-silver { color: var(--silver); } .text-bronze { color: var(--bronze); }
-        .upload-zone { border: 2px dashed #cbd5e1; border-radius: 12px; padding: 2rem; text-align: center; transition: all 0.3s; background: #f8fafc; }
-        .upload-zone:hover { border-color: #667eea; background: #f1f5f9; }
-        .form-control:focus { border-color: #667eea; box-shadow: 0 0 0 0.2rem rgba(102, 126, 234, 0.25); }
-        .timeline { position: relative; padding-left: 20px; }
-        .timeline-item { position: relative; padding-bottom: 1.5rem; border-left: 2px solid #e9ecef; padding-left: 20px; }
-        .timeline-item:last-child { border-left: 2px solid transparent; }
-        .timeline-item::before { content: ''; position: absolute; left: -6px; top: 0; width: 10px; height: 10px; border-radius: 50%; background: #fff; border: 2px solid #6c757d; }
-        .timeline-item.success::before { border-color: #198754; background: #198754; }
-        .timeline-item.danger::before { border-color: #dc3545; background: #dc3545; }
-        .timeline-item.primary::before { border-color: #0d6efd; background: #0d6efd; } /* Blue for start */
-        .timeline-item.info::before { border-color: #0dcaf0; background: #0dcaf0; } /* Light blue for update */
-        .timeline-date { font-size: 0.75rem; color: #6c757d; }
-        .timeline-content { font-size: 0.9rem; }
+    /* =========================================
+       1. CORE VARIABLES (SaaS Palette)
+       ========================================= */
+    :root { 
+        --sidebar-width: 260px; 
+        --header-height: 82px; 
         
-        @media (max-width: 992px) { .sidebar { width: 0; } .main-content, footer { margin-left: 0; width: 100%; } }
-    </style>
+        /* Clean Color Palette */
+        --bg-light: #f4f6f8; 
+        --text-dark: #1e293b;
+        --text-muted: #64748b;
+        --accent-color: #1abc9c;
+        
+        /* Medal Colors */
+        --gold: #f59e0b; 
+        --silver: #64748b; 
+        --bronze: #ea580c;
+        
+        --transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+        --card-shadow: 0 4px 6px rgba(0, 0, 0, 0.02);
+    }
+
+    body { 
+        background-color: var(--bg-light); /* Clean Gray - No Gradient */
+        margin: 0; 
+        padding: 0; 
+        min-height: 100vh; 
+        font-family: 'Inter', sans-serif; 
+        display: flex; 
+        flex-direction: column; 
+        color: var(--text-dark);
+    }
+
+    /* REMOVED body::before (Glassmorphism Blobs) */
+
+    /* =========================================
+       2. NAVIGATION (Solid & Professional)
+       ========================================= */
+    
+    /* Navbar */
+    .navbar { 
+        background: linear-gradient(135deg, #1a1a1a 0%, #2d2d2d 100%) !important; 
+        box-shadow: 0 4px 20px rgba(0,0,0,0.15); 
+        padding: 1rem 1.5rem; 
+        height: var(--header-height); 
+        position: fixed; 
+        top: 0; left: 0; right: 0; 
+        z-index: 1050; 
+        border-bottom: none; 
+    }
+
+    .user-dropdown .dropdown-toggle { 
+        color: white; 
+        display: flex; align-items: center; 
+        text-decoration: none; 
+        padding: 8px 12px; 
+        border-radius: 8px; 
+        background: transparent; /* Removed glass background */
+        border: none;
+        transition: var(--transition);
+    }
+    .user-dropdown .dropdown-toggle:hover { 
+        background-color: rgba(255, 255, 255, 0.1); 
+    }
+    .user-dropdown .dropdown-toggle img { 
+        width: 36px; height: 36px; 
+        border-radius: 50%; object-fit: cover; margin-right: 10px; 
+        border: 2px solid rgba(255,255,255,0.2);
+    }
+
+    /* Sidebar */
+    .sidebar { 
+        width: var(--sidebar-width); 
+        position: fixed; 
+        top: var(--header-height); 
+        left: 0; 
+        height: calc(100vh - var(--header-height)); 
+        background: #2c3e50; /* Solid Dark Blue */
+        color: white; 
+        box-shadow: 5px 0 15px rgba(0,0,0,0.05); 
+        z-index: 1040; 
+        transition: width 0.3s ease; 
+        overflow-y: auto; 
+    }
+
+    .sidebar-nav { padding: 20px 0; }
+    .sidebar-nav .nav-link { 
+        color: rgba(255, 255, 255, 0.7); 
+        font-size: 1.05rem; 
+        padding: 12px 25px; 
+        display: flex; align-items: center; 
+        text-decoration: none; 
+        border-left: 5px solid transparent; 
+        transition: var(--transition);
+    }
+    .sidebar-nav .nav-link:hover { 
+        background: rgba(255, 255, 255, 0.05); 
+        color: white; 
+    }
+    .sidebar-nav .nav-link.active { 
+        background: rgba(255, 255, 255, 0.1); 
+        border-left-color: #3498db; 
+        color: white; 
+        font-weight: 600; 
+    }
+
+    /* Main Content */
+    .main-content { 
+        margin-left: var(--sidebar-width); 
+        width: calc(100% - var(--sidebar-width)); 
+        padding: 30px; 
+        margin-top: var(--header-height); 
+        z-index: 1; 
+    }
+
+    /* Footer - Full Width Fix */
+    footer { 
+        margin-left: 0 !important;  /* Remove the indentation */
+        width: 100% !important;     /* Force full width */
+        background: #2c3e50 !important; 
+        z-index: 1100;              /* Ensure it sits on top of the gap */
+        border-top: none; 
+        padding: 20px 0;
+        position: relative;
+    }
+
+    /* =========================================
+       3. PAGE CARDS & HEADERS
+       ========================================= */
+
+    /* Page Header Card */
+    .page-header { 
+        background: white; 
+        border-radius: 16px; 
+        padding: 24px 30px; 
+        margin-bottom: 30px; 
+        box-shadow: var(--card-shadow); 
+        border: 1px solid rgba(0,0,0,0.05); 
+        position: relative;
+        /* Removed gradient ::before */
+    }
+    .page-header::before { display: none; }
+
+    .page-title { 
+        font-family: 'Inter', sans-serif; 
+        font-weight: 800; 
+        font-size: 1.75rem; 
+        color: var(--text-dark); 
+        margin: 0; 
+    }
+
+    /* General Content Cards */
+    .card { 
+        background: white; 
+        border: 1px solid #e2e8f0; 
+        border-radius: 12px; 
+        box-shadow: var(--card-shadow); 
+        overflow: hidden; 
+        margin-bottom: 1.5rem; 
+    }
+    .card-header { 
+        background: white; 
+        border-bottom: 1px solid #f1f5f9; 
+        padding: 1.25rem 1.5rem; 
+    }
+    .card-header h5 {
+        font-weight: 700;
+        color: #334155;
+        margin: 0;
+    }
+
+    /* =========================================
+       4. MEDAL INPUT ROWS (Clean Style)
+       ========================================= */
+    .medal-row { 
+        padding: 1.25rem; 
+        border-radius: 10px; 
+        margin-bottom: 1rem; 
+        border: 1px solid #e2e8f0; 
+        transition: all 0.2s ease; 
+        background: white;
+        display: flex;
+        align-items: center;
+    }
+    .medal-row:hover { 
+        box-shadow: 0 4px 12px rgba(0,0,0,0.05); 
+        transform: translateY(-2px); 
+    }
+
+    /* Colored Left Borders */
+    .medal-row.gold-row { border-left: 5px solid var(--gold); }
+    .medal-row.silver-row { border-left: 5px solid var(--silver); }
+    .medal-row.bronze-row { border-left: 5px solid var(--bronze); }
+
+    /* Typography */
+    .medal-label { font-weight: 700; font-size: 0.9rem; width: 100px; }
+    .text-gold { color: var(--gold); } 
+    .text-silver { color: var(--silver); } 
+    .text-bronze { color: var(--bronze); }
+
+    /* =========================================
+       5. FORMS & UPLOAD
+       ========================================= */
+    .upload-zone { 
+        border: 2px dashed #cbd5e1; 
+        border-radius: 12px; 
+        padding: 2rem; 
+        text-align: center; 
+        transition: all 0.2s; 
+        background: #f8fafc; 
+        cursor: pointer;
+    }
+    .upload-zone:hover { 
+        border-color: #94a3b8; 
+        background: #f1f5f9; 
+    }
+
+    .form-control, .form-select {
+        border-color: #e2e8f0;
+        border-radius: 8px;
+        padding: 0.6rem 1rem;
+    }
+    .form-control:focus, .form-select:focus { 
+        border-color: var(--accent-color); 
+        box-shadow: 0 0 0 3px rgba(26, 188, 156, 0.15); 
+    }
+
+    /* =========================================
+       6. TIMELINE & RESPONSIVE
+       ========================================= */
+    .timeline { position: relative; padding-left: 10px; }
+    .timeline-item { 
+        position: relative; 
+        padding-bottom: 1.5rem; 
+        border-left: 2px solid #e9ecef; 
+        padding-left: 25px; 
+    }
+    .timeline-item:last-child { border-left: 2px solid transparent; }
+    .timeline-item::before { 
+        content: ''; 
+        position: absolute; 
+        left: -6px; top: 5px; 
+        width: 10px; height: 10px; 
+        border-radius: 50%; 
+        background: white; 
+        border: 2px solid #cbd5e1; 
+    }
+    
+    /* Timeline Dots */
+    .timeline-item.success::before { border-color: #198754; background: #198754; }
+    .timeline-item.danger::before { border-color: #dc3545; background: #dc3545; }
+    .timeline-item.primary::before { border-color: #0d6efd; background: #0d6efd; }
+    
+    .timeline-date { font-size: 0.75rem; color: var(--text-muted); margin-bottom: 2px; }
+    .timeline-content { font-size: 0.9rem; color: var(--text-dark); }
+
+    @media (max-width: 992px) { 
+        .sidebar { width: 0; } 
+        .main-content, footer { margin-left: 0; width: 100%; } 
+    }
+</style>
 </head>
 <body>
 
@@ -332,15 +547,22 @@ $current_submission = $conn->query("SELECT * FROM categories WHERE category_id =
                         <li class="breadcrumb-item active" aria-current="page">Submit Results</li>
                     </ol>
                 </nav>
-                <div class="d-flex justify-content-between align-items-center">
-                    <div>
-                        <h1 class="page-title"><?php echo htmlspecialchars($category_info['category_name']); ?></h1>
-                        <p class="text-muted mb-0 mt-2">
-                            <i class="fas fa-gamepad me-1"></i> <strong><?php echo htmlspecialchars($category_info['game_name']); ?></strong> &nbsp;|&nbsp; 
-                            <i class="fas fa-trophy me-1"></i> <strong><?php echo htmlspecialchars($category_info['event_name']); ?></strong>
-                        </p>
-                    </div>
-                    <div>
+                <div class="d-flex justify-content-between align-items-end"> <div>
+        <div class="text-muted small mb-1 text-uppercase fw-bold" style="letter-spacing: 1px; font-size: 0.7rem;">
+            <?php echo htmlspecialchars($category_info['game_name']); ?>
+        </div>
+        
+        <h1 class="page-title display-6 fw-bold text-dark mb-2" style="letter-spacing: -0.5px;">
+            <?php echo htmlspecialchars($category_info['event_name']); ?>
+        </h1>
+
+        <div class="d-flex align-items-center gap-2">
+            <span class="badge bg-white text-dark border px-3 py-2 rounded-pill shadow-sm fw-bold">
+                <i class="fas fa-tags text-muted me-2"></i>
+                <?php echo htmlspecialchars($category_info['category_name']); ?>
+            </span>
+        </div>
+    </div>
                         <?php if ($is_locked): ?>
                             <span class="badge bg-success fs-6 px-3 py-2 rounded-pill"><i class="fas fa-check-circle me-1"></i> Approved & Locked</span>
                         <?php else: ?>
@@ -535,24 +757,29 @@ $current_submission = $conn->query("SELECT * FROM categories WHERE category_id =
 
                     </div>
 
-                    <?php if (!$is_locked): ?>
-                    <div class="col-12">
-                        <div class="card shadow-sm border-0">
-                            <div class="card-body p-4 d-flex justify-content-end gap-3 bg-white rounded">
-                                <button type="submit" name="action" value="save_pending" class="btn btn-secondary px-4 fw-bold">
-                                    <i class="fas fa-save me-2"></i> Save Draft
-                                </button>
-                                
-                                <button type="submit" name="action" value="submit_for_approval" class="btn btn-success px-4 fw-bold shadow-sm" 
-                                        onclick="return confirm('Ensure the Tally Sheet is uploaded. Continue?')">
-                                    <i class="fas fa-paper-plane me-2"></i> Submit for Approval
-                                </button>
-                            </div>
-                        </div>
-                    </div>
-                    <?php endif; ?>
+                    
                     
                 </div>
+                <?php if (!$is_locked): ?>
+        <div class="sticky-bottom bg-white border-top py-3 shadow-lg mt-4" style="z-index: 999;">
+            <div class="d-flex justify-content-between align-items-center px-3">
+                
+                <div class="text-muted small">
+                    <i class="fas fa-info-circle me-1"></i> Changes are not final until submitted.
+                </div>
+
+                <div class="d-flex gap-3">
+                    <button type="submit" name="action" value="save_pending" class="btn btn-light border fw-bold px-4 rounded-pill">
+                        Save Draft
+                    </button>
+                    <button type="submit" name="action" value="submit_for_approval" class="btn btn-primary fw-bold px-4 rounded-pill shadow-sm"
+                            onclick="return confirm('Ensure the Tally Sheet is uploaded. Continue?')">
+                        Submit Results <i class="fas fa-arrow-right ms-2"></i>
+                    </button>
+                </div>
+            </div>
+        </div>
+    <?php endif; ?>
             </form>
         </div>
     </div>

@@ -349,291 +349,360 @@ $status_options = [
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" rel="stylesheet">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=Poppins:wght@400;500;600;700;800&display=swap" rel="stylesheet">
     <style>
-        /* --- GLOBAL VARIABLES --- */
-        :root { 
-            --sidebar-width: 260px; 
-            --sidebar-collapsed-width: 80px; /* NEW: Compact width */
-            --header-height: 82px; 
-            --transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1); 
-            --card-shadow: 0 5px 20px rgba(0, 0, 0, 0.08); 
-            --bg-light: #F8F9FA; 
-            --bs-purple: #6f42c1; 
-            --bs-info: #0dcaf0;
-            --primary-gradient: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            --bs-table-bg-light-danger: #fbe9eb;
-            --bs-table-border-light-danger: #f5c6cb;
-        }
-        
-        body { 
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            background-attachment: fixed;
-            margin: 0; 
-            padding: 0; 
-            min-height: 100vh;
-            font-family: 'Inter', sans-serif; 
-            display: flex; 
-            flex-direction: column; 
-        }
-        
-        /* Glassmorphism Background */
-        body::before {
-            content: '';
-            position: fixed;
-            top: 0; left: 0; right: 0; bottom: 0;
-            background: radial-gradient(circle at 20% 50%, rgba(120, 119, 198, 0.3), transparent 50%),
-                        radial-gradient(circle at 80% 80%, rgba(99, 102, 241, 0.2), transparent 50%);
-            pointer-events: none;
-            z-index: 0;
-        }
-        
-        /* --- NAVBAR --- */
-        .navbar { 
-            background: rgba(26, 26, 26, 0.95) !important;
-            backdrop-filter: blur(10px);
-            box-shadow: 0 8px 32px rgba(0,0,0,0.2); 
-            padding: 1rem 1.5rem; 
-            height: var(--header-height); 
-            position: fixed; 
-            top: 0; left: 0; right: 0; 
-            z-index: 1050;
-            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
-        }
-        
-        .navbar-brand .brand-heading { 
-            font-family: 'Poppins', sans-serif; 
-            font-weight: 700;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
-            background-clip: text;
-        }
-        
-        .user-dropdown .dropdown-toggle { 
-            color: white; 
-            display: flex; align-items: center; 
-            text-decoration: none; 
-            padding: 8px 16px; 
-            border-radius: 50px;
-            background: rgba(255, 255, 255, 0.1);
-            backdrop-filter: blur(10px);
-            transition: all 0.3s ease;
-            border: 1px solid rgba(255, 255, 255, 0.2);
-        }
-        
-        .user-dropdown .dropdown-toggle:hover {
-            background: rgba(255, 255, 255, 0.2);
-            transform: translateY(-2px);
-            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.3);
-        }
-        
-        .user-dropdown .dropdown-toggle img { 
-            width: 36px; height: 36px; 
-            border-radius: 50%; object-fit: cover; margin-right: 10px;
-            border: 2px solid rgba(255, 255, 255, 0.3);
-        }
-        
-        .navbar-profile-icon { 
-            width: 36px; height: 36px; font-size: 36px; 
-            text-align: center; line-height: 1; border-radius: 50%; margin-right: 10px; 
-            color: rgba(255,255,255,0.8); 
-        }
+    /* =========================================
+       1. CORE VARIABLES & SETUP
+       ========================================= */
+    :root { 
+        --sidebar-width: 260px; 
+        --header-height: 82px; 
+        --transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1); 
+        --card-shadow: 0 4px 12px rgba(0, 0, 0, 0.05); 
+        --bg-light: #f4f6f8; /* Director's clean gray */
+        --text-dark: #2c3e50;
+        --accent-color: #1abc9c;
+        --primary-gradient: linear-gradient(135deg, #2c3e50 0%, #4ca1af 100%);
+    }
 
-        /* --- EXPANDABLE SIDEBAR LOGIC --- */
-        .sidebar { 
-            width: var(--sidebar-collapsed-width); /* Start Compact */
-            position: fixed; 
-            top: var(--header-height); 
-            left: 0; 
-            height: calc(100vh - var(--header-height)); 
-            background: rgba(44, 62, 80, 0.95);
-            backdrop-filter: blur(10px);
-            color: white; 
-            box-shadow: 5px 0 30px rgba(0,0,0,0.3); 
-            z-index: 1040; 
-            transition: width 0.3s cubic-bezier(0.4, 0, 0.2, 1); 
-            overflow-x: hidden; 
-            white-space: nowrap; /* Prevent text wrapping */
-            border-right: 1px solid rgba(255, 255, 255, 0.1);
-        }
-        
-        /* Expand on Hover */
-        .sidebar:hover {
-            width: var(--sidebar-width);
-        }
-        
-        .sidebar-nav { padding: 30px 0; }
-        
-        .sidebar-nav .nav-link { 
-            color: rgba(255, 255, 255, 0.7); 
-            font-size: 1.05rem; 
-            font-weight: 500; 
-            padding: 15px 0; /* Adjusted padding */
-            padding-left: 25px; /* Fixed left padding for icon */
-            transition: all 0.2s ease; 
-            border-left: 5px solid transparent; 
-            margin: 2px 0; 
-            display: flex; 
-            align-items: center; 
-            text-decoration: none;
-            justify-content: flex-start;
-        }
-        
-        .sidebar-nav .nav-link i { 
-            width: 30px; 
-            text-align: center; 
-            flex-shrink: 0; 
-            font-size: 1.1em;
-            margin-right: 15px; /* Space between icon and text */
-            transition: transform 0.3s ease;
-        }
-        
-        /* Text fading logic */
-        .sidebar-nav .nav-link span {
-            opacity: 0;
-            transition: opacity 0.2s ease;
-            display: inline-block;
-        }
-        
-        .sidebar:hover .nav-link span {
-            opacity: 1;
-            transition-delay: 0.1s;
-        }
-        
-        .sidebar-nav .nav-link:hover {
-            color: white; 
-            background: rgba(255, 255, 255, 0.05); 
-            border-left-color: #667eea;
-        }
-        
-        .sidebar-nav .nav-link:hover i { transform: scale(1.2); }
-        
-        .sidebar-nav .nav-link.active { 
-            color: white; 
-            background: linear-gradient(90deg, rgba(102, 126, 234, 0.2), transparent); 
-            border-left-color: #667eea; 
-            font-weight: 600;
-        }
+    body { 
+        background-color: var(--bg-light); 
+        margin: 0; 
+        padding: 0; 
+        min-height: 100vh; 
+        font-family: 'Inter', sans-serif; 
+        display: flex; 
+        flex-direction: column; 
+    }
 
-        /* --- MAIN CONTENT & FOOTER --- */
-        .main-content { 
-            flex: 1 0 auto; 
-            /* Fix margin to collapsed width so it doesn't jump */
-            margin-left: var(--sidebar-collapsed-width); 
-            width: calc(100% - var(--sidebar-collapsed-width));
-            padding: 30px; 
-            margin-top: var(--header-height); 
-            transition: margin-left 0.3s ease; 
-            position: relative;
-            z-index: 1;
-        }
-        
-        footer {
-            flex-shrink: 0;
-            background: rgba(44, 62, 80, 0.95) !important;
-            backdrop-filter: blur(10px);
-            box-shadow: 0 -2px 20px rgba(0,0,0,0.2);
-            /* Fix padding to collapsed width */
-            padding-left: var(--sidebar-collapsed-width);
-            transition: padding-left 0.3s ease;
-            position: relative;
-            z-index: 1041;
-            border-top: 1px solid rgba(255, 255, 255, 0.1);
-        }
+    /* Remove the old glassmorphism background effect */
+    /* body::before { display: none; } */
 
-        /* --- PAGE ELEMENTS --- */
-        /* Green Game Heading (Requested) */
-        .game-heading { 
-            font-family: 'Poppins', sans-serif; 
-            font-weight: 600; 
-            color: #28a745; /* Solid Green */
-            border-bottom: 3px solid #28a745; /* Solid Green Underline */
-            padding-bottom: 8px; 
-            display: inline-block;
-            margin-bottom: 2rem;
-            margin-top: 1rem;
-            font-size: 2rem;
-        }
-        
-        .page-header {
-            background: rgba(255, 255, 255, 0.95);
-            backdrop-filter: blur(10px);
-            border-radius: 20px;
-            padding: 2rem;
-            margin-bottom: 2rem;
-            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.1);
-            border: 1px solid rgba(255, 255, 255, 0.3);
-            position: relative;
-            overflow: hidden;
-        }
-        
-        .page-header::before {
-            content: ''; position: absolute; top: 0; left: 0; right: 0; height: 5px;
-            background: linear-gradient(90deg, #667eea 0%, #764ba2 100%);
-        }
-        
-        .page-header h1 {
-            font-family: 'Poppins', sans-serif; font-weight: 700;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text;
-            margin: 0; font-size: 2.5rem;
-        }
-        
-        .breadcrumb { background: transparent; padding: 0; margin-bottom: 0; }
-        .breadcrumb-item a { color: #667eea; text-decoration: none; transition: all 0.3s ease; }
-        .breadcrumb-item a:hover { color: #764ba2; transform: translateX(2px); }
-        
-        /* Help Section */
-        .help-section {
-            background: rgba(255, 255, 255, 0.95);
-            backdrop-filter: blur(10px);
-            border-radius: 15px;
-            margin-bottom: 2rem;
-            box-shadow: 0 5px 25px rgba(0, 0, 0, 0.08);
-            border: 1px solid rgba(102, 126, 234, 0.2);
-            overflow: hidden;
-        }
-        .help-header {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            padding: 1rem 1.5rem; cursor: pointer;
-            display: flex; align-items: center; justify-content: space-between;
-            color: white;
-        }
-        .help-header h5 { margin: 0; font-weight: 600; display: flex; align-items: center; gap: 10px; }
-        .help-toggle { transition: transform 0.3s ease; }
-        .help-toggle.collapsed { transform: rotate(180deg); }
-        .help-content { padding: 1.5rem; background: white; }
-        .help-content li { margin-bottom: 0.75rem; line-height: 1.6; }
-        
-        /* Global Bootstrap Overrides */
-        .form-control, .form-select {
-            border-radius: 10px; border: 2px solid rgba(102, 126, 234, 0.2); padding: 0.75rem 1rem;
-        }
-        .form-control:focus, .form-select:focus {
-            border-color: #667eea; box-shadow: 0 0 0 0.2rem rgba(102, 126, 234, 0.25);
-        }
-        .modal-content {
-            border-radius: 20px; border: none; box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
-        }
-        .modal-header {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; border-radius: 20px 20px 0 0;
-        }
-        .modal-header .btn-close { filter: brightness(0) invert(1); }
-        
-        /* Scrollbar */
-        ::-webkit-scrollbar { width: 8px; height: 8px; }
-        ::-webkit-scrollbar-track { background: rgba(0, 0, 0, 0.1); }
-        ::-webkit-scrollbar-thumb { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); border-radius: 10px; }
+    /* =========================================
+       2. NAVBAR & SIDEBAR (Director Style)
+       ========================================= */
+    
+    /* Navbar */
+    .navbar { 
+        background: linear-gradient(135deg, #1a1a1a 0%, #2d2d2d 100%) !important; 
+        box-shadow: 0 4px 20px rgba(0,0,0,0.15); 
+        padding: 1rem 1.5rem; 
+        height: var(--header-height); 
+        position: fixed; 
+        top: 0; left: 0; right: 0; 
+        z-index: 1050; 
+        border-bottom: none;
+    }
 
-        /* Responsive Mobile */
-        @media (max-width: 992px) {
-            .sidebar { width: 0; } /* Hidden by default on mobile */
-            .sidebar:hover { width: var(--sidebar-width); } /* Can slide out */
-            .sidebar.show { width: var(--sidebar-width); } /* JS Class toggle */
-            .sidebar.show .nav-link span { opacity: 1; }
-            
-            .main-content, footer { margin-left: 0; width: 100%; }
-        }
-    </style>
+    .user-dropdown .dropdown-toggle { 
+        color: white; 
+        display: flex; align-items: center; 
+        text-decoration: none; 
+        padding: 8px 12px; 
+        border-radius: 8px; 
+        transition: var(--transition);
+        background: transparent; 
+        border: none;
+    }
+    .user-dropdown .dropdown-toggle:hover { 
+        background-color: rgba(255, 255, 255, 0.1); 
+    }
+    .user-dropdown .dropdown-toggle img { 
+        width: 36px; height: 36px; 
+        border-radius: 50%; object-fit: cover; margin-right: 10px; 
+        border: none;
+    }
+
+    /* --- CLEAN HEADER CARD STYLE --- */
+.page-header {
+    background: white;
+    border-radius: 16px;
+    padding: 24px 30px;
+    margin-bottom: 30px;
+    box-shadow: var(--card-shadow);
+    border: 1px solid rgba(0,0,0,0.05);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 20px;
+}
+
+.page-header-content nav {
+    margin-bottom: 5px;
+}
+
+.page-header-content h2 {
+    font-family: 'Inter', sans-serif;
+    font-weight: 800;
+    font-size: 1.75rem;
+    color: var(--text-dark);
+    margin: 0;
+    letter-spacing: -0.5px;
+}
+
+.page-header-content p {
+    color: #64748b;
+    margin: 5px 0 0 0;
+    font-size: 0.95rem;
+}
+
+/* Breadcrumb Tweaks */
+.breadcrumb-item a { color: #64748b; text-decoration: none; font-weight: 500; font-size: 0.85rem; }
+.breadcrumb-item.active { font-size: 0.85rem; color: #94a3b8; }
+.breadcrumb-item + .breadcrumb-item::before { color: #cbd5e1; }
+
+/* Help Button Style */
+.btn-guide {
+    background: #f1f5f9;
+    color: #475569;
+    border: none;
+    padding: 10px 20px;
+    border-radius: 50px;
+    font-weight: 600;
+    font-size: 0.9rem;
+    transition: all 0.2s;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+.btn-guide:hover {
+    background: #e2e8f0;
+    color: #1e293b;
+    transform: translateY(-2px);
+}
+
+    /* Sidebar */
+    .sidebar { 
+        width: var(--sidebar-width); 
+        position: fixed; 
+        top: var(--header-height); 
+        left: 0; 
+        height: calc(100vh - var(--header-height)); 
+        background: #2c3e50; /* Solid Dark Blue */
+        color: white; 
+        box-shadow: 5px 0 15px rgba(0,0,0,0.2); 
+        z-index: 1040; 
+        transition: width var(--transition); 
+        overflow-y: auto; 
+    }
+
+    .sidebar-nav { padding: 20px 0; }
+    .sidebar-nav .nav-link { 
+        color: rgba(255, 255, 255, 0.7); 
+        font-size: 1.05rem; 
+        font-weight: 500; 
+        padding: 12px 25px; 
+        transition: var(--transition); 
+        border-left: 5px solid transparent; 
+        margin: 2px 0; 
+        display: flex; align-items: center; 
+        text-decoration: none; 
+    }
+    .sidebar-nav .nav-link i { 
+        width: 30px; text-align: center; flex-shrink: 0; font-size: 0.95em; margin-right: 10px;
+    }
+    .sidebar-nav .nav-link:hover { 
+        color: white; 
+        background: rgba(255, 255, 255, 0.05); 
+        border-left-color: var(--accent-color); 
+    }
+    .sidebar-nav .nav-link.active { 
+        color: white; 
+        background: rgba(255, 255, 255, 0.1); 
+        border-left-color: #3498db; 
+        font-weight: 600; 
+    }
+
+    /* Main Content */
+    .main-content { 
+        flex: 1 0 auto; 
+        padding: 30px; 
+        margin-top: var(--header-height); 
+        margin-left: var(--sidebar-width); 
+        transition: margin-left var(--transition); 
+        min-height: calc(100vh - var(--header-height)); 
+    }
+
+    /* Footer */
+    footer {
+        flex-shrink: 0;
+        box-shadow: 0 -2px 10px rgba(0,0,0,0.1);
+        padding-left: var(--sidebar-width);
+        transition: padding-left var(--transition);
+        position: relative;
+        z-index: 1041;
+    }
+    /* Main Footer Styles */
+    .footer-main {
+        flex-shrink: 0;
+        background: linear-gradient(135deg, #1a1a1a 0%, #2d2d2d 100%);
+        color: rgba(255,255,255,0.7);
+        padding: 3rem 0 2rem 0;
+        box-shadow: 0 -4px 20px rgba(0,0,0,0.15);
+        position: relative;
+        z-index: 1;
+    }
+    .footer-main .footer-logo-group {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        margin-bottom: 1rem;
+    }
+    .footer-main .footer-logo-group img {
+        height: 50px !important;
+        width: 50px !important;
+        object-fit: contain;
+    }
+    .footer-main .footer-logo-group h5 {
+        margin: 0;
+        font-size: 1.1rem;
+        font-weight: 700;
+        color: #fff;
+        line-height: 1.2;
+    }
+    .footer-main p { font-size: 0.9rem; max-width: 400px; }
+    .footer-main h6 {
+        font-family: 'Poppins', sans-serif;
+        color: #fff;
+        font-weight: 600;
+        margin-bottom: 1rem;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+    }
+    .footer-main .footer-links { list-style: none; padding: 0; }
+    .footer-main .footer-links li { margin-bottom: 0.5rem; }
+    .footer-main .footer-links a { text-decoration: none; color: rgba(255,255,255,0.7); transition: var(--transition); }
+    .footer-main .footer-links a:hover { color: #fff; padding-left: 5px; }
+    .footer-bottom {
+        border-top: 1px solid rgba(255,255,255,0.1);
+        padding-top: 1.5rem;
+        margin-top: 2rem;
+        text-align: center;
+        font-size: 0.85rem;
+    }
+
+    /* Mobile Tweaks */
+    @media (max-width: 991px) {
+        .footer-main { text-align: center; }
+        .footer-main .footer-logo-group { justify-content: center; }
+        .footer-main .row > div { margin-bottom: 2rem; }
+        .footer-main .row > div:last-child { margin-bottom: 0; }
+    }
+
+    @media (max-width: 992px) { 
+        .sidebar { left: -260px; } 
+        .sidebar.show { left: 0; } 
+        .main-content, footer { margin-left: 0; } 
+    }
+
+    /* Responsive */
+    @media (max-width: 992px) {
+        .sidebar { left: -260px; }
+        .sidebar.show { left: 0; }
+        .main-content, footer { margin-left: 0; }
+    }
+
+    /* =========================================
+       3. MODERN EVENT CARDS (New Interface)
+       ========================================= */
+    
+    /* The Main Event Card */
+    .event-card-modern {
+        background: white;
+        border-radius: 16px;
+        border: 1px solid rgba(0,0,0,0.05);
+        box-shadow: var(--card-shadow);
+        margin-bottom: 20px;
+        overflow: hidden;
+        transition: transform 0.2s, box-shadow 0.2s;
+    }
+    .event-card-modern:hover {
+        transform: translateY(-3px);
+        box-shadow: 0 10px 25px rgba(0,0,0,0.1);
+    }
+
+    /* Card Header */
+    .event-card-header {
+        padding: 20px;
+        border-bottom: 1px solid #f1f3f5;
+        display: flex;
+        align-items: center;
+        gap: 15px;
+        background: white;
+    }
+
+    /* Icon Box */
+    .event-icon-box {
+        width: 50px; height: 50px;
+        border-radius: 12px;
+        background: rgba(26, 188, 156, 0.1); /* Light Teal */
+        color: var(--accent-color);
+        display: flex; align-items: center; justify-content: center;
+        font-size: 1.5rem;
+        flex-shrink: 0;
+    }
+
+    /* Category Rows */
+    .category-row {
+        padding: 15px 20px;
+        border-bottom: 1px solid #f8f9fa;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        transition: background 0.2s;
+    }
+    .category-row:hover {
+        background: #fdfdfd;
+    }
+    .category-row:last-child { 
+        border-bottom: none; 
+    }
+
+    /* Status Badges */
+    .badge-modern {
+        font-weight: 500;
+        padding: 5px 12px;
+        border-radius: 30px;
+        font-size: 0.75rem;
+        border: 1px solid transparent;
+    }
+    .badge-modern.upcoming { background: #f1f3f5; color: #6c757d; border-color: #e9ecef; }
+    .badge-modern.ongoing { background: #dcfce7; color: #166534; border-color: #bbf7d0; }
+    .badge-modern.completed { background: #fff7ed; color: #9a3412; border-color: #ffedd5; }
+
+    /* Bootstrap Overrides for Cleaner Look */
+    .btn-outline-primary {
+        color: var(--accent-color);
+        border-color: var(--accent-color);
+    }
+    .btn-outline-primary:hover {
+        background-color: var(--accent-color);
+        border-color: var(--accent-color);
+        color: white;
+    }
+    
+    .form-control, .form-select {
+        border-radius: 8px;
+        border: 1px solid #dee2e6;
+        padding: 0.6rem 1rem;
+    }
+    .form-control:focus {
+        border-color: var(--accent-color);
+        box-shadow: 0 0 0 0.2rem rgba(26, 188, 156, 0.25);
+    }
+    
+    .modal-content {
+        border-radius: 16px;
+        border: none;
+        box-shadow: 0 20px 60px rgba(0,0,0,0.2);
+    }
+    .modal-header {
+        background: linear-gradient(135deg, #2c3e50 0%, #34495e 100%);
+        color: white;
+        border-radius: 16px 16px 0 0;
+    }
+    .modal-header .btn-close { filter: brightness(0) invert(1); }
+
+</style>
 </head>
 <body>
 
@@ -690,55 +759,21 @@ $status_options = [
             
             <!-- Page Header -->
             <div class="page-header">
-                <nav aria-label="breadcrumb" class="mb-3">
-                    <ol class="breadcrumb">
-                        <li class="breadcrumb-item"><a href="event_manager_dashboard.php"><i class="fas fa-home me-1"></i>Dashboard</a></li>
-                        <li class="breadcrumb-item active" aria-current="page">My Assigned Events</li>
-                    </ol>
-                </nav>
-                <h1><i class="fas fa-trophy me-3"></i>My Assigned Events</h1>
-            </div>
-            
-            <!-- Collapsible Help Section -->
-            <div class="help-section">
-                <div class="help-header" onclick="toggleHelp()">
-                    <h5>
-                        <i class="fas fa-question-circle"></i>
-                        How to Manage Your Events?
-                    </h5>
-                    <i class="fas fa-chevron-up help-toggle collapsed" id="helpToggle"></i>
+                <div class="page-header-content">
+                    <nav aria-label="breadcrumb">
+                        <ol class="breadcrumb">
+                            <li class="breadcrumb-item"><a href="event_manager_dashboard.php">Dashboard</a></li>
+                            <li class="breadcrumb-item active" aria-current="page">My Assigned Events</li>
+                        </ol>
+                    </nav>
+                    <h2>My Assigned Events</h2>
+                    <p>Manage categories, start competitions, and submit official results.</p>
                 </div>
                 
-                <div class="help-content" id="helpContent" style="display: none;">
-                    <p class="mb-3">The <strong>Actions</strong> column guides you through the official medal tallying process.</p>
-                    <ul class="list-unstyled">
-                        
-                        <li class="mb-2">
-                            <i class="fas fa-magic text-primary me-2"></i><strong>1. Initialize:</strong> 
-                            For new events, click the <span class="badge bg-primary">Initialize Results Form</span> button to prepare the tally sheet.
-                        </li>
-
-                        <li class="mb-2">
-                            <i class="fas fa-play-circle text-success me-2"></i><strong>2. Start Event:</strong>
-                            Click <span class="badge bg-success">Start Tallying</span> when the event begins. This marks the status as 'Ongoing'.
-                        </li>
-
-                        <li class="mb-2">
-                            <i class="fas fa-pen text-warning me-2"></i><strong>3. Enter Results:</strong>
-                            Click <span class="badge bg-warning text-dark">Enter Results</span> to select the Gold, Silver, and Bronze winners.
-                            <br><small class="text-danger ms-4"><i class="fas fa-camera me-1"></i> <strong>Requirement:</strong> You must upload a photo of the signed <strong>Official Tally Sheet</strong> as evidence.</small>
-                        </li>
-                        
-                        <li class="mb-2">
-                            <i class="fas fa-check-double text-info me-2"></i><strong>4. Submit & Verify:</strong> 
-                            Once drafted, click <strong>Submit for Approval</strong> inside the form. The Sports Director will verify your uploaded evidence against the winners you selected.
-                        </li>
-
-                        <li class="mb-2">
-                            <i class="fas fa-layer-group text-secondary me-2"></i><strong>Divisions:</strong> 
-                            Events default to a "Single Division". If you need separate categories (e.g., Men/Women), use the <strong>+ Add Category</strong> button.
-                        </li>
-                    </ul>
+                <div class="page-header-actions">
+                    <button class="btn-guide" data-bs-toggle="modal" data-bs-target="#helpModal">
+                        <i class="fas fa-book-open text-primary"></i> Guide: How to Manage?
+                    </button>
                 </div>
             </div>
             
@@ -761,9 +796,41 @@ $status_options = [
         </div>
     </div>
     
-    <footer class="bg-dark text-white py-4">
-        <div class="text-center">
-            <small>&copy; <?php echo date("Y"); ?> PIT SPORTS TALLYING. All rights reserved.</small>
+    <footer class="footer-main">
+        <div class="container">
+            <div class="row">
+                <div class="col-lg-5 col-md-12 mb-4 mb-lg-0">
+                    <div class="footer-logo-group">
+                        <img src="imageslogo.png" alt="Logo">
+                        <img src="images/Cote.png" alt="Logo">
+                        <h5> PIT SILAKAS MEDAL TALLY</h5>
+                    </div>
+                    <p>The official live medal tallying system for the Palompon Institute of Technology. Bringing you real-time results, event schedules, and team standings.</p>
+                </div>
+                <div class="col-lg-3 col-md-6 mb-4 mb-md-0">
+                    <h6>Quick Links</h6>
+                    <ul class="footer-links">
+                        <li><a href="home.php">Home (Standings)</a></li>
+                        <li><a href="Eventpage.php">Events Schedule</a></li>
+                        <li><a href="college_team.php">Teams & Rosters</a></li>
+                    </ul>
+                </div>
+                <div class="col-lg-4 col-md-6">
+                    <h6>Contact Us</h6>
+                    <div style="color: rgba(255,255,255,0.7); font-size: 0.9rem; line-height: 1.6;">
+                        <p class="mb-1 fw-bold text-white">Palompon Institute of Technology</p>
+                        <p class="mb-2">Evangelista Street, Brgy. Guiwan II,<br>Palompon, Leyte 6538</p>
+                        <p class="mb-0">
+                            <i class="fas fa-phone-alt me-2"></i>(053) 555-9841<br>
+                            <i class="fas fa-envelope me-2"></i>op@pit.edu.ph
+                        </p>
+                    </div>
+                </div>
+            </div>
+            <div class="footer-bottom">
+                <small>&copy; <?php echo date("Y"); ?> PIT SILAKAS MEDAL TALLY. All rights reserved.</small><br>
+                <small>Developed by Jayvee Baybyon</small>
+            </div>
         </div>
     </footer>
     
@@ -906,10 +973,20 @@ $status_options = [
                     <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
                 </div>
                 <div class="modal-body">
-                    <p class="mb-2">The administrator left the following note for: <strong id="note_category_name"></strong></p>
-                    <div id="note_text" class="modal-body-note">
+                    <p class="mb-3 text-muted small">
+                        <i class="fas fa-info-circle me-1"></i> The administrator rejected this submission for: 
+                        <strong id="note_category_name" class="text-dark"></strong>
+                    </p>
+                    
+                    <div class="p-3 bg-light rounded border d-flex align-items-start">
+                        <i class="fas fa-comment-dots text-secondary me-3 mt-1 fs-5"></i>
+                        <div>
+                            <h6 class="fw-bold text-dark mb-1">Administrator's Note:</h6>
+                            <p id="note_text" class="mb-0 text-secondary small"></p>
+                        </div>
                     </div>
                 </div>
+
                 <div class="modal-footer">
                     <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
                 </div>
@@ -917,6 +994,48 @@ $status_options = [
         </div>
     </div>
     
+
+    <div class="modal fade" id="helpModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered modal-lg">
+        <div class="modal-content border-0 shadow-lg">
+            <div class="modal-header border-bottom-0 pb-0">
+                <h5 class="modal-title fw-bold text-dark"><i class="fas fa-info-circle text-primary me-2"></i>Event Management Guide</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body p-4">
+                <div class="row g-4">
+                    <div class="col-md-6">
+                        <div class="p-3 bg-light rounded h-100 border">
+                            <h6 class="fw-bold text-success mb-2"><i class="fas fa-play-circle me-2"></i>1. Start Event</h6>
+                            <p class="small text-muted mb-0">When the competition begins, click the <span class="badge bg-success">Start</span> button. This changes the status to 'Ongoing' and lets admins know the event is live.</p>
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="p-3 bg-light rounded h-100 border">
+                            <h6 class="fw-bold text-warning text-dark mb-2"><i class="fas fa-flag-checkered me-2"></i>2. Finish Event</h6>
+                            <p class="small text-muted mb-0">Once the game is over, click <span class="badge bg-warning text-dark">Finish</span>. This locks the event and prepares the system for result entry.</p>
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="p-3 bg-light rounded h-100 border">
+                            <h6 class="fw-bold text-primary mb-2"><i class="fas fa-clipboard-list me-2"></i>3. Submit Results</h6>
+                            <p class="small text-muted mb-0">Click the <strong>Results</strong> button. You will select the Gold, Silver, and Bronze winners and <strong>must upload a photo</strong> of the signed tally sheet.</p>
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="p-3 bg-light rounded h-100 border">
+                            <h6 class="fw-bold text-danger mb-2"><i class="fas fa-exclamation-circle me-2"></i>4. Approval</h6>
+                            <p class="small text-muted mb-0">After submission, the Sports Director will review your evidence. If rejected, check the "Notes" section for the reason.</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer border-top-0 pt-0">
+                <button type="button" class="btn btn-secondary px-4 rounded-pill" data-bs-dismiss="modal">Got it</button>
+            </div>
+        </div>
+    </div>
+</div>
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
     <script>
         // Help Section Toggle
@@ -1204,18 +1323,28 @@ $status_options = [
                 });
             }
 
-            // --- Modal logic for "Note" Modal ---
+            // --- Modal logic for "Note" Modal (UPDATED) ---
             var noteModal = document.getElementById('noteModal');
             if (noteModal) {
                 noteModal.addEventListener('show.bs.modal', function (event) {
                     var button = event.relatedTarget;
+                    
+                    // 1. Get Data
                     var categoryName = button.getAttribute('data-category-name');
+                    var eventName = button.getAttribute('data-event-name'); // New Attribute
                     var note = button.getAttribute('data-note');
                     
+                    // 2. Format the Title: "Cricket - Men's"
+                    var fullTitle = categoryName;
+                    if (eventName) {
+                        fullTitle = eventName + ' - ' + categoryName;
+                    }
+
+                    // 3. Update Modal Content
                     var modalCategoryName = noteModal.querySelector('#note_category_name');
                     var modalNoteText = noteModal.querySelector('#note_text');
                     
-                    modalCategoryName.textContent = categoryName;
+                    modalCategoryName.textContent = fullTitle;
                     modalNoteText.textContent = note;
                 });
             }

@@ -758,23 +758,23 @@ elseif (stripos($row['game_name'], 'Other') !== false) {
                 <div class="tab-content">
                     <!-- PENDING TAB -->
                     <div class="tab-pane fade show active" id="pending">
-    <div id="pending-container" class="p-4" style="background: #f8f9fa;">
-        <?php if (empty($pending_results)): ?>
-            <div class="text-center py-5 text-muted">
-                <i class="fas fa-inbox fa-3x mb-3 opacity-25"></i><br>All caught up! No pending results.
-            </div>
-        <?php else: ?>
+                        <div id="pending-container" class="p-4" style="background: #f8f9fa;">
+                            <?php if (empty($pending_results)): ?>
+                                <div class="text-center py-5 text-muted">
+                                    <i class="fas fa-inbox fa-3x mb-3 opacity-25"></i><br>All caught up! No pending results.
+                                </div>
+                            <?php else: ?>
             <?php foreach ($pending_results as $row): 
                 // Copy the EXACT Logic from Part 1 here for the initial load
                 // 1. Full Names
-$gold = getCollegeName($row['gold_winner_college_id'], $college_map);
-$silver = getCollegeName($row['silver_winner_college_id'], $college_map);
-$bronze = getCollegeName($row['bronze_winner_college_id'], $college_map);
+                $gold = getCollegeName($row['gold_winner_college_id'], $college_map);
+                $silver = getCollegeName($row['silver_winner_college_id'], $college_map);
+                $bronze = getCollegeName($row['bronze_winner_college_id'], $college_map);
 
-// 2. Codes for Preview
-$gold_code = getCollegeCode($row['gold_winner_college_id'], $college_code_map);
-$silver_code = getCollegeCode($row['silver_winner_college_id'], $college_code_map);
-$bronze_code = getCollegeCode($row['bronze_winner_college_id'], $college_code_map);
+                // 2. Codes for Preview
+                $gold_code = getCollegeCode($row['gold_winner_college_id'], $college_code_map);
+                $silver_code = getCollegeCode($row['silver_winner_college_id'], $college_code_map);
+                $bronze_code = getCollegeCode($row['bronze_winner_college_id'], $college_code_map);
                 $evidence = !empty($row['tally_sheet_url']) ? '../' . htmlspecialchars($row['tally_sheet_url']) : '';
                 
                 // --- SMART ICON LOGIC ---
@@ -814,12 +814,12 @@ $bronze_code = getCollegeCode($row['bronze_winner_college_id'], $college_code_ma
                     }
             ?>
             <div class="card mb-3 shadow-sm border-0" style="border-left: 5px solid #198754 !important; border-radius: 10px;">
-    <div class="card-body d-flex align-items-center justify-content-between p-4 flex-wrap gap-3">
-        
-        <div class="d-flex align-items-center" style="flex: 1; min-width: 250px;">
-            <div class="bg-success bg-opacity-10 rounded-circle p-3 me-3 d-flex align-items-center justify-content-center" style="width: 60px; height: 60px;">
-                <i class="<?= $icon ?> fa-lg text-success"></i>
-            </div>
+                <div class="card-body d-flex align-items-center justify-content-between p-4 flex-wrap gap-3">
+                    
+                    <div class="d-flex align-items-center" style="flex: 1; min-width: 250px;">
+                        <div class="bg-success bg-opacity-10 rounded-circle p-3 me-3 d-flex align-items-center justify-content-center" style="width: 60px; height: 60px;">
+                            <i class="<?= $icon ?> fa-lg text-success"></i>
+                        </div>
                         <div>
                             <h6 class="mb-1 text-uppercase text-muted small fw-bold" style="letter-spacing: 1px;"><?= htmlspecialchars($row['game_name']) ?></h6>
                             <h5 class="mb-1 fw-bold text-dark"><?= htmlspecialchars($row['event_name']) ?></h5>
@@ -830,50 +830,50 @@ $bronze_code = getCollegeCode($row['bronze_winner_college_id'], $college_code_ma
                     <div class="d-flex flex-column justify-content-center border-start border-end px-4 d-none d-xl-flex" style="flex: 1;">
                         <small class="text-muted text-uppercase fw-bold mb-2" style="font-size: 0.7rem;">Result Preview</small>
                         <div class="d-flex gap-3">
-    <div class="d-flex align-items-center" title="Gold">
-        <i class="fas fa-medal text-warning me-2"></i> <span class="fw-bold text-dark"><?= $gold_code ?></span>
-    </div>
-    <div class="d-flex align-items-center" title="Silver">
-        <i class="fas fa-medal text-secondary me-2"></i> <span class="fw-bold text-muted"><?= $silver_code ?></span>
-    </div>
-    <div class="d-flex align-items-center" title="Bronze">
-        <i class="fas fa-medal me-2" style="color: #cd7f32;"></i> <span class="fw-bold text-muted"><?= $bronze_code ?></span>
-    </div>
-</div>
+                            <div class="d-flex align-items-center" title="Gold">
+                                <i class="fas fa-medal text-warning me-2"></i> <span class="fw-bold text-dark"><?= $gold_code ?></span>
+                            </div>
+                            <div class="d-flex align-items-center" title="Silver">
+                                <i class="fas fa-medal text-secondary me-2"></i> <span class="fw-bold text-muted"><?= $silver_code ?></span>
+                            </div>
+                            <div class="d-flex align-items-center" title="Bronze">
+                                <i class="fas fa-medal me-2" style="color: #cd7f32;"></i> <span class="fw-bold text-muted"><?= $bronze_code ?></span>
+                            </div>
+                        </div>
                     </div>
 
                     <div class="d-flex align-items-center justify-content-end gap-3" style="flex: 1; min-width: 280px;">
                         <div class="text-end me-4" style="min-width: 150px;">
-    <div class="text-uppercase text-muted fw-bold mb-1" style="font-size: 0.65rem; letter-spacing: 1px;">Submitted By</div>
-<div class="fw-bold text-dark text-truncate mb-1" 
-     style="font-size: 1rem; max-width: 150px; margin-left: auto;" 
-     title="<?= htmlspecialchars($row['submitted_by_name'] ?? 'Unknown') ?>">
-    <?= htmlspecialchars($row['submitted_by_name'] ?? 'Unknown') ?>
-</div>
-    <div class="text-secondary small" style="font-size: 0.75rem;">
-        <i class="far fa-clock me-1"></i> <?= date('M d, h:i A', strtotime($row['submission_date'])) ?>
-    </div>
-</div>
-                        
-                        <button type="button" class="btn btn-primary px-4 py-2 rounded-pill shadow-sm fw-bold review-btn"
-    data-bs-toggle="modal" data-bs-target="#verificationModal"
-    data-id="<?= $row['category_id'] ?>"
-    data-event="<?= htmlspecialchars($row['event_name'] . ' - ' . $row['category_name']) ?>"
-    data-submitted-by="<?= htmlspecialchars($row['submitted_by_name'] ?? 'Unknown') ?>"
-    data-gold-name="<?= $gold ?>" data-gold-count="<?= $row['gold_count'] ?>"
-    data-silver-name="<?= $silver ?>" data-silver-count="<?= $row['silver_count'] ?>"
-    data-bronze-name="<?= $bronze ?>" data-bronze-count="<?= $row['bronze_count'] ?>"
-    data-evidence="<?= $evidence ?>">
-    Review <i class="fas fa-arrow-right ms-2"></i>
-</button>
-                    </div>
+                            <div class="text-uppercase text-muted fw-bold mb-1" style="font-size: 0.65rem; letter-spacing: 1px;">Submitted By</div>
+                        <div class="fw-bold text-dark text-truncate mb-1" 
+                            style="font-size: 1rem; max-width: 150px; margin-left: auto;" 
+                            title="<?= htmlspecialchars($row['submitted_by_name'] ?? 'Unknown') ?>">
+                            <?= htmlspecialchars($row['submitted_by_name'] ?? 'Unknown') ?>
+                        </div>
+                            <div class="text-secondary small" style="font-size: 0.75rem;">
+                                <i class="far fa-clock me-1"></i> <?= date('M d, h:i A', strtotime($row['submission_date'])) ?>
+                            </div>
+                        </div>
+                                                
+                                                <button type="button" class="btn btn-primary px-4 py-2 rounded-pill shadow-sm fw-bold review-btn"
+                            data-bs-toggle="modal" data-bs-target="#verificationModal"
+                            data-id="<?= $row['category_id'] ?>"
+                            data-event="<?= htmlspecialchars($row['event_name'] . ' - ' . $row['category_name']) ?>"
+                            data-submitted-by="<?= htmlspecialchars($row['submitted_by_name'] ?? 'Unknown') ?>"
+                            data-gold-name="<?= $gold ?>" data-gold-count="<?= $row['gold_count'] ?>"
+                            data-silver-name="<?= $silver ?>" data-silver-count="<?= $row['silver_count'] ?>"
+                            data-bronze-name="<?= $bronze ?>" data-bronze-count="<?= $row['bronze_count'] ?>"
+                            data-evidence="<?= $evidence ?>">
+                            Review <i class="fas fa-arrow-right ms-2"></i>
+                        </button>
+                                            </div>
 
-                </div>
-            </div>
-            <?php endforeach; ?>
-        <?php endif; ?>
-    </div>
-</div>
+                                        </div>
+                                    </div>
+                                    <?php endforeach; ?>
+                                <?php endif; ?>
+                            </div>
+                        </div>
 
 
                     <!-- APPROVED TAB -->
@@ -908,21 +908,21 @@ $bronze_code = getCollegeCode($row['bronze_winner_college_id'], $college_code_ma
                     <tr><td colspan="4" class="text-center py-5 text-muted"><i class="fas fa-history fa-2x mb-3 opacity-25"></i><br>No approved results yet.</td></tr>
                 <?php else: ?>
                     <?php foreach ($approved_results as $row): 
-    // 1. Icon Logic: Determine which icon to show based on the Game/Event Name
-    $icon = 'fas fa-trophy'; // Default fallback
-    if (stripos($row['game_name'], 'Athletics') !== false || stripos($row['game_name'], 'Run') !== false) { $icon = 'fas fa-running'; } 
-    elseif (stripos($row['game_name'], 'Ball') !== false) { $icon = 'fas fa-basketball-ball'; } 
-    elseif (stripos($row['game_name'], 'Swim') !== false) { $icon = 'fas fa-swimmer'; } 
-    elseif (stripos($row['game_name'], 'Racket') !== false || stripos($row['event_name'], 'Badminton') !== false) { $icon = 'fas fa-table-tennis-paddle-ball'; } 
-    elseif (stripos($row['event_name'], 'Chess') !== false) { $icon = 'fas fa-puzzle-piece'; } 
-    elseif (stripos($row['event_name'], 'E-sports') !== false || stripos($row['event_name'], 'Mobile') !== false) { $icon = 'fas fa-gamepad'; }
-    elseif (stripos($row['event_name'], 'Dance') !== false || stripos($row['event_name'], 'Vocal') !== false) { $icon = 'fas fa-music'; }
+                        // 1. Icon Logic: Determine which icon to show based on the Game/Event Name
+                        $icon = 'fas fa-trophy'; // Default fallback
+                        if (stripos($row['game_name'], 'Athletics') !== false || stripos($row['game_name'], 'Run') !== false) { $icon = 'fas fa-running'; } 
+                        elseif (stripos($row['game_name'], 'Ball') !== false) { $icon = 'fas fa-basketball-ball'; } 
+                        elseif (stripos($row['game_name'], 'Swim') !== false) { $icon = 'fas fa-swimmer'; } 
+                        elseif (stripos($row['game_name'], 'Racket') !== false || stripos($row['event_name'], 'Badminton') !== false) { $icon = 'fas fa-table-tennis-paddle-ball'; } 
+                        elseif (stripos($row['event_name'], 'Chess') !== false) { $icon = 'fas fa-puzzle-piece'; } 
+                        elseif (stripos($row['event_name'], 'E-sports') !== false || stripos($row['event_name'], 'Mobile') !== false) { $icon = 'fas fa-gamepad'; }
+                        elseif (stripos($row['event_name'], 'Dance') !== false || stripos($row['event_name'], 'Vocal') !== false) { $icon = 'fas fa-music'; }
 
-    // 2. Proof Button Logic
-    $proof_btn = !empty($row['tally_sheet_url']) 
-        ? '<a href="' . htmlspecialchars('../' . $row['tally_sheet_url']) . '" target="_blank" class="btn btn-sm btn-outline-secondary border-0 bg-light"><i class="fas fa-file-image me-1"></i> View Proof</a>'
-        : '<span class="badge bg-light text-muted fw-normal">No Proof</span>';
-?>
+                        // 2. Proof Button Logic
+                        $proof_btn = !empty($row['tally_sheet_url']) 
+                            ? '<a href="' . htmlspecialchars('../' . $row['tally_sheet_url']) . '" target="_blank" class="btn btn-sm btn-outline-secondary border-0 bg-light"><i class="fas fa-file-image me-1"></i> View Proof</a>'
+                            : '<span class="badge bg-light text-muted fw-normal">No Proof</span>';
+                    ?>
     <tr class="align-middle approved-row" style="background: white; border-bottom: 1px solid #f1f3f5;">
         
         <td class="ps-0 py-3 rounded-start" style="border-left: 5px solid #198754;">
@@ -1148,16 +1148,76 @@ $bronze_code = getCollegeCode($row['bronze_winner_college_id'], $college_code_ma
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
     <script>
-        document.addEventListener('DOMContentLoaded', function () {
-            
-            // --- REVIEW / VERIFICATION MODAL LOGIC ---
-            const verifyModal = document.getElementById('verificationModal');
+    document.addEventListener('DOMContentLoaded', function() {
+
+        // ==========================================
+        // 1. UI & LAYOUT LOGIC
+        // ==========================================
+        
+        // --- Sidebar Toggle ---
+        const mobileToggle = document.getElementById('mobileToggle');
+        if (mobileToggle) {
+            mobileToggle.addEventListener('click', function() {
+                document.getElementById('sidebar').classList.toggle('show');
+            });
+        }
+
+        // --- Dynamic Sidebar Height (Footer Overlap Fix) ---
+        const footer = document.querySelector('footer');
+        const sidebar = document.getElementById('sidebar');
+        const navbar = document.querySelector('.navbar');
+
+        if (sidebar && footer && navbar) {
+            function adjustSidebarHeight() {
+                if (window.innerWidth <= 992) {
+                    sidebar.style.height = '';
+                    return;
+                }
+                const navbarHeight = navbar.offsetHeight;
+                const footerTop = footer.getBoundingClientRect().top;
+                const viewportHeight = window.innerHeight;
+                const maxSidebarHeight = viewportHeight - navbarHeight;
+                const availableHeight = footerTop - navbarHeight;
+                const newHeight = Math.max(0, Math.min(maxSidebarHeight, availableHeight));
+                sidebar.style.height = `${newHeight}px`;
+            }
+            window.addEventListener('scroll', adjustSidebarHeight, { passive: true });
+            window.addEventListener('resize', adjustSidebarHeight);
+            setTimeout(adjustSidebarHeight, 100);
+        }
+
+        // --- Search Filter Logic ---
+        // Attaching listener via JS is cleaner than inline onkeyup=""
+        const searchInput = document.getElementById('approvedSearch');
+        if (searchInput) {
+            searchInput.addEventListener('keyup', filterHistory);
+        }
+
+        function filterHistory() {
+            if (!searchInput) return;
+            const filter = searchInput.value.toLowerCase();
+            const rows = document.querySelectorAll('.approved-row');
+
+            rows.forEach(row => {
+                const text = row.textContent.toLowerCase();
+                row.style.display = text.includes(filter) ? '' : 'none';
+            });
+        }
+
+
+        // ==========================================
+        // 2. MODAL & FORM LOGIC
+        // ==========================================
+
+        // --- Verification Modal (Populate & Zoom) ---
+        const verifyModal = document.getElementById('verificationModal');
+        if (verifyModal) {
             verifyModal.addEventListener('show.bs.modal', function(event) {
                 const btn = event.relatedTarget;
                 const evidenceUrl = btn.getAttribute('data-evidence');
                 const catId = btn.getAttribute('data-id');
 
-                // Populate Text
+                // Populate Text Fields
                 document.getElementById('modalEventTitle').textContent = btn.getAttribute('data-event');
                 document.getElementById('modalSubmittedBy').textContent = btn.getAttribute('data-submitted-by');
                 document.getElementById('modalGoldName').textContent = btn.getAttribute('data-gold-name');
@@ -1167,31 +1227,29 @@ $bronze_code = getCollegeCode($row['bronze_winner_college_id'], $college_code_ma
                 document.getElementById('modalBronzeName').textContent = btn.getAttribute('data-bronze-name');
                 document.getElementById('modalBronzeCount').textContent = btn.getAttribute('data-bronze-count');
 
-                // Set Form IDs
+                // Set Hidden Form IDs
                 document.getElementById('approveCatId').value = catId;
                 document.getElementById('rejectCatId').value = catId;
 
-                // Handle Image
+                // Handle Image & Zoom
                 const imgEl = document.getElementById('modalEvidenceImg');
                 const noImgEl = document.getElementById('noEvidenceMsg');
-                
-                // --- FIX: IN-APP ZOOM LOGIC (Reset) ---
                 const evidenceContainer = document.querySelector('.evidence-col');
+
+                // Reset Zoom State
                 imgEl.classList.remove('zoomed');
                 evidenceContainer.scrollTop = 0;
                 evidenceContainer.scrollLeft = 0;
                 evidenceContainer.style.cursor = 'zoom-in';
-                
+
                 if (evidenceUrl && evidenceUrl !== '') {
-                    // Try to load image
-                    imgEl.src = evidenceUrl; // Assuming relative path is correct from DB
+                    imgEl.src = evidenceUrl;
                     imgEl.classList.remove('d-none');
                     noImgEl.classList.add('d-none');
-                    
-                    // --- FIX: ZOOM TOGGLE ---
+
+                    // Zoom Click Handler
                     imgEl.onclick = function() {
                         this.classList.toggle('zoomed');
-                        // Toggle cursor on container
                         if (this.classList.contains('zoomed')) {
                             evidenceContainer.style.cursor = 'zoom-out';
                             this.title = "Click to zoom out";
@@ -1201,144 +1259,139 @@ $bronze_code = getCollegeCode($row['bronze_winner_college_id'], $college_code_ma
                         }
                     };
                     imgEl.title = "Click to zoom in";
-                    
                 } else {
                     imgEl.classList.add('d-none');
                     noImgEl.classList.remove('d-none');
                 }
 
-                // Reset Reject Section
+                // Reset Reject Section Visibility
                 document.getElementById('rejectSection').classList.add('d-none');
             });
+        }
 
-            // Toggle Reject Form
-            document.getElementById('btnShowReject').addEventListener('click', function() {
-                document.getElementById('rejectSection').classList.remove('d-none');
+        // --- Reject Form Toggles ---
+        const btnShowReject = document.getElementById('btnShowReject');
+        const btnCancelReject = document.getElementById('btnCancelReject');
+        const rejectSection = document.getElementById('rejectSection');
+
+        if (btnShowReject) {
+            btnShowReject.addEventListener('click', function() {
+                rejectSection.classList.remove('d-none');
                 this.scrollIntoView({ behavior: 'smooth' });
             });
-            document.getElementById('btnCancelReject').addEventListener('click', function() {
-                document.getElementById('rejectSection').classList.add('d-none');
+        }
+        if (btnCancelReject) {
+            btnCancelReject.addEventListener('click', function() {
+                rejectSection.classList.add('d-none');
             });
+        }
 
-            // --- REVOKE MODAL ---
-            const revokeModal = document.getElementById('revokeModal');
+        // --- Revoke Modal ---
+        const revokeModal = document.getElementById('revokeModal');
+        if (revokeModal) {
             revokeModal.addEventListener('show.bs.modal', function(event) {
                 const btn = event.relatedTarget;
                 document.getElementById('revoke_category_id').value = btn.getAttribute('data-id');
                 document.getElementById('revoke_category_name').textContent = btn.getAttribute('data-name');
             });
+        }
 
-            // --- SIDEBAR TOGGLE ---
-            const mobileToggle = document.getElementById('mobileToggle');
-            if (mobileToggle) {
-                mobileToggle.addEventListener('click', function() {
-                    document.getElementById('sidebar').classList.toggle('show');
-                });
-            }
-            
-            // --- DYNAMIC SIDEBAR HEIGHT ---
-            const footer = document.querySelector('footer');
-            const sidebar = document.getElementById('sidebar');
-            const navbar = document.querySelector('.navbar');
 
-            if (sidebar && footer && navbar) {
-                function adjustSidebarHeight() {
-                    if (window.innerWidth <= 992) {
-                        sidebar.style.height = ''; 
-                        return;
-                    }
-                    const navbarHeight = navbar.offsetHeight;
-                    const footerTop = footer.getBoundingClientRect().top;
-                    const viewportHeight = window.innerHeight;
-                    const maxSidebarHeight = viewportHeight - navbarHeight;
-                    const availableHeight = footerTop - navbarHeight;
-                    const newHeight = Math.max(0, Math.min(maxSidebarHeight, availableHeight));
-                    sidebar.style.height = `${newHeight}px`;
-                }
-                window.addEventListener('scroll', adjustSidebarHeight, { passive: true });
-                window.addEventListener('resize', adjustSidebarHeight);
-                setTimeout(adjustSidebarHeight, 100);
-            }
-        });
+        // ==========================================
+        // 3. REAL-TIME DATA UPDATERS
+        // ==========================================
 
-        // --- REAL-TIME UPDATES (AJAX POLLING) ---
-            function fetchResultsUpdates() {
-                fetch('results.php?ajax_update=1')
-                    .then(response => response.json())
-                    .then(data => {
-                        // 1. Update Tab Badges (Inner Page)
-                        const pendingTabBadge = document.querySelector('#resultsTab button[data-bs-target="#pending"] .badge');
-                        const approvedTabBadge = document.querySelector('#resultsTab button[data-bs-target="#approved"] .badge');
-                        
-                        if(pendingTabBadge) pendingTabBadge.textContent = data.pending_count;
-                        if(approvedTabBadge) approvedTabBadge.textContent = data.approved_count;
+        /**
+         * Function 1: Updates Page Content (Tables & Inner Tab Badges)
+         * Fetches from results.php
+         */
+        function updatePageContent() {
+            fetch('results.php?ajax_update=1')
+                .then(response => response.json())
+                .then(data => {
+                    // A. Update Inner Tab Badges
+                    const pendingTabBadge = document.querySelector('#resultsTab button[data-bs-target="#pending"] .badge');
+                    const approvedTabBadge = document.querySelector('#resultsTab button[data-bs-target="#approved"] .badge');
 
-                        // 2. Update Sidebar Badge (Left Menu) - "Approve Results"
-                        const sidebarLink = document.querySelector('.sidebar-nav .nav-link[href="results.php"]');
-                        if (sidebarLink) {
-                            let sidebarBadge = sidebarLink.querySelector('.badge');
-                            
-                            if (data.pending_count > 0) {
-                                // If count > 0, ensure badge exists and has correct number
-                                if (sidebarBadge) {
-                                    sidebarBadge.textContent = data.pending_count;
-                                } else {
-                                    // Badge doesn't exist yet? Create it!
-                                    sidebarBadge = document.createElement('span');
-                                    sidebarBadge.className = 'badge bg-warning text-dark ms-auto rounded-pill';
-                                    sidebarBadge.textContent = data.pending_count;
-                                    sidebarLink.appendChild(sidebarBadge);
-                                }
-                            } else {
-                                // If count is 0, remove the badge if it exists
-                                if (sidebarBadge) sidebarBadge.remove();
-                            }
+                    if (pendingTabBadge) pendingTabBadge.textContent = data.pending_count;
+                    if (approvedTabBadge) approvedTabBadge.textContent = data.approved_count;
+
+                    // B. Update Table Content (Only if NOT hovering)
+                    const isHovering = document.querySelector('#pending-container:hover') || document.querySelector('#approved .results-table:hover');
+
+                    if (!isHovering) {
+                        const pendingContainer = document.getElementById('pending-container');
+                        const approvedTbody = document.querySelector('#approved tbody');
+
+                        // Update Pending Cards
+                        if (pendingContainer && pendingContainer.innerHTML !== data.pending_html) {
+                            pendingContainer.innerHTML = data.pending_html;
                         }
 
-                        // 3. Update Table Content (Only if not hovering)
-                        // 3. Update Content (Only if not hovering to avoid UI jumps)
-// Note: We check if the user is hovering over the cards container OR the approved table
-const isHovering = document.querySelector('#pending-container:hover') || document.querySelector('#approved .results-table:hover');
+                        // Update Approved Table
+                        if (approvedTbody && approvedTbody.innerHTML !== data.approved_html) {
+                            approvedTbody.innerHTML = data.approved_html;
+                            // Re-apply search filter so results don't vanish
+                            filterHistory();
+                        }
+                    }
+                })
+                .catch(err => console.error('Content update error:', err));
+        }
 
-if (!isHovering) {
-    const pendingContainer = document.getElementById('pending-container');
-    const approvedTbody = document.querySelector('#approved tbody');
-    
-    // Update Pending Cards
-    if (pendingContainer && pendingContainer.innerHTML !== data.pending_html) {
-        pendingContainer.innerHTML = data.pending_html;
-    }
-    
-    // Update Approved Table
-if (approvedTbody && approvedTbody.innerHTML !== data.approved_html) {
-    approvedTbody.innerHTML = data.approved_html;
-    
-    // ADD THIS LINE: Re-run the filter so the user's search doesn't disappear
-    filterHistory(); 
-}
-}
-                    })
-                    .catch(err => console.error('Error fetching updates:', err));
+        /**
+         * Function 2: Updates Sidebar Badges (Global Navigation)
+         * Fetches from api_notifications.php to get Red (Requests) and Yellow (Results) badges
+         */
+        function updateSidebarBadges() {
+            fetch('../api_notifications.php?t=' + new Date().getTime())
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        // Update "Approve Results" (Yellow)
+                        updateSingleBadge('results.php', data.pending_results, 'bg-warning text-dark');
+
+                        // Update "Account Requests" (Red)
+                        updateSingleBadge('Manage_Requests.php', data.pending_requests, 'bg-danger');
+                    }
+                })
+                .catch(err => console.error('Sidebar badge error:', err));
+        }
+
+        /**
+         * Helper to create or update a specific badge in the sidebar
+         */
+        function updateSingleBadge(hrefKeyword, count, colorClasses) {
+            const link = document.querySelector(`.sidebar-nav .nav-link[href*="${hrefKeyword}"]`);
+            if (link) {
+                let badge = link.querySelector('.badge');
+                if (count > 0) {
+                    if (!badge) {
+                        badge = document.createElement('span');
+                        link.appendChild(badge);
+                    }
+                    badge.className = `badge ${colorClasses} ms-auto rounded-pill`;
+                    badge.textContent = count;
+                } else {
+                    if (badge) badge.remove();
+                }
             }
+        }
 
-            // Start polling every 5 seconds
-            setInterval(fetchResultsUpdates, 5000);
 
-    // --- SMART FILTER FUNCTION ---
-function filterHistory() {
-    const input = document.getElementById('approvedSearch');
-    if (!input) return; // Safety check
+        // ==========================================
+        // 4. INITIALIZATION
+        // ==========================================
+        
+        // Run immediately on load
+        updatePageContent();
+        updateSidebarBadges();
 
-    const filter = input.value.toLowerCase();
-    const rows = document.querySelectorAll('.approved-row'); // Targets your table rows
+        // Start Intervals (Every 5 seconds)
+        setInterval(updatePageContent, 5000);
+        setInterval(updateSidebarBadges, 5000);
 
-    rows.forEach(row => {
-        // Get the text content of the row
-        const text = row.textContent.toLowerCase();
-        // Show if it matches, Hide if it doesn't
-        row.style.display = text.includes(filter) ? '' : 'none';
     });
-}
-    </script>
+</script>
 </body>
 </html>

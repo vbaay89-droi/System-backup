@@ -176,79 +176,275 @@ try {
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" rel="stylesheet">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=Poppins:wght@400;500;600;700;800&display=swap" rel="stylesheet">
     <style>
-        /* --- Unified CSS Theme --- */
-        :root { 
-            --sidebar-width: 260px; 
-            --header-height: 82px; 
-            --transition: all 0.3s ease; 
-            --card-shadow: 0 5px 20px rgba(0, 0, 0, 0.08); 
-            --bg-light: #F8F9FA; 
-            --primary-gradient: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            --accent-color: #1abc9c;
-        }
-        body { background-color: var(--bg-light); margin: 0; padding: 0; min-height: 100vh; font-family: 'Inter', sans-serif; display: flex; flex-direction: column; }
-        
-        /* Navbar */
-        .navbar { background: rgba(26, 26, 26, 0.95) !important; backdrop-filter: blur(10px); box-shadow: 0 4px 20px rgba(0,0,0,0.15); padding: 1rem 1.5rem; height: var(--header-height); position: fixed; top: 0; left: 0; right: 0; z-index: 1050; border-bottom: 1px solid rgba(255, 255, 255, 0.1); }
-        .navbar-brand .brand-heading { font-family: 'Poppins', sans-serif; font-weight: 700; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; }
-        .user-dropdown .dropdown-toggle { color: white; display: flex; align-items: center; text-decoration: none; padding: 8px 16px; border-radius: 50px; background: rgba(255, 255, 255, 0.1); backdrop-filter: blur(10px); border: 1px solid rgba(255, 255, 255, 0.2); transition: var(--transition); }
-        .user-dropdown .dropdown-toggle:hover { background-color: rgba(255, 255, 255, 0.2); }
-        .user-dropdown .dropdown-toggle img { width: 36px; height: 36px; border-radius: 50%; object-fit: cover; margin-right: 10px; }
-        
-        /* Sidebar */
-        .sidebar { width: var(--sidebar-width); position: fixed; top: var(--header-height); left: 0; height: calc(100vh - var(--header-height)); background: rgba(44, 62, 80, 0.95); backdrop-filter: blur(10px); color: white; box-shadow: 5px 0 30px rgba(0,0,0,0.3); z-index: 1040; transition: width var(--transition); overflow-y: auto; }
-        .sidebar-nav { padding: 20px 0; }
-        .sidebar-nav .nav-link { color: rgba(255, 255, 255, 0.7); font-size: 1.05rem; font-weight: 500; padding: 12px 25px; transition: var(--transition); border-left: 5px solid transparent; margin: 2px 0; display: flex; align-items: center; text-decoration: none; }
-        .sidebar-nav .nav-link i { width: 30px; text-align: center; flex-shrink: 0; font-size: 0.95em; }
-        .sidebar-nav .nav-link:hover { color: white; background: rgba(255, 255, 255, 0.05); border-left-color: var(--accent-color); }
-        .sidebar-nav .nav-link.active { color: white; background: linear-gradient(90deg, rgba(102, 126, 234, 0.2), transparent); border-left-color: #667eea; font-weight: 600; }
-        
-        /* Main Content */
-        .main-content { flex: 1 0 auto; padding: 30px; margin-top: var(--header-height); margin-left: var(--sidebar-width); transition: margin-left var(--transition); min-height: calc(100vh - var(--header-height)); }
-        
-        /* Hero Section (Adopted Design) */
-        .hero-section { background: var(--primary-gradient); color: white; padding: 40px; border-radius: 15px; margin-bottom: 30px; box-shadow: var(--card-shadow); position: relative; overflow: hidden; }
-        .welcome-badge { background: rgba(255,255,255,0.2); padding: 6px 16px; border-radius: 30px; font-size: 0.85rem; font-weight: 600; display: inline-block; backdrop-filter: blur(5px); letter-spacing: 0.5px; }
+    /* =========================================
+       1. CORE VARIABLES & SETUP (Director Theme)
+       ========================================= */
+    :root { 
+        --sidebar-width: 260px; 
+        --header-height: 82px; 
+        --transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        --card-shadow: 0 5px 20px rgba(0, 0, 0, 0.08); 
+        --bg-light: #f4f6f8; 
+        --primary-gradient: linear-gradient(135deg, #2c3e50 0%, #4ca1af 100%); /* Teal/Dark Blue */
+        --accent-color: #1abc9c;
+    }
 
-        /* Stat Cards */
-        .stat-card { background: white; border: none; border-radius: 15px; padding: 20px; box-shadow: var(--card-shadow); transition: transform 0.3s; height: 100%; border-left: 5px solid transparent; }
-        .stat-card:hover { transform: translateY(-5px); }
-        .stat-icon-wrapper { width: 60px; height: 60px; border-radius: 50%; display: flex; align-items: center; justify-content: center; color: white; font-size: 1.5rem; margin-right: 15px; flex-shrink: 0; box-shadow: 0 4px 10px rgba(0,0,0,0.15); }
-        .stat-count { font-size: 2.2rem; font-weight: 700; line-height: 1; margin-bottom: 5px; font-family: 'Poppins', sans-serif; }
-        
-        .stat-events .stat-icon-wrapper { background: linear-gradient(135deg, #3498db 0%, #2980b9 100%); }
-        .stat-categories .stat-icon-wrapper { background: linear-gradient(135deg, #2ecc71 0%, #27ae60 100%); }
-        .stat-pending .stat-icon-wrapper { background: linear-gradient(135deg, #f1c40f 0%, #f39c12 100%); }
-        .stat-medals .stat-icon-wrapper { background: linear-gradient(135deg, #FFD700 0%, #f39c12 100%); }
-        
-        .navbar-profile-icon { width: 36px; height: 36px; font-size: 36px; text-align: center; line-height: 1; border-radius: 50%; margin-right: 10px; color: rgba(255,255,255,0.8); }
-        
-        /* Activity Log */
-        .card { border: none; border-radius: 12px; box-shadow: 0 4px 16px rgba(0, 0, 0, 0.08); overflow: hidden; margin-bottom: 1.5rem; }
-        .card-header { background: #ffffff !important; border-bottom: 2px solid #f1f3f5 !important; padding: 1.25rem 1.5rem !important; }
-        .card-header h5 { font-family: 'Poppins', sans-serif; font-weight: 600; color: #2c3e50; margin-bottom: 0; font-size: 1.1rem; }
-        
-        .activity-log-item { display: flex; align-items: start; padding: 1rem; border-bottom: 1px solid #f1f3f5; transition: background 0.2s; }
-        .activity-log-item:last-child { border-bottom: none; }
-        .activity-log-item:hover { background-color: #f8f9fa; }
-        .activity-log-icon { width: 36px; height: 36px; display: flex; align-items: center; justify-content: center; border-radius: 50%; background: #f8f9fa; font-size: 1rem; margin-right: 15px; flex-shrink: 0; }
-        .activity-log-content { flex-grow: 1; line-height: 1.5; font-size: 0.95rem; }
-        .activity-log-time { font-size: 0.8rem; color: #94a3b8; margin-top: 2px; }
-        
-        /* Navigation List */
-        .list-group-item { padding: 1rem 1.25rem; border-color: #f1f3f5; transition: all 0.2s; }
-        .list-group-item:hover { background-color: #f8f9fa; padding-left: 1.5rem; }
-        .list-group-item.list-group-item-primary { background-color: #eaf6ff; border-color: #d0eaff; color: #0c5460; }
-        .list-group-item.list-group-item-primary:hover { background-color: #d6ecff; }
-        
-        footer { flex-shrink: 0; background: rgba(44, 62, 80, 0.95) !important; box-shadow: 0 -2px 10px rgba(0,0,0,0.1); padding-left: var(--sidebar-width); transition: padding-left var(--transition); position: relative; z-index: 1041; border-top: 1px solid rgba(255, 255, 255, 0.1); }
+    body { 
+        background-color: var(--bg-light); 
+        margin: 0; 
+        padding: 0; 
+        min-height: 100vh; 
+        font-family: 'Inter', sans-serif; 
+        display: flex; 
+        flex-direction: column; 
+    }
 
-        @media (max-width: 992px) {
-            .sidebar { left: -260px; }
-            .sidebar.show { left: 0; }
-            .main-content, footer { margin-left: 0; }
-        }
-    </style>
+    /* =========================================
+       2. LAYOUT & NAVIGATION
+       ========================================= */
+    
+    /* Navbar - Dark & Sleek */
+    .navbar { 
+        background: linear-gradient(135deg, #1a1a1a 0%, #2d2d2d 100%) !important; 
+        box-shadow: 0 4px 20px rgba(0,0,0,0.15); 
+        padding: 1rem 1.5rem; 
+        height: var(--header-height); 
+        position: fixed; 
+        top: 0; left: 0; right: 0; 
+        z-index: 1050; 
+        border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+    }
+    
+    .navbar-brand .brand-heading { 
+        font-family: 'Poppins', sans-serif; 
+        font-weight: 700; 
+        color: white !important; /* Fixed to white for Director theme */
+    }
+
+    .user-dropdown .dropdown-toggle { 
+        color: white; 
+        display: flex; 
+        align-items: center; 
+        text-decoration: none; 
+        padding: 8px 12px; 
+        border-radius: 8px; 
+        transition: var(--transition); 
+    }
+    .user-dropdown .dropdown-toggle:hover { 
+        background-color: rgba(255, 255, 255, 0.1); 
+    }
+    .user-dropdown .dropdown-toggle img { 
+        width: 36px; height: 36px; 
+        border-radius: 50%; object-fit: cover; margin-right: 10px; 
+    }
+
+    /* Sidebar - Solid Dark Blue */
+    .sidebar { 
+        width: var(--sidebar-width); 
+        position: fixed; 
+        top: var(--header-height); 
+        left: 0; 
+        height: calc(100vh - var(--header-height)); 
+        background: #2c3e50; 
+        color: white; 
+        box-shadow: 5px 0 15px rgba(0,0,0,0.2); 
+        z-index: 1040; 
+        transition: width var(--transition); 
+        overflow-y: auto; 
+    }
+    .sidebar-nav { padding: 20px 0; }
+    .sidebar-nav .nav-link { 
+        color: rgba(255, 255, 255, 0.7); 
+        font-size: 1.05rem; 
+        font-weight: 500; 
+        padding: 12px 25px; 
+        transition: var(--transition); 
+        border-left: 5px solid transparent; 
+        margin: 2px 0; 
+        display: flex; 
+        align-items: center; 
+        text-decoration: none; 
+    }
+    .sidebar-nav .nav-link i { width: 30px; text-align: center; flex-shrink: 0; font-size: 0.95em; }
+    .sidebar-nav .nav-link:hover { 
+        color: white; 
+        background: rgba(255, 255, 255, 0.05); 
+        border-left-color: var(--accent-color); 
+    }
+    .sidebar-nav .nav-link.active { 
+        color: white; 
+        background: rgba(255, 255, 255, 0.1); 
+        border-left-color: #3498db; 
+        font-weight: 600; 
+    }
+
+    /* Main Content */
+    .main-content { 
+        flex: 1 0 auto; 
+        padding: 30px; 
+        margin-top: var(--header-height); 
+        margin-left: var(--sidebar-width); 
+        transition: margin-left var(--transition); 
+        min-height: calc(100vh - var(--header-height)); 
+    }
+
+    /* =========================================
+       3. COMPONENTS (Cards, Icons, Hero)
+       ========================================= */
+    
+    /* Hero Section */
+    .hero-section { 
+        background: var(--primary-gradient); 
+        color: white; 
+        padding: 40px; 
+        border-radius: 16px; 
+        margin-bottom: 30px; 
+        box-shadow: var(--card-shadow); 
+        position: relative; 
+        overflow: hidden; 
+    }
+    .welcome-badge { 
+        background: rgba(255,255,255,0.2); 
+        padding: 6px 16px; 
+        border-radius: 30px; 
+        font-size: 0.85rem; 
+        font-weight: 600; 
+        display: inline-block; 
+        backdrop-filter: blur(5px); 
+        letter-spacing: 0.5px; 
+    }
+
+    /* Modern Dashboard Card (Replaces .stat-card) */
+    .dashboard-card { 
+        background: white; 
+        border-radius: 16px; 
+        border: 1px solid rgba(0,0,0,0.02); 
+        box-shadow: 0 4px 20px rgba(0,0,0,0.03); 
+        padding: 24px; 
+        height: 100%; 
+        transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1); 
+    }
+    .dashboard-card:hover { 
+        transform: translateY(-5px); 
+        box-shadow: 0 15px 30px rgba(0,0,0,0.06); 
+    }
+    
+    .section-title { 
+        font-family: 'Inter', sans-serif; 
+        font-size: 0.85rem; 
+        font-weight: 700; 
+        text-transform: uppercase; 
+        letter-spacing: 1px; 
+        color: #8898aa; 
+        margin-bottom: 1.5rem; 
+    }
+    
+    /* Icon Squares (New Style) */
+    .icon-square { 
+        width: 60px; height: 60px; 
+        border-radius: 14px; 
+        display: flex; 
+        align-items: center; 
+        justify-content: center; 
+        font-size: 1.6rem; 
+        margin-right: 20px; 
+        flex-shrink: 0; 
+    }
+    .theme-blue { background: rgba(0, 123, 255, 0.1); color: #007bff; }
+    .theme-green { background: rgba(25, 135, 84, 0.1); color: #198754; }
+    .theme-orange { background: rgba(253, 126, 20, 0.1); color: #fd7e14; }
+    .theme-gold { background: rgba(255, 193, 7, 0.1); color: #ffc107; }
+
+    /* Stats Typography */
+    .stat-value { 
+        font-family: 'Inter', sans-serif; 
+        font-size: 2.5rem; 
+        font-weight: 800; 
+        color: #2c3e50; 
+        line-height: 1.1; 
+        margin-bottom: 4px; 
+        letter-spacing: -1px; 
+    }
+    .stat-label { 
+        font-size: 0.85rem; 
+        font-weight: 600; 
+        color: #6c757d; 
+        text-transform: uppercase; 
+        letter-spacing: 0.5px; 
+    }
+
+    /* Footer */
+    footer {
+        flex-shrink: 0;
+        box-shadow: 0 -2px 10px rgba(0,0,0,0.1);
+        padding-left: var(--sidebar-width);
+        transition: padding-left var(--transition);
+        position: relative;
+        z-index: 1041;
+    }
+    /* Main Footer Styles */
+    .footer-main {
+        flex-shrink: 0;
+        background: linear-gradient(135deg, #1a1a1a 0%, #2d2d2d 100%);
+        color: rgba(255,255,255,0.7);
+        padding: 3rem 0 2rem 0;
+        box-shadow: 0 -4px 20px rgba(0,0,0,0.15);
+        position: relative;
+        z-index: 1;
+    }
+    .footer-main .footer-logo-group {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        margin-bottom: 1rem;
+    }
+    .footer-main .footer-logo-group img {
+        height: 50px !important;
+        width: 50px !important;
+        object-fit: contain;
+    }
+    .footer-main .footer-logo-group h5 {
+        margin: 0;
+        font-size: 1.1rem;
+        font-weight: 700;
+        color: #fff;
+        line-height: 1.2;
+    }
+    .footer-main p { font-size: 0.9rem; max-width: 400px; }
+    .footer-main h6 {
+        font-family: 'Poppins', sans-serif;
+        color: #fff;
+        font-weight: 600;
+        margin-bottom: 1rem;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+    }
+    .footer-main .footer-links { list-style: none; padding: 0; }
+    .footer-main .footer-links li { margin-bottom: 0.5rem; }
+    .footer-main .footer-links a { text-decoration: none; color: rgba(255,255,255,0.7); transition: var(--transition); }
+    .footer-main .footer-links a:hover { color: #fff; padding-left: 5px; }
+    .footer-bottom {
+        border-top: 1px solid rgba(255,255,255,0.1);
+        padding-top: 1.5rem;
+        margin-top: 2rem;
+        text-align: center;
+        font-size: 0.85rem;
+    }
+
+    /* Mobile Tweaks */
+    @media (max-width: 991px) {
+        .footer-main { text-align: center; }
+        .footer-main .footer-logo-group { justify-content: center; }
+        .footer-main .row > div { margin-bottom: 2rem; }
+        .footer-main .row > div:last-child { margin-bottom: 0; }
+    }
+
+    @media (max-width: 992px) { 
+        .sidebar { left: -260px; } 
+        .sidebar.show { left: 0; } 
+        .main-content, footer { margin-left: 0; } 
+    }
+</style>
 </head>
 <body>
 
@@ -311,141 +507,175 @@ try {
                     <div class="col-lg-9">
                         <div class="welcome-badge mb-3"><i class="fas fa-id-badge me-1"></i> Official Event Manager</div>
                         <h1 class="fw-bold mb-1">Welcome to SmartScore</h1>
-                        <h5 class="fw-light mb-3 text-white-50">The Official Scoring & Verification Portal for Siglakas</h5>
+                        <h5 class="fw-light mb-3 text-white-50">Event Management & Verification Portal</h5>
                         <hr class="my-4" style="border-color: rgba(255,255,255,0.15); width: 60%;">
                         <p class="lead fs-6 opacity-90 mb-0" style="line-height: 1.7; font-weight: 400;">
-                            Good day, <strong><?= htmlspecialchars($display_name) ?></strong>. You are responsible for the accuracy and integrity of the tournament results. 
-                            Use this dashboard to initialize your assigned events, input the official winners, and upload the required evidence (Tally Sheets) for the Sports Director's approval.
+                            Good day, <strong><?= htmlspecialchars($display_name) ?></strong>. You are assigned to manage specific event categories. 
+                            Use this dashboard to input official results, upload tally sheet evidence, and submit data for Director approval.
                         </p>
                     </div>
                     <div class="col-lg-3 text-end d-none d-lg-block">
-                        <i class="fas fa-clipboard-list fa-6x opacity-25" style="transform: rotate(-10deg);"></i>
+                        <i class="fas fa-clipboard-check fa-6x opacity-25" style="transform: rotate(-10deg);"></i>
                     </div>
                 </div>
             </div>
 
-            <div class="row g-4 mb-4">
-                <div class="col-xl-3 col-md-6">
-                    <div class="stat-card stat-events">
-                        <div class="d-flex align-items: center">
-                            <div class="stat-icon-wrapper"><i class="fas fa-trophy"></i></div>
-                            <div>
-                                <div class="stat-count text-primary" id="stat-assigned-events">...</div>
-                                <small class="text-muted fw-semibold">Assigned Events</small>
+            <h5 class="section-title">My Assignment Overview</h5>
+                <div class="row g-4 mb-5">
+                    
+                    <div class="col-xl-3 col-md-6">
+                        <div class="dashboard-card">
+                            <div class="d-flex align-items-center">
+                                <div class="icon-square theme-blue">
+                                    <i class="fas fa-calendar-check"></i>
+                                </div>
+                                <div>
+                                    <div class="stat-value" id="stat-assigned-events">...</div>
+                                    <div class="stat-label">Assigned Events</div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="col-xl-3 col-md-6">
+                        <div class="dashboard-card">
+                            <div class="d-flex align-items-center">
+                                <div class="icon-square theme-green">
+                                    <i class="fas fa-layer-group"></i>
+                                </div>
+                                <div>
+                                    <div class="stat-value" id="stat-total-categories">...</div>
+                                    <div class="stat-label">Categories</div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="col-xl-3 col-md-6">
+                        <div class="dashboard-card">
+                            <div class="d-flex align-items-center">
+                                <div class="icon-square theme-orange">
+                                    <i class="fas fa-hourglass-half"></i>
+                                </div>
+                                <div>
+                                    <div class="stat-value" id="stat-pending-results">...</div>
+                                    <div class="stat-label">Pending Approval</div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="col-xl-3 col-md-6">
+                        <div class="dashboard-card">
+                            <div class="d-flex align-items-center">
+                                <div class="icon-square theme-gold">
+                                    <i class="fas fa-medal"></i>
+                                </div>
+                                <div>
+                                    <div class="stat-value" id="stat-approved-medals">...</div>
+                                    <div class="stat-label">Medals Awarded</div>
+                                </div>
                             </div>
                         </div>
                     </div>
                 </div>
-                <div class="col-xl-3 col-md-6">
-                    <div class="stat-card stat-categories">
-                        <div class="d-flex align-items: center">
-                            <div class="stat-icon-wrapper"><i class="fas fa-sitemap"></i></div>
-                            <div>
-                                <div class="stat-count text-success" id="stat-total-categories">...</div>
-                                <small class="text-muted fw-semibold">Total Categories</small>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-                <div class="col-xl-3 col-md-6">
-                    <div class="stat-card stat-pending">
-                        <div class="d-flex align-items: center">
-                            <div class="stat-icon-wrapper"><i class="fas fa-hourglass-half"></i></div>
-                            <div>
-                                <div class="stat-count text-warning" id="stat-pending-results">...</div>
-                                <small class="text-muted fw-semibold">Pending Results</small>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-                <div class="col-xl-3 col-md-6">
-                    <div class="stat-card stat-medals">
-                        <div class="d-flex align-items: center">
-                            <div class="stat-icon-wrapper"><i class="fas fa-medal"></i></div>
-                            <div>
-                                <div class="stat-count text-warning" id="stat-approved-medals">...</div>
-                                <small class="text-muted fw-semibold">Approved Medals</small>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
             
             <div class="row g-4">
-            
-                <div class="col-lg-6">
-                    <div class="card h-100">
-                        <div class="card-header">
-                            <h5 class="mb-0"><i class="fas fa-compass me-2 text-primary"></i>Quick Navigation</h5>
-                        </div>
-                        <div class="card-body p-0">
-                            <div class="list-group list-group-flush">
-                                <a href="my_events.php" class="list-group-item list-group-item-action list-group-item-primary d-flex justify-content-between align-items-center">
-                                    <div>
-                                        <i class="fas fa-trophy me-2 text-primary"></i>
-                                        <strong>Manage My Assigned Events</strong>
-                                        <small class="d-block text-muted mt-1">View, add, and edit categories and results.</small>
-                                    </div>
-                                    <i class="fas fa-chevron-right text-primary"></i>
-                                </a>
-                                <a href="Eventpage.php" target="_blank" class="list-group-item list-group-item-action d-flex justify-content-between align-items-center">
-                                    <div>
-                                        <i class="fas fa-globe me-2 text-info"></i>
-                                        View Public Tallying Site
-                                    </div>
-                                    <i class="fas fa-external-link-alt text-muted small"></i>
-                                </a>
-                                <a href="admin_profile.php" class="list-group-item list-group-item-action d-flex justify-content-between align-items-center">
-                                    <div>
-                                        <i class="fas fa-user-circle me-2 text-secondary"></i>
-                                        View My Profile
-                                    </div>
-                                    <i class="fas fa-chevron-right text-muted small"></i>
-                                </a> 
+    <div class="col-lg-6">
+        <h5 class="section-title">Quick Actions</h5>
+        <div class="dashboard-card p-0 overflow-hidden"> <div class="list-group list-group-flush">
+                <a href="my_events.php" class="list-group-item list-group-item-action py-3 px-4 d-flex justify-content-between align-items-center border-bottom">
+                    <div>
+                        <i class="fas fa-trophy me-3 text-primary fa-lg"></i>
+                        <span class="fw-bold text-dark">Manage My Events</span>
+                        <div class="small text-muted mt-1 ps-5">Update results and upload evidence</div>
+                    </div>
+                    <i class="fas fa-chevron-right text-muted"></i>
+                </a>
+                <a href="Eventpage.php" target="_blank" class="list-group-item list-group-item-action py-3 px-4 d-flex justify-content-between align-items-center border-bottom">
+                    <div>
+                        <i class="fas fa-globe me-3 text-info fa-lg"></i>
+                        <span class="fw-bold text-dark">Public Tally Site</span>
+                    </div>
+                    <i class="fas fa-external-link-alt text-muted small"></i>
+                </a>
+                <a href="admin_profile.php" class="list-group-item list-group-item-action py-3 px-4 d-flex justify-content-between align-items-center">
+                    <div>
+                        <i class="fas fa-user-circle me-3 text-secondary fa-lg"></i>
+                        <span class="fw-bold text-dark">My Profile</span>
+                    </div>
+                    <i class="fas fa-chevron-right text-muted"></i>
+                </a>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-lg-6">
+        <h5 class="section-title">Recent Activity</h5>
+        <div class="dashboard-card p-0 overflow-hidden">
+            <div class="activity-log-container">
+                <?php if (empty($processed_logs)): ?>
+                    <div class="p-4 text-center text-muted">No recent activity.</div>
+                <?php else: ?>
+                    <?php foreach ($processed_logs as $log_entry): ?>
+                        <div class="d-flex align-items-start p-3 border-bottom">
+                            <div class="icon-square rounded-circle me-3 bg-light text-muted" style="width: 40px; height: 40px; font-size: 1rem;">
+                                <i class="<?= $log_entry['icon'] ?>"></i>
+                            </div>
+                            <div>
+                                <div class="text-dark small"><?= $log_entry['message'] ?></div>
+                                <div class="text-muted" style="font-size: 0.75rem; margin-top: 2px;">
+                                    <i class="far fa-clock me-1"></i><?= $log_entry['time'] ?>
+                                </div>
                             </div>
                         </div>
-                    </div>
-                </div>
-                
-                <div class="col-lg-6">
-                    <div class="card h-100">
-                        <div class="card-header">
-                            <h5 class="mb-0"><i class="fas fa-history me-2 text-info"></i>My Recent Activity</h5>
-                        </div>
-                        <div class="card-body p-0">
-                            <div class="activity-log-container">
-                                <?php if (empty($processed_logs)): ?>
-                                    <div class="p-4 text-center text-muted">
-                                        <i class="fas fa-info-circle fa-2x mb-2 opacity-50"></i>
-                                        <p class="mb-0">No recent activity to display.</p>
-                                    </div>
-                                <?php else: ?>
-                                    <?php foreach ($processed_logs as $log_entry): ?>
-                                        <div class="activity-log-item">
-                                            <div class="activity-log-icon shadow-sm <?= $log_entry['bg_class'] ?? 'bg-light' ?>">
-                                                <i class="<?= $log_entry['icon'] ?>"></i>
-                                            </div>
-                                            <div class="activity-log-content">
-                                                <?= $log_entry['message'] ?> 
-                                                <div class="activity-log-time"><i class="far fa-clock me-1"></i><?= $log_entry['time'] ?></div>
-                                            </div>
-                                        </div>
-                                    <?php endforeach; ?>
-                                <?php endif; ?>
-                            </div>
-                        </div>
-                    </div>
-                </div>
+                    <?php endforeach; ?>
+                <?php endif; ?>
+            </div>
+        </div>
+    </div>
+</div>
             </div>
         </div>
     </div>
     
-    <footer class="bg-dark text-white py-4">
-        <div class="text-center">
-            <small>&copy; <?php echo date("Y"); ?> PIT SPORTS TALLYING. All rights reserved.</small>
+    <footer class="footer-main">
+        <div class="container">
+            <div class="row">
+                <div class="col-lg-5 col-md-12 mb-4 mb-lg-0">
+                    <div class="footer-logo-group">
+                        <img src="imageslogo.png" alt="Logo">
+                        <img src="images/Cote.png" alt="Logo">
+                        <h5> PIT SILAKAS MEDAL TALLY</h5>
+                    </div>
+                    <p>The official live medal tallying system for the Palompon Institute of Technology. Bringing you real-time results, event schedules, and team standings.</p>
+                </div>
+                <div class="col-lg-3 col-md-6 mb-4 mb-md-0">
+                    <h6>Quick Links</h6>
+                    <ul class="footer-links">
+                        <li><a href="home.php">Home (Standings)</a></li>
+                        <li><a href="Eventpage.php">Events Schedule</a></li>
+                        <li><a href="college_team.php">Teams & Rosters</a></li>
+                    </ul>
+                </div>
+                <div class="col-lg-4 col-md-6">
+                    <h6>Contact Us</h6>
+                    <div style="color: rgba(255,255,255,0.7); font-size: 0.9rem; line-height: 1.6;">
+                        <p class="mb-1 fw-bold text-white">Palompon Institute of Technology</p>
+                        <p class="mb-2">Evangelista Street, Brgy. Guiwan II,<br>Palompon, Leyte 6538</p>
+                        <p class="mb-0">
+                            <i class="fas fa-phone-alt me-2"></i>(053) 555-9841<br>
+                            <i class="fas fa-envelope me-2"></i>op@pit.edu.ph
+                        </p>
+                    </div>
+                </div>
+            </div>
+            <div class="footer-bottom">
+                <small>&copy; <?php echo date("Y"); ?> PIT SILAKAS MEDAL TALLY. All rights reserved.</small><br>
+                <small>Developed by Jayvee Baybyon</small>
+            </div>
         </div>
     </footer>
-    
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
     <script>
         document.addEventListener('DOMContentLoaded', function () {

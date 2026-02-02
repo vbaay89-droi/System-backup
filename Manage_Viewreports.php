@@ -606,9 +606,9 @@ function getStatusBadge($status) {
 
             <div class="d-flex justify-content-between align-items-center mb-4">
                 <h1 class="section-title mb-0">View Reports</h1>
-                <button class="btn btn-secondary" onclick="window.print()">
-                    <i class="fas fa-print me-2"></i> Print Report
-                </button>
+                <button class="btn btn-secondary" onclick="window.open('print_official_report.php', '_blank')">
+    <i class="fas fa-print me-2"></i> Print Official Report
+</button>
             </div>
             
             <ul class="nav nav-tabs" id="reportTab" role="tablist">
@@ -901,6 +901,48 @@ function getStatusBadge($status) {
                 }
             });
         });
+
+        // ==========================================
+        // 2. NEW: REAL-TIME BADGE UPDATER
+        // ==========================================
+        function updateSidebarBadges() {
+            // NOTE: Check if you need '../api_notifications.php' or just 'api_notifications.php'
+            fetch('api_notifications.php?t=' + new Date().getTime())
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        // Update "Approve Results" (Yellow)
+                        updateSingleBadge('results.php', data.pending_results, 'bg-warning text-dark');
+
+                        // Update "Account Requests" (Red)
+                        updateSingleBadge('Manage_Requests.php', data.pending_requests, 'bg-danger');
+                    }
+                })
+                .catch(err => console.error('Badge update error:', err));
+        }
+
+        function updateSingleBadge(hrefKeyword, count, colorClasses) {
+            const link = document.querySelector(`.sidebar-nav .nav-link[href*="${hrefKeyword}"]`);
+            if (link) {
+                let badge = link.querySelector('.badge');
+                if (count > 0) {
+                    if (!badge) {
+                        badge = document.createElement('span');
+                        link.appendChild(badge);
+                    }
+                    badge.className = `badge ${colorClasses} ms-auto rounded-pill`;
+                    badge.textContent = count;
+                } else {
+                    if (badge) badge.remove();
+                }
+            }
+        }
+
+        // Run Badges
+        updateSidebarBadges();
+        setInterval(updateSidebarBadges, 5000);
+
+    
 
         function initCharts() {
             // Bar Chart

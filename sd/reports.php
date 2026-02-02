@@ -625,6 +625,45 @@ $pending_results_count = $conn->query("SELECT COUNT(*) FROM categories WHERE sta
                 window.addEventListener('resize', adjustSidebarHeight);
                 setTimeout(adjustSidebarHeight, 100);
             }
+
+                 // ==========================================
+        // 2. REAL-TIME BADGE UPDATER
+        // ==========================================
+        function updateSidebarBadges() {
+            fetch('../api_notifications.php?t=' + new Date().getTime())
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        // Update "Approve Results" (Yellow)
+                        updateSingleBadge('results.php', data.pending_results, 'bg-warning text-dark');
+
+                        // Update "Account Requests" (Red)
+                        updateSingleBadge('Manage_Requests.php', data.pending_requests, 'bg-danger');
+                    }
+                })
+                .catch(err => console.error('Badge update error:', err));
+        }
+
+        function updateSingleBadge(hrefKeyword, count, colorClasses) {
+            const link = document.querySelector(`.sidebar-nav .nav-link[href*="${hrefKeyword}"]`);
+            if (link) {
+                let badge = link.querySelector('.badge');
+                if (count > 0) {
+                    if (!badge) {
+                        badge = document.createElement('span');
+                        link.appendChild(badge);
+                    }
+                    badge.className = `badge ${colorClasses} ms-auto rounded-pill`;
+                    badge.textContent = count;
+                } else {
+                    if (badge) badge.remove();
+                }
+            }
+        }
+
+        // Run Badges
+        updateSidebarBadges();
+        setInterval(updateSidebarBadges, 5000);
         });
     </script>
 </body>

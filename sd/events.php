@@ -83,14 +83,42 @@ if (isset($_POST['update_event'])) {
 // L2 - EVENTS (DELETE)
 if (isset($_POST['delete_event'])) {
     $event_id = (int)$_POST['event_id'];
+    
+    // 1. First Check: categories (existing logic)
     $stmt_check = $conn->prepare("SELECT COUNT(*) FROM categories WHERE event_id = ?");
-    $stmt_check->bind_param("i", $event_id); $stmt_check->execute();
-    $count = 0; $stmt_check->bind_result($count); $stmt_check->fetch(); $stmt_check->close();
-    if ($count > 0) { $_SESSION['message'] = "Cannot delete event. It has linked categories."; $_SESSION['message_type'] = "danger"; } 
-    else {
-        $conn->query("DELETE FROM event_manager_assignments WHERE event_id = $event_id");
-        $conn->query("DELETE FROM game_events WHERE event_id = $event_id");
-        $_SESSION['message'] = "Event deleted successfully."; $_SESSION['message_type'] = "success";
+    $stmt_check->bind_param("i", $event_id); 
+    $stmt_check->execute();
+    $count = 0; 
+    $stmt_check->bind_result($count); 
+    $stmt_check->fetch(); 
+    $stmt_check->close();
+
+    if ($count > 0) { 
+        $_SESSION['message'] = "Cannot delete event. It has linked categories (L3). Please delete them first."; 
+        $_SESSION['message_type'] = "danger"; 
+    } else {
+        // 2. SAFE DELETE: Use Try-Catch to handle "Silent" DB errors
+        $conn->begin_transaction();
+        try {
+            // Delete manager link first
+            $conn->query("DELETE FROM event_manager_assignments WHERE event_id = $event_id");
+
+            // Try to delete the event
+            if (!$conn->query("DELETE FROM game_events WHERE event_id = $event_id")) {
+                // If DB says no, throw an error
+                throw new Exception($conn->error);
+            }
+
+            $conn->commit(); // Confirm changes
+            $_SESSION['message'] = "Event deleted successfully."; 
+            $_SESSION['message_type'] = "success";
+            
+        } catch (Exception $e) {
+            $conn->rollback(); // Undo everything if it failed
+            // Show the REAL error message
+            $_SESSION['message'] = "Cannot delete this event. It is currently being used in Matches or Results.";
+            $_SESSION['message_type'] = "danger";
+        }
     }
     header("Location: events.php?tab=events"); exit();
 }
@@ -175,7 +203,6 @@ $pending_results_count = $conn->query("SELECT COUNT(*) FROM categories WHERE sta
             position: relative;
             z-index: 1041;
         }
-
         /* --- FOOTER STYLES (MATCHING HOME.PHP) --- */
     .footer-main {
         flex-shrink: 0;
@@ -186,20 +213,17 @@ $pending_results_count = $conn->query("SELECT COUNT(*) FROM categories WHERE sta
         position: relative;
         z-index: 1;
     }
-
     .footer-main .footer-logo-group {
         display: flex;
         align-items: center;
         gap: 12px;
         margin-bottom: 1rem;
     }
-
     .footer-main .footer-logo-group img {
         height: 50px !important;
         width: 50px !important;
         object-fit: contain;
     }
-
     .footer-main .footer-logo-group h5 {
         margin: 0;
         font-size: 1.1rem;
@@ -207,12 +231,10 @@ $pending_results_count = $conn->query("SELECT COUNT(*) FROM categories WHERE sta
         color: #fff;
         line-height: 1.2;
     }
-
     .footer-main p {
         font-size: 0.9rem;
         max-width: 400px;
     }
-
     .footer-main h6 {
         font-family: 'Poppins', sans-serif;
         color: #fff;
@@ -221,27 +243,22 @@ $pending_results_count = $conn->query("SELECT COUNT(*) FROM categories WHERE sta
         text-transform: uppercase;
         letter-spacing: 0.5px;
     }
-
     .footer-main .footer-links {
         list-style: none;
         padding: 0;
     }
-
     .footer-main .footer-links li {
         margin-bottom: 0.5rem;
     }
-
     .footer-main .footer-links a {
         text-decoration: none;
         color: rgba(255,255,255,0.7);
         transition: var(--transition);
     }
-
     .footer-main .footer-links a:hover {
         color: #fff;
         padding-left: 5px;
     }
-
     .footer-bottom {
         border-top: 1px solid rgba(255,255,255,0.1);
         padding-top: 1.5rem;
@@ -249,7 +266,6 @@ $pending_results_count = $conn->query("SELECT COUNT(*) FROM categories WHERE sta
         text-align: center;
         font-size: 0.85rem;
     }
-
     @media (max-width: 767.98px) {
       .logo-container {
         gap: 1rem;
@@ -265,7 +281,6 @@ $pending_results_count = $conn->query("SELECT COUNT(*) FROM categories WHERE sta
         font-size: 1.5rem;
       }
     }
-
     @media (max-width: 991px) {
             /* 1. Center text on smaller screens */
             .footer-main { 
@@ -292,7 +307,462 @@ $pending_results_count = $conn->query("SELECT COUNT(*) FROM categories WHERE sta
         .sortable { cursor: pointer; user-select: none; }
         .sortable:hover { background-color: rgba(0,0,0,0.02); }
         @media (max-width: 992px) { .sidebar { left: -260px; } .sidebar.show { left: 0; } .main-content, footer { margin-left: 0; } footer { padding-left: 0; } }
-    </style>
+        .nav-pills-custom .nav-link {
+        color: #6c757d;
+        background: #fff;
+        border: 1px solid #e9ecef;
+        border-radius: 50px;
+        padding: 10px 25px;
+        margin-right: 10px;
+        font-weight: 600;
+        transition: all 0.3s ease;
+        box-shadow: 0 2px 5px rgba(0,0,0,0.02);
+    }
+    .nav-pills-custom .nav-link.active {
+        background-color: var(--primary-gradient); /* Uses your dashboard blue/teal */
+        background: #2c3e50;
+        color: #fff;
+        border-color: #2c3e50;
+        box-shadow: 0 4px 10px rgba(44, 62, 80, 0.3);
+    }
+    .nav-pills-custom .nav-link:hover:not(.active) {
+        background-color: #f8f9fa;
+        transform: translateY(-1px);
+    }
+    /* 2. Game Cards (Level 1) */
+    .game-card {
+        background: white;
+        border: none;
+        border-radius: 16px;
+        padding: 25px;
+        transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        position: relative;
+        overflow: hidden;
+        box-shadow: 0 4px 6px rgba(0,0,0,0.02);
+        height: 100%;
+        display: flex;
+        flex-direction: column;
+        justify-content: space-between;
+    }
+    .game-card:hover {
+        transform: translateY(-5px);
+        box-shadow: 0 12px 24px rgba(0,0,0,0.08);
+    }
+    .game-card::before {
+        content: '';
+        position: absolute;
+        top: 0; left: 0; w: 4px; height: 100%;
+        background: #e9ecef;
+        transition: 0.3s;
+    }
+    .game-card:hover::before { background: var(--accent-color); }
+    
+    .game-icon-wrapper {
+        width: 50px; height: 50px;
+        border-radius: 12px;
+        background: rgba(26, 188, 156, 0.1);
+        color: var(--accent-color);
+        display: flex; align-items: center; justify-content: center;
+        font-size: 1.5rem;
+        margin-bottom: 15px;
+    }
+    /* 3. Modern Tables (Level 2 & 3) */
+    .modern-table {
+        border-collapse: separate;
+        border-spacing: 0 10px; /* Spacing between rows */
+        width: 100%;
+    }
+    .modern-table thead th {
+        border: none;
+        font-size: 0.75rem;
+        text-transform: uppercase;
+        letter-spacing: 1px;
+        color: #8898aa;
+        padding: 0 20px 10px 20px;
+        background: transparent;
+    }
+    .modern-table tbody tr {
+        background: white;
+        /* CHANGE 1: Increase opacity from 0.02 to 0.08 for visibility */
+        box-shadow: 0 4px 12px rgba(0,0,0,0.08); 
+        
+        /* CHANGE 2: Add a faint border to define edges clearly */
+        border: 1px solid rgba(0,0,0,0.05);
+        
+        transition: transform 0.2s ease, box-shadow 0.2s ease;
+        border-radius: 10px;
+    }
+    .modern-table tbody tr:hover {
+        transform: scale(1.005);
+        box-shadow: 0 5px 15px rgba(0,0,0,0.05);
+        z-index: 2;
+        position: relative;
+    }
+    .modern-table td {
+        border: none;
+        padding: 18px 20px;
+        vertical-align: middle;
+    }
+    .modern-table td:first-child { border-top-left-radius: 10px; border-bottom-left-radius: 10px; }
+    .modern-table td:last-child { border-top-right-radius: 10px; border-bottom-right-radius: 10px; }
+    /* 4. Manager Avatar Badges */
+    .manager-badge {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        padding: 6px 12px;
+        background: #f8f9fa;
+        border-radius: 30px;
+        width: fit-content;
+        border: 1px solid #e9ecef;
+    }
+    .manager-avatar {
+        width: 28px; height: 28px;
+        background: #2c3e50;
+        color: white;
+        border-radius: 50%;
+        display: flex; align-items: center; justify-content: center;
+        font-size: 0.75rem;
+        font-weight: bold;
+    }
+    .manager-unassigned {
+        background: #fff3cd;
+        color: #856404;
+        border-color: #ffeeba;
+    }
+    /* 5. Action Buttons */
+    .btn-icon {
+        width: 32px; height: 32px;
+        border-radius: 8px;
+        display: inline-flex; align-items: center; justify-content: center;
+        border: none;
+        transition: 0.2s;
+        margin-left: 5px;
+        background: #f1f3f5;
+        color: #495057;
+    }
+    .btn-icon:hover { background: #e9ecef; color: #212529; }
+    .btn-icon.edit:hover { background: rgba(13, 202, 240, 0.1); color: #0dcaf0; }
+    .btn-icon.delete:hover { background: rgba(220, 53, 69, 0.1); color: #dc3545; }
+    .btn-icon.assign:hover { background: rgba(25, 135, 84, 0.1); color: #198754; }
+    /* Search Bar Polish */
+    .search-wrapper {
+        position: relative;
+        margin-bottom: 20px;
+    }
+    .search-wrapper input {
+        border-radius: 50px;
+        padding-left: 45px;
+        border: 1px solid #e0e0e0;
+        box-shadow: 0 2px 10px rgba(0,0,0,0.03);
+    }
+    .search-wrapper i {
+        position: absolute;
+        left: 20px;
+        top: 50%;
+        transform: translateY(-50%);
+        color: #adb5bd;
+    }
+
+    /* ============================================
+       IMPROVED MODAL DESIGN
+       ============================================ */
+
+    /* Modal Backdrop - Darker overlay for better focus */
+    .modal-backdrop.show {
+        opacity: 0.7;
+        backdrop-filter: blur(3px);
+    }
+
+    /* Modal Dialog - Smooth animation */
+    .modal.fade .modal-dialog {
+        transition: transform 0.25s ease-out, opacity 0.25s ease-out;
+    }
+
+    .modal.show .modal-dialog {
+        transform: none;
+    }
+
+    /* Modal Content Container */
+    .modal-content {
+        border: none;
+        border-radius: 16px;
+        box-shadow: 0 10px 40px rgba(0, 0, 0, 0.3);
+        overflow: hidden;
+    }
+
+    /* Modal Header - Gradient style matching your navbar */
+    .modal-header {
+        background: linear-gradient(135deg, #2c3e50 0%, #34495e 100%);
+        color: white;
+        padding: 1.25rem 1.5rem;
+        border-bottom: none;
+        position: relative;
+    }
+
+    .modal-header::after {
+        content: '';
+        position: absolute;
+        bottom: 0;
+        left: 0;
+        right: 0;
+        height: 3px;
+        background: linear-gradient(90deg, #3498db 0%, #1abc9c 100%);
+    }
+
+    .modal-title {
+        font-family: 'Poppins', sans-serif;
+        font-weight: 600;
+        font-size: 1.15rem;
+        color: white;
+        margin: 0;
+        display: flex;
+        align-items: center;
+        gap: 10px;
+    }
+
+    /* Optional: Add icon styling in modal titles */
+    .modal-title i {
+        font-size: 1.1rem;
+        color: #1abc9c;
+    }
+
+    /* Close Button */
+    .modal-header .btn-close {
+        background-color: rgba(255, 255, 255, 0.1);
+        border-radius: 8px;
+        width: 32px;
+        height: 32px;
+        opacity: 0.8;
+        transition: all 0.2s ease;
+        filter: brightness(0) invert(1);
+    }
+
+    .modal-header .btn-close:hover {
+        background-color: rgba(255, 255, 255, 0.2);
+        opacity: 1;
+        transform: rotate(90deg);
+    }
+
+    /* Modal Body */
+    .modal-body {
+        padding: 1.75rem 1.5rem;
+        background: #ffffff;
+        color: #2c3e50;
+    }
+
+    /* Form Labels */
+    .modal-body .form-label {
+        color: #2c3e50;
+        font-weight: 600;
+        font-size: 0.9rem;
+        margin-bottom: 0.5rem;
+        letter-spacing: 0.3px;
+    }
+
+    /* Form Inputs & Selects */
+    .modal-body .form-control,
+    .modal-body .form-select {
+        border: 1.5px solid #e0e0e0;
+        border-radius: 10px;
+        padding: 0.65rem 1rem;
+        font-size: 0.95rem;
+        transition: all 0.2s ease;
+        background-color: #f8f9fa;
+    }
+
+    .modal-body .form-control:focus,
+    .modal-body .form-select:focus {
+        border-color: #3498db;
+        box-shadow: 0 0 0 0.2rem rgba(52, 152, 219, 0.15);
+        background-color: white;
+    }
+
+    /* Form Text / Helper Text */
+    .modal-body .form-text {
+        font-size: 0.85rem;
+        color: #7f8c8d;
+        margin-top: 0.4rem;
+        display: flex;
+        align-items: center;
+        gap: 6px;
+    }
+
+    .modal-body .form-text i {
+        color: #95a5a6;
+        font-size: 0.8rem;
+    }
+
+    /* Modal Footer */
+    .modal-footer {
+        padding: 1rem 1.5rem;
+        background: #f8f9fa;
+        border-top: 1px solid #e9ecef;
+        gap: 10px;
+    }
+
+    /* Buttons in Modal */
+    .modal-footer .btn {
+        border-radius: 10px;
+        padding: 0.6rem 1.5rem;
+        font-weight: 600;
+        font-size: 0.95rem;
+        transition: all 0.25s ease;
+        border: none;
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+    }
+
+    /* Cancel/Close Button */
+    .modal-footer .btn-secondary {
+        background: #95a5a6;
+        color: white;
+    }
+
+    .modal-footer .btn-secondary:hover {
+        background: #7f8c8d;
+        transform: translateY(-2px);
+        box-shadow: 0 4px 12px rgba(149, 165, 166, 0.3);
+    }
+
+    /* Primary Action Button */
+    .modal-footer .btn-primary {
+        background: linear-gradient(135deg, #3498db 0%, #2980b9 100%);
+        color: white;
+        box-shadow: 0 4px 12px rgba(52, 152, 219, 0.25);
+    }
+
+    .modal-footer .btn-primary:hover {
+        background: linear-gradient(135deg, #2980b9 0%, #21618c 100%);
+        transform: translateY(-2px);
+        box-shadow: 0 6px 16px rgba(52, 152, 219, 0.35);
+    }
+
+    /* Danger/Delete Button */
+    .modal-footer .btn-danger {
+        background: linear-gradient(135deg, #e74c3c 0%, #c0392b 100%);
+        color: white;
+        box-shadow: 0 4px 12px rgba(231, 76, 60, 0.25);
+    }
+
+    .modal-footer .btn-danger:hover {
+        background: linear-gradient(135deg, #c0392b 0%, #a93226 100%);
+        transform: translateY(-2px);
+        box-shadow: 0 6px 16px rgba(231, 76, 60, 0.35);
+    }
+
+    /* Success Button (if used) */
+    .modal-footer .btn-success {
+        background: linear-gradient(135deg, #1abc9c 0%, #16a085 100%);
+        color: white;
+        box-shadow: 0 4px 12px rgba(26, 188, 156, 0.25);
+    }
+
+    .modal-footer .btn-success:hover {
+        background: linear-gradient(135deg, #16a085 0%, #138d75 100%);
+        transform: translateY(-2px);
+        box-shadow: 0 6px 16px rgba(26, 188, 156, 0.35);
+    }
+
+    /* Delete/Warning Messages in Modal Body */
+    .modal-body p.text-danger {
+        background: #fff5f5;
+        border-left: 4px solid #e74c3c;
+        padding: 0.75rem 1rem;
+        border-radius: 8px;
+        margin-top: 1rem;
+        font-size: 0.9rem;
+    }
+
+    .modal-body p.text-danger i {
+        color: #e74c3c;
+        margin-right: 8px;
+    }
+
+    /* Confirmation Text Styling */
+    .modal-body p {
+        color: #34495e;
+        font-size: 1rem;
+        line-height: 1.6;
+    }
+
+    .modal-body p strong {
+        color: #2c3e50;
+        font-weight: 700;
+        background: #f8f9fa;
+        padding: 2px 8px;
+        border-radius: 4px;
+    }
+
+    /* Responsive Modal */
+    @media (max-width: 576px) {
+        .modal-dialog {
+            margin: 0.5rem;
+        }
+        
+        .modal-header {
+            padding: 1rem 1.25rem;
+        }
+        
+        .modal-title {
+            font-size: 1rem;
+        }
+        
+        .modal-body {
+            padding: 1.25rem 1rem;
+        }
+        
+        .modal-footer {
+            padding: 0.875rem 1rem;
+            flex-direction: column;
+        }
+        
+        .modal-footer .btn {
+            width: 100%;
+            justify-content: center;
+        }
+    }
+
+    /* Animation for modal entrance */
+    @keyframes modalSlideDown {
+        from {
+            transform: translateY(-50px);
+            opacity: 0;
+        }
+        to {
+            transform: translateY(0);
+            opacity: 1;
+        }
+    }
+
+    .modal.show .modal-dialog {
+        animation: modalSlideDown 0.3s ease-out;
+    }
+
+    /* Focus styles for accessibility */
+    .modal-body .form-control:focus,
+    .modal-body .form-select:focus {
+        outline: none;
+    }
+
+    .modal-footer .btn:focus {
+        outline: 2px solid;
+        outline-offset: 2px;
+    }
+
+    .modal-footer .btn-primary:focus {
+        outline-color: #3498db;
+    }
+
+    .modal-footer .btn-danger:focus {
+        outline-color: #e74c3c;
+    }
+
+    .modal-footer .btn-secondary:focus {
+        outline-color: #95a5a6;
+    }
+</style>
 </head>
 <body>
     
@@ -394,217 +864,261 @@ $pending_results_count = $conn->query("SELECT COUNT(*) FROM categories WHERE sta
     </div>
     
     <div class="main-content">
-            <h1 class="section-title mb-4">Manage Events & Assignments</h1>
-
+    <div class="container-fluid">
+        
+        <div class="d-flex justify-content-between align-items-center mb-4">
+            <div>
+                <h2 class="fw-bold text-dark mb-1">Manage Events</h2>
+                <p class="text-muted mb-0">Configure games, events, and assign managers.</p>
+            </div>
             <?php if ($message): ?>
-            <div class="alert alert-<?php echo $message_type; ?> alert-dismissible fade show" role="alert">
+            <div class="alert alert-<?php echo $message_type; ?> alert-dismissible fade show mb-0 shadow-sm" role="alert">
                 <?= htmlspecialchars($message) ?>
                 <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
             </div>
             <?php endif; ?>
+        </div>
 
-            <ul class="nav nav-tabs" id="eventTabs" role="tablist">
-                <li class="nav-item" role="presentation">
-                    <button class="nav-link active" id="games-tab" data-bs-toggle="tab" data-bs-target="#games" type="button" role="tab">Games (Level 1)</button>
-                </li>
-                <li class="nav-item" role="presentation">
-                    <button class="nav-link" id="events-tab" data-bs-toggle="tab" data-bs-target="#events" type="button" role="tab">Game Events (Level 2)</button>
-                </li>
-                <li class="nav-item" role="presentation">
-                    <button class="nav-link" id="categories-tab" data-bs-toggle="tab" data-bs-target="#categories" type="button" role="tab">Categories (Level 3)</button>
-                </li>
-            </ul>
+        <ul class="nav nav-pills-custom mb-4" id="eventTabs" role="tablist">
+            <li class="nav-item" role="presentation">
+                <button class="nav-link active" id="games-tab" data-bs-toggle="tab" data-bs-target="#games" type="button" role="tab">
+                    <i class="fas fa-layer-group me-2"></i> Games (L1)
+                </button>
+            </li>
+            <li class="nav-item" role="presentation">
+                <button class="nav-link" id="events-tab" data-bs-toggle="tab" data-bs-target="#events" type="button" role="tab">
+                    <i class="fas fa-calendar-day me-2"></i> Events (L2)
+                </button>
+            </li>
+            <li class="nav-item" role="presentation">
+                <button class="nav-link" id="categories-tab" data-bs-toggle="tab" data-bs-target="#categories" type="button" role="tab">
+                    <i class="fas fa-tags me-2"></i> Categories (L3)
+                </button>
+            </li>
+        </ul>
 
-            <div class="tab-content" id="eventTabsContent">
+        <div class="tab-content" id="eventTabsContent">
+            
+            <div class="tab-pane fade show active" id="games" role="tabpanel">
+    
+                <div class="d-flex justify-content-between align-items-center mb-3">
+                    <h5 class="fw-bold text-secondary m-0">Game Categories</h5>
+                    <button class="btn btn-primary rounded-pill px-4" data-bs-toggle="modal" data-bs-target="#addGameModal">
+                        <i class="fas fa-plus me-2"></i> New Game
+                    </button>
+                </div>
+
+                <div class="table-responsive">
+                    <table class="modern-table align-middle">
+                        <thead>
+                            <tr>
+                                <th class="sortable" data-sort-dir="asc" style="width: 70%;">Game Category Name <i class="fas fa-sort"></i></th>
+                                <th class="text-end">Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody id="gamesTableBody">
+                            <?php if (empty($games)): ?>
+                                <tr><td colspan="2" class="text-center text-muted py-4">No game categories found.</td></tr>
+                            <?php else: ?>
+                                <?php foreach ($games as $game): ?>
+                                <tr>
+                                    <td>
+                                        <div class="d-flex align-items-center">
+                                            <div class="bg-light rounded p-2 me-3 d-flex align-items-center justify-content-center" style="width: 40px; height: 40px;">
+                                                <img src="../images/trophy1.svg" alt="Game Icon" style="width: 24px; height: 24px; object-fit: contain;">
+                                            </div>
+                                            <div>
+                                                <span class="fw-bold text-dark d-block"><?= htmlspecialchars($game['game_name']) ?></span>
+                                                <small class="text-muted text-uppercase" style="font-size: 0.7rem;">High-level Category</small>
+                                            </div>
+                                        </div>
+                                    </td>
+                                    
+                                    <td class="text-end">
+                                        <button class="btn-icon edit" data-bs-toggle="modal" data-bs-target="#editGameModal"
+                                            data-game-id="<?= $game['game_id'] ?>" data-game-name="<?= htmlspecialchars($game['game_name']) ?>" title="Edit">
+                                            <i class="fas fa-pen"></i>
+                                        </button>
+                                        <button class="btn-icon delete" data-bs-toggle="modal" data-bs-target="#deleteGameModal"
+                                            data-game-id="<?= $game['game_id'] ?>" data-game-name="<?= htmlspecialchars($game['game_name']) ?>" title="Delete">
+                                            <i class="fas fa-trash"></i>
+                                        </button>
+                                    </td>
+                                </tr>
+                                <?php endforeach; ?>
+                            <?php endif; ?>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <div class="tab-pane fade" id="events" role="tabpanel">
+                <div class="d-flex justify-content-between align-items-center mb-3">
+                    <div class="search-wrapper w-50">
+                        <i class="fas fa-search"></i>
+                        <input type="search" id="searchEvents" class="form-control" placeholder="Search specific events or managers...">
+                    </div>
+                    <button class="btn btn-primary rounded-pill px-4" data-bs-toggle="modal" data-bs-target="#addEventModal">
+                        <i class="fas fa-plus me-2"></i> New Event
+                    </button>
+                </div>
+
+                <div class="table-responsive">
+                    <table class="modern-table align-middle">
+                        <thead>
+                            <tr>
+                                <th class="sortable" data-sort-dir="asc">Event Name <i class="fas fa-sort"></i></th>
+                                <th class="sortable" data-sort-dir="asc">Game Category <i class="fas fa-sort"></i></th>
+                                <th class="sortable" data-sort-dir="asc">Manager <i class="fas fa-sort"></i></th>
+                                <th class="text-end">Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody id="eventsTableBody">
+                            <?php if (empty($events_with_managers)): ?>
+                                <tr>
+                                    <td colspan="4" class="p-4 text-center">
+                                        <div>
+                                            <p class="mb-0 small text-muted">No events yet. These are the actual events (e.g., "Basketball") that belong to a Game Category.</p>
+                                        </div>
+                                    </td>
+                                </tr>
+                            <?php else: ?>
+                                <?php foreach ($events_with_managers as $event): ?>
+                            <tr>
+                                <td>
+                                    <div class="d-flex align-items-center">
+                                        <span class="fw-bold text-dark"><?= htmlspecialchars($event['event_name']) ?></span>
+                                    </div>
+                                </td>
+                                
+                                <td>
+                                    <span class="text-secondary fw-medium">
+                                        <?= htmlspecialchars($event['game_name']) ?>
+                                    </span>
+                                </td>
+                                
+                                <td>
+                                    <?php if($event['manager_name']): ?>
+                                        <div class="manager-badge">
+                                            <div class="manager-avatar"><?= substr($event['manager_name'], 0, 1) ?></div>
+                                            <span class="small fw-bold text-dark"><?= htmlspecialchars($event['manager_name']) ?></span>
+                                        </div>
+                                    <?php else: ?>
+                                        <div class="manager-badge manager-unassigned">
+                                            <i class="fas fa-exclamation-circle me-2"></i> Unassigned
+                                        </div>
+                                    <?php endif; ?>
+                                </td>
+                                <td class="text-end">
+                                    <button class="btn-icon assign" data-bs-toggle="modal" data-bs-target="#assignManagerModal"
+                                        data-event-id="<?= $event['event_id'] ?>" data-event-name="<?= htmlspecialchars($event['event_name']) ?>"
+                                        data-user-id="<?= $event['user_id'] ?? '' ?>" title="Assign Manager">
+                                        <i class="fas fa-user-plus"></i>
+                                    </button>
+                                    <button class="btn-icon edit" data-bs-toggle="modal" data-bs-target="#editEventModal"
+                                        data-event-id="<?= $event['event_id'] ?>" data-event-name="<?= htmlspecialchars($event['event_name']) ?>"
+                                        data-game-id="<?= $event['game_id'] ?>" title="Edit">
+                                        <i class="fas fa-pen"></i>
+                                    </button>
+                                    <button class="btn-icon delete" data-bs-toggle="modal" data-bs-target="#deleteEventModal"
+                                        data-event-id="<?= $event['event_id'] ?>" data-event-name="<?= htmlspecialchars($event['event_name']) ?>" title="Delete">
+                                        <i class="fas fa-trash"></i>
+                                    </button>
+                                </td>
+                            </tr>
+                            <?php endforeach; ?>
+                            <?php endif; ?>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <div class="tab-pane fade" id="categories" role="tabpanel">
+                <div class="d-flex justify-content-between align-items-center mb-3">
+                    <div class="search-wrapper w-50">
+                        <i class="fas fa-search"></i>
+                        <input type="search" id="searchCategories" class="form-control" placeholder="Search categories...">
+                    </div>
+                    <button class="btn btn-primary rounded-pill px-4" data-bs-toggle="modal" data-bs-target="#addCategoryModal">
+                        <i class="fas fa-plus me-2"></i> New Category
+                    </button>
+                </div>
                 
-                <div class="tab-pane fade show active" id="games" role="tabpanel">
-                    <div class="card mt-3">
-                        <div class="card-header d-flex justify-content-between align-items-center bg-white py-3">
-                            <h5 class="mb-0 fw-bold">Games List</h5>
-                            <button class="btn btn-primary btn-sm" data-bs-toggle="modal" data-bs-target="#addGameModal">
-                                <i class="fas fa-plus me-1"></i> Add New Game
-                            </button>
-                        </div>
-                        
-                        <div class="table-responsive">
-                            <table class="table table-hover mb-0 align-middle">
-                                <thead class="table-light">
-                                    <tr>
-                                        <th>Game Name</th>
-                                        <th class="text-end">Actions</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    <?php foreach ($games as $game): ?>
-                                    <tr>
-                                        <td><strong><?= htmlspecialchars($game['game_name']) ?></strong></td>
-                                        <td class="text-end">
-                                            <button class="btn btn-sm btn-outline-primary edit-game-btn me-1"
-                                                data-bs-toggle="modal" data-bs-target="#editGameModal"
-                                                data-game-id="<?= $game['game_id'] ?>"
-                                                data-game-name="<?= htmlspecialchars($game['game_name']) ?>">
-                                                <i class="fas fa-edit"></i>
-                                            </button>
-                                            <button class="btn btn-sm btn-outline-danger delete-game-btn"
-                                                data-bs-toggle="modal" data-bs-target="#deleteGameModal"
-                                                data-game-id="<?= $game['game_id'] ?>"
-                                                data-game-name="<?= htmlspecialchars($game['game_name']) ?>">
-                                                <i class="fas fa-trash"></i>
-                                            </button>
-                                        </td>
-                                    </tr>
-                                    <?php endforeach; ?>
-                                </tbody>
-                            </table>
-                        </div>
-                    </div>
-                </div>
-
-                <div class="tab-pane fade" id="events" role="tabpanel">
-                    <div class="card mt-3">
-                        <div class="card-header d-flex justify-content-between align-items-center bg-white py-3">
-                            <h5 class="mb-0 fw-bold">Game Events (L2)</h5>
-                            <button class="btn btn-primary btn-sm" data-bs-toggle="modal" data-bs-target="#addEventModal">
-                                <i class="fas fa-plus me-1"></i> Add New Event
-                            </button>
-                        </div>
-                        
-                        <div class="p-3 border-bottom bg-white">
-                             <input type="search" id="searchEvents" class="form-control" placeholder="Search events, games, or managers...">
-                        </div>
-
-                        <div class="table-responsive">
-                            <table class="table table-hover mb-0 align-middle">
-                                <thead class="table-light">
-                                    <tr>
-                                        <th class="sortable" data-sort-dir="asc">Game (L1) <i class="fas fa-sort fa-xs"></i></th>
-                                        <th class="sortable" data-sort-dir="asc">Event (L2) <i class="fas fa-sort fa-xs"></i></th>
-                                        <th class="sortable" data-sort-dir="asc">Assigned Manager <i class="fas fa-sort fa-xs"></i></th>
-                                        <th class="text-end">Actions</th>
-                                    </tr>
-                                </thead>
-                                <tbody id="eventsTableBody">
-                                    <?php foreach ($events_with_managers as $event): ?>
-                                    <tr>
-                                        <td><?= htmlspecialchars($event['game_name']) ?></td>
-                                        <td><strong><?= htmlspecialchars($event['event_name']) ?></strong></td>
-                                        <td class="fw-bold">
-                                            <?php if($event['manager_name']): ?>
-                                                <span class="text-dark"><?= htmlspecialchars($event['manager_name']) ?></span>
-                                            <?php else: ?>
-                                                <span class="text-secondary opacity-50">Unassigned</span>
-                                            <?php endif; ?>
-                                        </td>
-                                        <td class="text-end">
-                                            <button class="btn btn-sm btn-outline-info assign-btn me-1"
-                                                data-bs-toggle="modal" data-bs-target="#assignManagerModal"
-                                                data-event-id="<?= $event['event_id'] ?>"
-                                                data-event-name="<?= htmlspecialchars($event['event_name']) ?>"
-                                                data-user-id="<?= $event['user_id'] ?? '' ?>">
-                                                <i class="fas fa-user-plus"></i>
-                                            </button>
-                                            <button class="btn btn-sm btn-outline-primary edit-event-btn me-1"
-                                                data-bs-toggle="modal" data-bs-target="#editEventModal"
-                                                data-event-id="<?= $event['event_id'] ?>"
-                                                data-event-name="<?= htmlspecialchars($event['event_name']) ?>"
-                                                data-game-id="<?= $event['game_id'] ?>">
-                                                <i class="fas fa-edit"></i>
-                                            </button>
-                                            <button class="btn btn-sm btn-outline-danger delete-event-btn"
-                                                data-bs-toggle="modal" data-bs-target="#deleteEventModal"
-                                                data-event-id="<?= $event['event_id'] ?>"
-                                                data-event-name="<?= htmlspecialchars($event['event_name']) ?>">
-                                                <i class="fas fa-trash"></i>
-                                            </button>
-                                        </td>
-                                    </tr>
-                                    <?php endforeach; ?>
-                                </tbody>
-                            </table>
-                        </div>
-                    </div>
-                </div>
-
-                <div class="tab-pane fade" id="categories" role="tabpanel">
-                    <div class="card mt-3">
-                        <div class="card-header d-flex justify-content-between align-items-center bg-white py-3">
-                            <h5 class="mb-0 fw-bold">Specific Categories (L3)</h5>
-                            <button class="btn btn-primary btn-sm" data-bs-toggle="modal" data-bs-target="#addCategoryModal">
-                                <i class="fas fa-plus me-1"></i> Add Category
-                            </button>
-                        </div>
-                        
-                        <div class="p-3 border-bottom bg-white">
-                             <input type="search" id="searchCategories" class="form-control" placeholder="Search categories...">
-                        </div>
-                        
-                        <div class="table-responsive">
-                            <table class="table table-hover mb-0 align-middle">
-                                <thead class="table-light">
-                                    <tr>
-                                        <th class="sortable" data-sort-dir="asc">Game (L1) <i class="fas fa-sort fa-xs"></i></th>
-                                        <th class="sortable" data-sort-dir="asc">Event (L2) <i class="fas fa-sort fa-xs"></i></th>
-                                        <th class="sortable" data-sort-dir="asc">Category (L3) <i class="fas fa-sort fa-xs"></i></th>
-                                        <th class="sortable" data-sort-dir="asc">Assigned Manager <i class="fas fa-sort fa-xs"></i></th>
-                                        <th class="text-end">Actions</th>
-                                    </tr>
-                                </thead>
-                                <tbody id="categoriesTableBody">
-                                    <?php foreach ($categories as $category): ?>
-                                    <tr>
-                                        <td><?= htmlspecialchars($category['game_name']) ?></td>
-                                        <td><?= htmlspecialchars($category['event_name']) ?></td>
-                                        <td>
+                <div class="table-responsive">
+                    <table class="modern-table align-middle">
+                        <thead>
+                            <tr>
+                                <th class="sortable" data-sort-dir="asc">Division / Category (L3) <i class="fas fa-sort"></i></th>
+                                <th class="sortable" data-sort-dir="asc">Event Context <i class="fas fa-sort"></i></th>
+                                <th class="sortable" data-sort-dir="asc">Manager <i class="fas fa-sort"></i></th>
+                                <th class="text-end">Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody id="categoriesTableBody">
+                            <?php if (empty($categories)): ?>
+                                <tr>
+                                    <td colspan="4" class="p-4 text-center">
+                                        <div>
+                                            <p class="mb-0 small text-muted">No categories yet. These are specific divisions where medals are awarded (e.g., "Men's Division").</p>
+                                        </div>
+                                    </td>
+                                </tr>
+                            <?php else: ?>
+                                <?php foreach ($categories as $category): ?>
+                                <tr>
+                                    <td>
                                         <?php 
                                             $catName = $category['category_name'];
-                                            
-                                            // Check if it is Single or Open Division
-                                            if ($catName === 'Single Division' || $catName === 'Open Division') {
-                                                // Display just the text (I kept <strong> to match the style of other categories)
-                                                echo '<strong>Single Division</strong>';
-                                            } else {
-                                                // Display specific category name
-                                                echo '<strong>' . htmlspecialchars($catName) . '</strong>';
-                                            }
-                                            ?>
-                                        </td>
-                                        <td class="fw-bold">
-                                            <?php if($category['manager_name']): ?>
-                                                <span class="text-dark"><?= htmlspecialchars($category['manager_name']) ?></span>
-                                            <?php else: ?>
-                                                <span class="text-secondary opacity-50">Unassigned</span>
-                                            <?php endif; ?>
-                                        </td>
-                                        <td class="text-end">
-                                            <button class="btn btn-sm btn-outline-primary edit-category-btn me-1"
-                                                data-bs-toggle="modal" data-bs-target="#editCategoryModal"
-                                                data-category-id="<?= $category['category_id'] ?>"
-                                                data-category-name="<?= htmlspecialchars($category['category_name']) ?>"
-                                                data-event-id="<?= $category['event_id'] ?>">
-                                                <i class="fas fa-edit"></i>
-                                            </button>
-                                            <button class="btn btn-sm btn-outline-danger delete-category-btn"
-                                                data-bs-toggle="modal" data-bs-target="#deleteCategoryModal"
-                                                data-category-id="<?= $category['category_id'] ?>"
-                                                data-category-name="<?= htmlspecialchars($category['category_name']) ?>">
-                                                <i class="fas fa-trash"></i>
-                                            </button>
-                                        </td>
-                                    </tr>
-                                    <?php endforeach; ?>
-                                </tbody>
-                            </table>
-                        </div>
-                    </div>
+                                            $isDefault = ($catName === 'Single Division' || $catName === 'Open Division');
+                                            $style = $isDefault ? 'text-muted fst-italic' : 'fw-bold text-dark';
+                                        ?>
+                                        <span class="<?= $style ?>"><?= htmlspecialchars($catName) ?></span>
+                                    </td>
+                                    <td>
+                                        <small class="text-muted d-block text-uppercase" style="font-size: 0.65rem;">
+                                            <?= htmlspecialchars($category['game_name']) ?>
+                                        </small>
+                                        <span class="fw-bold text-secondary"><?= htmlspecialchars($category['event_name']) ?></span>
+                                    </td>
+                                    <td>
+                                        <?php if($category['manager_name']): ?>
+                                            <div class="manager-badge">
+                                                <div class="manager-avatar"><?= substr($category['manager_name'], 0, 1) ?></div>
+                                                <span class="small fw-bold text-dark"><?= htmlspecialchars($category['manager_name']) ?></span>
+                                            </div>
+                                        <?php else: ?>
+                                            <div class="manager-badge manager-unassigned">
+                                                <i class="fas fa-exclamation-circle me-2"></i> Unassigned
+                                            </div>
+                                        <?php endif; ?>
+                                    </td>
+                                    <td class="text-end">
+                                        <button class="btn-icon edit" data-bs-toggle="modal" data-bs-target="#editCategoryModal"
+                                            data-category-id="<?= $category['category_id'] ?>" data-category-name="<?= htmlspecialchars($category['category_name']) ?>"
+                                            data-event-id="<?= $category['event_id'] ?>">
+                                            <i class="fas fa-pen"></i>
+                                        </button>
+                                        <button class="btn-icon delete" data-bs-toggle="modal" data-bs-target="#deleteCategoryModal"
+                                            data-category-id="<?= $category['category_id'] ?>" data-category-name="<?= htmlspecialchars($category['category_name']) ?>">
+                                            <i class="fas fa-trash"></i>
+                                        </button>
+                                    </td>
+                                </tr>
+                                <?php endforeach; ?>
+                            <?php endif; ?>
+                        </tbody>
+                    </table>
                 </div>
             </div>
         </div>
+    </div>
+</div>
 
         <div class="modal fade" id="addGameModal" tabindex="-1">
             <div class="modal-dialog">
                 <div class="modal-content">
                     <div class="modal-header">
-                        <h5 class="modal-title">Add New Game Category</h5>
+                        <h5 class="modal-title"><i class="fas fa-plus-circle"></i>Add New Game Category</h5>
                         <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
                     </div>
                     <form action="events.php" method="POST">
@@ -629,7 +1143,7 @@ $pending_results_count = $conn->query("SELECT COUNT(*) FROM categories WHERE sta
             <div class="modal-dialog">
                 <div class="modal-content">
                     <div class="modal-header">
-                        <h5 class="modal-title">Add New Sport / Event</h5>
+                        <h5 class="modal-title"><i class="fas fa-plus-circle"></i>Add New Sport / Event</h5>
                         <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
                     </div>
                     <form action="events.php" method="POST">
@@ -665,7 +1179,7 @@ $pending_results_count = $conn->query("SELECT COUNT(*) FROM categories WHERE sta
             <div class="modal-dialog">
                 <div class="modal-content">
                     <div class="modal-header">
-                        <h5 class="modal-title">Add Specific Division</h5>
+                        <h5 class="modal-title"><i class="fas fa-plus-circle"></i>Add Specific Division</h5>
                         <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
                     </div>
                     <form action="events.php" method="POST">
@@ -731,7 +1245,7 @@ $pending_results_count = $conn->query("SELECT COUNT(*) FROM categories WHERE sta
             <div class="modal-dialog">
                 <div class="modal-content">
                     <div class="modal-header">
-                        <h5 class="modal-title">Edit Game Category</h5>
+                        <h5 class="modal-title"><i class="fas fa-edit"></i>Edit Game Category</h5>
                         <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
                     </div>
                     <form action="events.php" method="POST">
@@ -756,7 +1270,7 @@ $pending_results_count = $conn->query("SELECT COUNT(*) FROM categories WHERE sta
             <div class="modal-dialog">
                 <div class="modal-content">
                     <div class="modal-header">
-                        <h5 class="modal-title">Delete Game</h5>
+                        <h5 class="modal-title"><i class="fas fa-trash-alt"></i> Delete Game</h5>
                         <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
                     </div>
                     <form action="events.php" method="POST">
@@ -779,7 +1293,7 @@ $pending_results_count = $conn->query("SELECT COUNT(*) FROM categories WHERE sta
             <div class="modal-dialog">
                 <div class="modal-content">
                     <div class="modal-header">
-                        <h5 class="modal-title">Edit Sport / Event</h5>
+                        <h5 class="modal-title"><i class="fas fa-edit"></i>Edit Sport / Event</h5>
                         <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
                     </div>
                     <form action="events.php" method="POST">
@@ -813,7 +1327,7 @@ $pending_results_count = $conn->query("SELECT COUNT(*) FROM categories WHERE sta
             <div class="modal-dialog">
                 <div class="modal-content">
                     <div class="modal-header">
-                        <h5 class="modal-title">Delete Sport</h5>
+                        <h5 class="modal-title"><i class="fas fa-trash-alt"></i> Delete Event</h5>
                         <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
                     </div>
                     <form action="events.php" method="POST">
@@ -825,7 +1339,7 @@ $pending_results_count = $conn->query("SELECT COUNT(*) FROM categories WHERE sta
                         </div>
                         <div class="modal-footer">
                             <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-                            <button type="submit" class="btn btn-danger">Delete Sport</button>
+                            <button type="submit" class="btn btn-danger">Delete Event</button>
                         </div>
                     </form>
                 </div>
@@ -836,7 +1350,7 @@ $pending_results_count = $conn->query("SELECT COUNT(*) FROM categories WHERE sta
             <div class="modal-dialog">
                 <div class="modal-content">
                     <div class="modal-header">
-                        <h5 class="modal-title">Edit Division</h5>
+                        <h5 class="modal-title"><i class="fas fa-edit"></i>Edit Category</h5>
                         <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
                     </div>
                     <form action="events.php" method="POST">
@@ -845,7 +1359,7 @@ $pending_results_count = $conn->query("SELECT COUNT(*) FROM categories WHERE sta
                             <input type="hidden" name="category_id" id="edit_category_id">
                             
                             <div class="mb-3">
-                                <label for="edit_event_id_select_cat" class="form-label fw-bold">Belongs to Sport</label>
+                                <label for="edit_event_id_select_cat" class="form-label fw-bold">Belongs to Event</label>
                                 <select class="form-select" id="edit_event_id_select_cat" name="event_id" required>
                                     <option value="" disabled>-- Select Sport --</option>
                                     <?php foreach ($events as $event): ?>
@@ -873,7 +1387,7 @@ $pending_results_count = $conn->query("SELECT COUNT(*) FROM categories WHERE sta
             <div class="modal-dialog">
                 <div class="modal-content">
                     <div class="modal-header">
-                        <h5 class="modal-title">Delete Division</h5>
+                        <h5 class="modal-title"><i class="fas fa-trash-alt"></i> Delete Division</h5>
                         <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
                     </div>
                     <form action="events.php" method="POST">
@@ -1009,8 +1523,15 @@ $pending_results_count = $conn->query("SELECT COUNT(*) FROM categories WHERE sta
 
         const deleteEventModal = document.getElementById('deleteEventModal');
         if (deleteEventModal) {
+            deleteEventModal.addEventListener('shown.bs.modal', function() {
+                // 1. Auto-Focus the Delete Button so "Enter" works immediately
+                const submitBtn = deleteEventModal.querySelector('button[type="submit"]');
+                if(submitBtn) submitBtn.focus();
+            });
+
             deleteEventModal.addEventListener('show.bs.modal', function(event) {
                 const button = event.relatedTarget;
+                // 2. Populate the data
                 deleteEventModal.querySelector('#delete_event_id').value = button.dataset.eventId;
                 deleteEventModal.querySelector('#delete_event_name').textContent = button.dataset.eventName;
             });
@@ -1120,6 +1641,45 @@ $pending_results_count = $conn->query("SELECT COUNT(*) FROM categories WHERE sta
             window.addEventListener('resize', adjustSidebarHeight);
             setTimeout(adjustSidebarHeight, 100);
         }
+
+        // ==========================================
+        // 2. REAL-TIME BADGE UPDATER
+        // ==========================================
+        function updateSidebarBadges() {
+            fetch('../api_notifications.php?t=' + new Date().getTime())
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        // Update "Approve Results" (Yellow)
+                        updateSingleBadge('results.php', data.pending_results, 'bg-warning text-dark');
+
+                        // Update "Account Requests" (Red)
+                        updateSingleBadge('Manage_Requests.php', data.pending_requests, 'bg-danger');
+                    }
+                })
+                .catch(err => console.error('Badge update error:', err));
+        }
+
+        function updateSingleBadge(hrefKeyword, count, colorClasses) {
+            const link = document.querySelector(`.sidebar-nav .nav-link[href*="${hrefKeyword}"]`);
+            if (link) {
+                let badge = link.querySelector('.badge');
+                if (count > 0) {
+                    if (!badge) {
+                        badge = document.createElement('span');
+                        link.appendChild(badge);
+                    }
+                    badge.className = `badge ${colorClasses} ms-auto rounded-pill`;
+                    badge.textContent = count;
+                } else {
+                    if (badge) badge.remove();
+                }
+            }
+        }
+
+        // Run Badges
+        updateSidebarBadges();
+        setInterval(updateSidebarBadges, 5000);
     });
     </script>
 </body>

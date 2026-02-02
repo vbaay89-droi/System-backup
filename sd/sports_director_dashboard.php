@@ -79,9 +79,15 @@ function getUserNameById($conn, $id) {
  * Format Log Entries for Display
  */
 function formatLogEntry($conn, $log, $current_user_id) {
+    // 1. Identify Actor
     $actor = ($log['actor_user_id'] == $current_user_id) ? "<strong>You</strong>" : "<strong>" . htmlspecialchars(getUserNameById($conn, $log['actor_user_id'])) . "</strong>";
+    
+    // 2. Decode Context
     $ctx = json_decode($log['log_context'], true) ?? [];
     $action = trim($log['action_type']);
+    $related_id = (int)$log['related_id']; // We use this to look up missing info
+    
+    // Default values
     $msg = "Action performed.";
     $icon = "fas fa-info-circle text-muted";
 
@@ -108,40 +114,48 @@ function formatLogEntry($conn, $log, $current_user_id) {
         
         // --- Result Actions ---
         case 'APPROVED_RESULT': 
-            $msg = "$actor approved the results for <strong>" . htmlspecialchars($ctx['event_name']??'') . "</strong>."; 
+            // Fetch Event Name if missing
+            $event_name = $ctx['event_name'] ?? 'Unknown Event';
+            // Optional: DB Lookup similar to SUBMITTED_RESULTS can be added here if needed
+            $msg = "$actor approved the results for <strong>" . htmlspecialchars($event_name) . "</strong>."; 
             $icon = "fas fa-check-double text-success"; 
             break;
+            
         case 'REVOKED_RESULT': 
-            // FIXED: Changed **revoked** to HTML so it looks right
             $msg = "$actor <span class='text-danger fw-bold'>revoked</span> the results for <strong>" . htmlspecialchars($ctx['event_name']??'') . "</strong>."; 
             $icon = "fas fa-undo text-danger"; 
             break;
+            
         case 'REJECTED_RESULT': 
             $msg = "$actor rejected the results for <strong>" . htmlspecialchars($ctx['event_name']??'') . "</strong>."; 
             $icon = "fas fa-times-circle text-warning"; 
             break;
 
-        // --- Admin Actions ---
-        case 'UPDATED_USER': 
-            // Slightly friendlier wording
-            $msg = "$actor updated a user account profile."; 
-            $icon = "fas fa-user-edit text-warning"; 
-            break;
-        case 'APPROVED_REQUEST': 
-            $msg = "$actor approved a new account request."; 
-            $icon = "fas fa-user-check text-success"; 
-            break;
-        
-        // --- Archive Actions ---
-        case 'ARCHIVED_SEASON': 
-            $msg = "$actor archived the season and reset the system."; 
-            $icon = "fas fa-archive text-primary"; 
-            break;
-
-        // --- EVENT MANAGER ACTIONS ---
+        // --- EVENT MANAGER ACTIONS (UPDATED SECTION) ---
         case 'SUBMITTED_RESULTS':
-            $cat_name = htmlspecialchars($ctx['category_name'] ?? 'an event');
-            $msg = "$actor submitted results for <strong>$cat_name</strong>.";
+            // 1. Try to get names from the log context first
+            $cat_name = $ctx['category_name'] ?? null;
+            $event_name = $ctx['event_name'] ?? null;
+
+            // 2. If Event Name is missing, fetch it from DB using the Category ID
+            if (!$event_name && $related_id > 0) {
+                $q = $conn->query("SELECT ge.event_name, c.category_name 
+                                   FROM categories c 
+                                   JOIN game_events ge ON c.event_id = ge.event_id 
+                                   WHERE c.category_id = $related_id LIMIT 1");
+                if ($q && $row = $q->fetch_assoc()) {
+                    $event_name = $row['event_name'];
+                    // Update category name if we found a better one
+                    if (!$cat_name) $cat_name = $row['category_name'];
+                }
+            }
+
+            // 3. Fallbacks
+            $event_name = htmlspecialchars($event_name ?? 'Unknown Event');
+            $cat_name = htmlspecialchars($cat_name ?? 'Unknown Category');
+
+            // 4. Construct the New Message Format: "Event - Category"
+            $msg = "$actor submitted results for <strong>$event_name - $cat_name</strong>.";
             $icon = "fas fa-paper-plane text-warning"; 
             break;
 
@@ -163,7 +177,20 @@ function formatLogEntry($conn, $log, $current_user_id) {
              $icon = "fas fa-edit text-info";
              break;
 
-        // --- Default Case (Always Last) ---
+        // --- Admin Actions ---
+        case 'UPDATED_USER': 
+            $msg = "$actor updated a user account profile."; 
+            $icon = "fas fa-user-edit text-warning"; 
+            break;
+        case 'APPROVED_REQUEST': 
+            $msg = "$actor approved a new account request."; 
+            $icon = "fas fa-user-check text-success"; 
+            break;
+        case 'ARCHIVED_SEASON': 
+            $msg = "$actor archived the season and reset the system."; 
+            $icon = "fas fa-archive text-primary"; 
+            break;
+
         default: 
             $msg = "$actor performed <strong>$action</strong>."; 
             break;
@@ -192,65 +219,274 @@ if ($log_res) {
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" rel="stylesheet">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=Poppins:wght@400;500;600;700;800&display=swap" rel="stylesheet">
     <style>
-        /* --- Unified & Modern CSS --- */
-        :root { 
-            --sidebar-width: 260px; 
-            --header-height: 82px; 
-            --transition: all 0.3s ease; 
-            --card-shadow: 0 5px 20px rgba(0, 0, 0, 0.08); 
-            --bg-light: #F8F9FA; 
-            --primary-gradient: linear-gradient(135deg, #2c3e50 0%, #4ca1af 100%);
-            --accent-color: #1abc9c;
-        }
-        body { background-color: var(--bg-light); margin: 0; padding: 0; min-height: 100vh; font-family: 'Inter', sans-serif; display: flex; flex-direction: column; }
-        
-        /* Navbar */
-        .navbar { background: linear-gradient(135deg, #1a1a1a 0%, #2d2d2d 100%) !important; box-shadow: 0 4px 20px rgba(0,0,0,0.15); padding: 1rem 1.5rem; height: var(--header-height); position: fixed; top: 0; left: 0; right: 0; z-index: 1050; }
-        .user-dropdown .dropdown-toggle { color: white; display: flex; align-items: center; text-decoration: none; padding: 8px 12px; border-radius: 8px; transition: var(--transition); }
-        .user-dropdown .dropdown-toggle:hover { background-color: rgba(255, 255, 255, 0.1); }
-        .user-dropdown .dropdown-toggle img { width: 36px; height: 36px; border-radius: 50%; object-fit: cover; margin-right: 10px; }
-        
-        /* Sidebar */
-        .sidebar { width: var(--sidebar-width); position: fixed; top: var(--header-height); left: 0; height: calc(100vh - var(--header-height)); background: #2c3e50; color: white; box-shadow: 5px 0 15px rgba(0,0,0,0.2); z-index: 1040; transition: width var(--transition); overflow-y: auto; }
-        .sidebar-nav { padding: 20px 0; }
-        .sidebar-nav .nav-link { color: rgba(255, 255, 255, 0.7); font-size: 1.05rem; font-weight: 500; padding: 12px 25px; transition: var(--transition); border-left: 5px solid transparent; margin: 2px 0; display: flex; align-items: center; text-decoration: none; }
-        .sidebar-nav .nav-link i { width: 30px; text-align: center; flex-shrink: 0; font-size: 0.95em; }
-        .sidebar-nav .nav-link:hover { color: white; background: rgba(255, 255, 255, 0.05); border-left-color: var(--accent-color); }
-        .sidebar-nav .nav-link.active { color: white; background: rgba(255, 255, 255, 0.1); border-left-color: #3498db; font-weight: 600; }
-        .sidebar-nav .nav-title { padding: 15px 25px 5px; font-size: 0.75rem; font-weight: 700; color: rgba(255, 255, 255, 0.4); text-transform: uppercase; letter-spacing: 1px; }
+    /* =========================================
+       1. CORE VARIABLES & SETUP
+       ========================================= */
+    :root { 
+        --sidebar-width: 260px; 
+        --header-height: 82px; 
+        --transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        --card-shadow: 0 5px 20px rgba(0, 0, 0, 0.08); 
+        --bg-light: #f4f6f8; /* Updated to a cooler, modern gray */
+        --primary-gradient: linear-gradient(135deg, #2c3e50 0%, #4ca1af 100%);
+        --accent-color: #1abc9c;
+    }
 
-        .main-content { flex: 1 0 auto; padding: 30px; margin-top: var(--header-height); margin-left: var(--sidebar-width); transition: margin-left var(--transition); min-height: calc(100vh - var(--header-height)); }
-        /* Footer */
-        footer {
-            flex-shrink: 0;
-            /* REMOVED background color here so .footer-main can work */
-            box-shadow: 0 -2px 10px rgba(0,0,0,0.1);
-            padding-left: var(--sidebar-width);
-            transition: padding-left var(--transition);
-            position: relative;
-            z-index: 1041;
-        }
-        .sidebar.minimized ~ footer {
-            padding-left: var(--sidebar-min-width);
-        }
-        /* Hero */
-        .hero-section { background: var(--primary-gradient); color: white; padding: 40px; border-radius: 15px; margin-bottom: 30px; box-shadow: var(--card-shadow); position: relative; overflow: hidden; }
-        .welcome-badge { background: rgba(255,255,255,0.2); padding: 6px 16px; border-radius: 30px; font-size: 0.85rem; font-weight: 600; display: inline-block; backdrop-filter: blur(5px); letter-spacing: 0.5px; }
-        
-        /* Cards */
-        .stat-card { background: white; border: none; border-radius: 15px; padding: 20px; box-shadow: var(--card-shadow); transition: transform 0.3s; height: 100%; border-left: 5px solid transparent; }
-        .stat-card:hover { transform: translateY(-5px); }
-        .stat-icon { width: 50px; height: 50px; border-radius: 12px; display: flex; align-items: center; justify-content: center; color: white; font-size: 1.5rem; margin-right: 15px; flex-shrink: 0; }
-        .stat-count { font-size: 2.2rem; font-weight: 700; line-height: 1; font-family: 'Poppins', sans-serif; color: #2c3e50; }
-        .section-title { font-family: 'Poppins', sans-serif; font-weight: 600; color: #333; margin-bottom: 20px; }
+    body { 
+        background-color: var(--bg-light); 
+        margin: 0; 
+        padding: 0; 
+        min-height: 100vh; 
+        font-family: 'Inter', sans-serif; 
+        display: flex; 
+        flex-direction: column; 
+    }
 
-        /* Quick Actions */
-        .quick-action-card { text-align: center; padding: 20px; background: white; border-radius: 15px; box-shadow: var(--card-shadow); transition: all 0.3s; text-decoration: none; color: #333; display: block; height: 100%; border: 1px solid rgba(0,0,0,0.05); }
-        .quick-action-card:hover { transform: translateY(-5px); border-color: var(--accent-color); background: #fcfcfc; color: var(--accent-color); }
-        .quick-icon { font-size: 2.5rem; margin-bottom: 15px; display: block; transition: color 0.3s; }
+    /* =========================================
+       2. LAYOUT (Sidebar, Navbar, Footer)
+       ========================================= */
+    
+    /* Navbar */
+    .navbar { 
+        background: linear-gradient(135deg, #1a1a1a 0%, #2d2d2d 100%) !important; 
+        box-shadow: 0 4px 20px rgba(0,0,0,0.15); 
+        padding: 1rem 1.5rem; 
+        height: var(--header-height); 
+        position: fixed; 
+        top: 0; left: 0; right: 0; 
+        z-index: 1050; 
+    }
+    .user-dropdown .dropdown-toggle { color: white; display: flex; align-items: center; text-decoration: none; padding: 8px 12px; border-radius: 8px; transition: var(--transition); }
+    .user-dropdown .dropdown-toggle:hover { background-color: rgba(255, 255, 255, 0.1); }
+    .user-dropdown .dropdown-toggle img { width: 36px; height: 36px; border-radius: 50%; object-fit: cover; margin-right: 10px; }
 
-        
-    /* --- FOOTER STYLES (MATCHING HOME.PHP) --- */
+    /* Sidebar */
+    .sidebar { 
+        width: var(--sidebar-width); 
+        position: fixed; 
+        top: var(--header-height); 
+        left: 0; 
+        height: calc(100vh - var(--header-height)); 
+        background: #2c3e50; 
+        color: white; 
+        box-shadow: 5px 0 15px rgba(0,0,0,0.2); 
+        z-index: 1040; 
+        transition: width var(--transition); 
+        overflow-y: auto; 
+    }
+    .sidebar-nav { padding: 20px 0; }
+    .sidebar-nav .nav-link { color: rgba(255, 255, 255, 0.7); font-size: 1.05rem; font-weight: 500; padding: 12px 25px; transition: var(--transition); border-left: 5px solid transparent; margin: 2px 0; display: flex; align-items: center; text-decoration: none; }
+    .sidebar-nav .nav-link i { width: 30px; text-align: center; flex-shrink: 0; font-size: 0.95em; }
+    .sidebar-nav .nav-link:hover { color: white; background: rgba(255, 255, 255, 0.05); border-left-color: var(--accent-color); }
+    .sidebar-nav .nav-link.active { color: white; background: rgba(255, 255, 255, 0.1); border-left-color: #3498db; font-weight: 600; }
+    .sidebar-nav .nav-title { padding: 15px 25px 5px; font-size: 0.75rem; font-weight: 700; color: rgba(255, 255, 255, 0.4); text-transform: uppercase; letter-spacing: 1px; }
+
+    /* Main Content Area */
+    .main-content { 
+        flex: 1 0 auto; 
+        padding: 30px; 
+        margin-top: var(--header-height); 
+        margin-left: var(--sidebar-width); 
+        transition: margin-left var(--transition); 
+        min-height: calc(100vh - var(--header-height)); 
+    }
+
+    /* Footer */
+    footer {
+        flex-shrink: 0;
+        box-shadow: 0 -2px 10px rgba(0,0,0,0.1);
+        padding-left: var(--sidebar-width);
+        transition: padding-left var(--transition);
+        position: relative;
+        z-index: 1041;
+    }
+    .sidebar.minimized ~ footer { padding-left: var(--sidebar-min-width); }
+
+    /* Responsive */
+    @media (max-width: 992px) {
+        .sidebar { left: -260px; }
+        .sidebar.show { left: 0; }
+        .main-content, footer { margin-left: 0; }
+    }
+
+    /* =========================================
+       3. HERO SECTION (Welcome Board)
+       ========================================= */
+    .hero-section { 
+        background: var(--primary-gradient); 
+        color: white; 
+        padding: 40px; 
+        border-radius: 16px; 
+        margin-bottom: 30px; 
+        box-shadow: var(--card-shadow); 
+        position: relative; 
+        overflow: hidden; 
+    }
+    .welcome-badge { 
+        background: rgba(255,255,255,0.2); 
+        padding: 6px 16px; 
+        border-radius: 30px; 
+        font-size: 0.85rem; 
+        font-weight: 600; 
+        display: inline-block; 
+        backdrop-filter: blur(5px); 
+        letter-spacing: 0.5px; 
+    }
+
+    /* =========================================
+       4. MODERN DASHBOARD WIDGETS (New Design)
+       ========================================= */
+    
+    /* Section Titles */
+    .section-title { 
+        font-family: 'Inter', sans-serif;
+        font-size: 0.85rem; 
+        font-weight: 700; 
+        text-transform: uppercase; 
+        letter-spacing: 1px; 
+        color: #8898aa; 
+        margin-bottom: 1.5rem; 
+    }
+
+    /* The New Standard Card */
+    .dashboard-card {
+        background: white;
+        border-radius: 16px;
+        border: 1px solid rgba(0,0,0,0.02);
+        box-shadow: 0 4px 20px rgba(0,0,0,0.03);
+        padding: 24px;
+        height: 100%;
+        transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        position: relative;
+        overflow: hidden;
+    }
+    .dashboard-card:hover {
+        transform: translateY(-5px);
+        box-shadow: 0 15px 30px rgba(0,0,0,0.06);
+    }
+
+    /* Modern Icon Squares */
+    .icon-square {
+        width: 60px;
+        height: 60px;
+        border-radius: 14px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 1.6rem;
+        margin-right: 20px;
+        flex-shrink: 0;
+    }
+
+    /* Theme Colors (Subtle Backgrounds) */
+    .theme-blue   { background: rgba(0, 123, 255, 0.1); color: #007bff; }
+    .theme-green  { background: rgba(25, 135, 84, 0.1); color: #198754; }
+    .theme-cyan   { background: rgba(13, 202, 240, 0.1); color: #0dcaf0; }
+    .theme-gold   { background: rgba(255, 193, 7, 0.1); color: #ffc107; }
+    .theme-red    { background: rgba(220, 53, 69, 0.1); color: #dc3545; }
+    .theme-orange { background: rgba(253, 126, 20, 0.1); color: #fd7e14; }
+
+    /* Typography for Stats */
+    .stat-value {
+        font-family: 'Inter', sans-serif;
+        font-size: 2.5rem;
+        font-weight: 800;
+        color: #2c3e50;
+        line-height: 1.1;
+        margin-bottom: 4px;
+        letter-spacing: -1px;
+    }
+    .stat-label {
+        font-size: 0.85rem;
+        font-weight: 600;
+        color: #6c757d;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+    }
+
+    /* Live Status / Action Cards */
+    .action-card {
+        display: flex;
+        flex-direction: column;
+        justify-content: space-between;
+    }
+    .action-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: flex-start;
+        margin-bottom: 15px;
+    }
+    .pulse-dot {
+        width: 10px;
+        height: 10px;
+        background-color: #dc3545;
+        border-radius: 50%;
+        display: inline-block;
+        margin-right: 6px;
+        animation: pulse-red 2s infinite;
+    }
+    @keyframes pulse-red {
+        0% { box-shadow: 0 0 0 0 rgba(220, 53, 69, 0.4); }
+        70% { box-shadow: 0 0 0 10px rgba(220, 53, 69, 0); }
+        100% { box-shadow: 0 0 0 0 rgba(220, 53, 69, 0); }
+    }
+
+    /* Soft Action Buttons */
+    .btn-action-soft {
+        background: #f8f9fa;
+        color: #2c3e50;
+        border: none;
+        font-weight: 600;
+        padding: 10px 15px;
+        border-radius: 10px;
+        width: 100%;
+        text-align: center;
+        text-decoration: none;
+        display: inline-block;
+        transition: all 0.2s;
+    }
+    .btn-action-soft:hover {
+        background: #e9ecef;
+        transform: translateY(-2px);
+        color: #2c3e50;
+    }
+    .btn-action-soft.danger { color: #dc3545; background: rgba(220, 53, 69, 0.08); }
+    .btn-action-soft.danger:hover { background: rgba(220, 53, 69, 0.15); }
+    .btn-action-soft.warning { color: #d68c06; background: rgba(255, 193, 7, 0.1); }
+    .btn-action-soft.warning:hover { background: rgba(255, 193, 7, 0.2); }
+
+    /* =========================================
+       5. OTHER COMPONENTS (Quick Actions, Footer)
+       ========================================= */
+    
+    /* Quick Actions (Keep generic style for compatibility) */
+    .quick-action-card { 
+        text-align: center; 
+        padding: 20px; 
+        background: white; 
+        border-radius: 15px; 
+        box-shadow: var(--card-shadow); 
+        transition: all 0.3s; 
+        text-decoration: none; 
+        color: #333; 
+        display: block; 
+        height: 100%; 
+        border: 1px solid rgba(0,0,0,0.05); 
+    }
+    .quick-action-card:hover { 
+        transform: translateY(-5px); 
+        border-color: var(--accent-color); 
+        background: #fcfcfc; 
+        color: var(--accent-color); 
+    }
+    .quick-icon { 
+        font-size: 2.5rem; 
+        margin-bottom: 15px; 
+        display: block; 
+        transition: color 0.3s; 
+    }
+
+    /* Main Footer Styles */
     .footer-main {
         flex-shrink: 0;
         background: linear-gradient(135deg, #1a1a1a 0%, #2d2d2d 100%);
@@ -260,20 +496,17 @@ if ($log_res) {
         position: relative;
         z-index: 1;
     }
-
     .footer-main .footer-logo-group {
         display: flex;
         align-items: center;
         gap: 12px;
         margin-bottom: 1rem;
     }
-
     .footer-main .footer-logo-group img {
         height: 50px !important;
         width: 50px !important;
         object-fit: contain;
     }
-
     .footer-main .footer-logo-group h5 {
         margin: 0;
         font-size: 1.1rem;
@@ -281,12 +514,7 @@ if ($log_res) {
         color: #fff;
         line-height: 1.2;
     }
-
-    .footer-main p {
-        font-size: 0.9rem;
-        max-width: 400px;
-    }
-
+    .footer-main p { font-size: 0.9rem; max-width: 400px; }
     .footer-main h6 {
         font-family: 'Poppins', sans-serif;
         color: #fff;
@@ -295,27 +523,10 @@ if ($log_res) {
         text-transform: uppercase;
         letter-spacing: 0.5px;
     }
-
-    .footer-main .footer-links {
-        list-style: none;
-        padding: 0;
-    }
-
-    .footer-main .footer-links li {
-        margin-bottom: 0.5rem;
-    }
-
-    .footer-main .footer-links a {
-        text-decoration: none;
-        color: rgba(255,255,255,0.7);
-        transition: var(--transition);
-    }
-
-    .footer-main .footer-links a:hover {
-        color: #fff;
-        padding-left: 5px;
-    }
-
+    .footer-main .footer-links { list-style: none; padding: 0; }
+    .footer-main .footer-links li { margin-bottom: 0.5rem; }
+    .footer-main .footer-links a { text-decoration: none; color: rgba(255,255,255,0.7); transition: var(--transition); }
+    .footer-main .footer-links a:hover { color: #fff; padding-left: 5px; }
     .footer-bottom {
         border-top: 1px solid rgba(255,255,255,0.1);
         padding-top: 1.5rem;
@@ -324,49 +535,14 @@ if ($log_res) {
         font-size: 0.85rem;
     }
 
-    @media (max-width: 767.98px) {
-      .logo-container {
-        gap: 1rem;
-      }
-      .main-logo {
-        width: 80px;
-        height: 80px;
-      }
-      .brand-title {
-        font-size: 1.5rem;
-      }
-      .login-container h2 {
-        font-size: 1.5rem;
-      }
-    }
-
+    /* Mobile Tweaks */
     @media (max-width: 991px) {
-            /* 1. Center text on smaller screens */
-            .footer-main { 
-                text-align: center; 
-            }
-            
-            /* 2. Center the logo group (Image + Text) */
-            .footer-main .footer-logo-group { 
-                justify-content: center; 
-            }
-            
-            /* 3. Add spacing between columns so they don't look cramped */
-            .footer-main .row > div { 
-                margin-bottom: 2rem; 
-            }
-            
-            /* 4. Ensure the last column doesn't have extra margin */
-            .footer-main .row > div:last-child {
-                margin-bottom: 0;
-            }
-        }
-        @media (max-width: 992px) {
-            .sidebar { left: -260px; }
-            .sidebar.show { left: 0; }
-            .main-content, footer { margin-left: 0; }
-        }
-    </style>
+        .footer-main { text-align: center; }
+        .footer-main .footer-logo-group { justify-content: center; }
+        .footer-main .row > div { margin-bottom: 2rem; }
+        .footer-main .row > div:last-child { margin-bottom: 0; }
+    }
+</style>
 </head>
 <body>
     <nav class="navbar navbar-dark bg-dark">
@@ -496,124 +672,140 @@ if ($log_res) {
 
             <!-- Row 1: Key Tournament Counts --> 
             <h5 class="section-title">Tournament Overview</h5>
-            <div class="row g-4 mb-4">
-                <div class="col-md-6 col-lg-3">
-                    <div class="stat-card" style="border-left-color: #007bff;">
-                        <div class="d-flex align-items-center">
-                            <div class="stat-icon bg-primary"><i class="fas fa-calendar-day"></i></div>
-                            <div>
-                                <div class="stat-count"><?= $stats['events'] ?></div>
-                                <small class="text-muted">Main Events (L2)</small>
-                            </div>
-                        </div>
-                    </div>
+<div class="row g-4 mb-4">
+    
+    <div class="col-md-6 col-lg-3">
+        <div class="dashboard-card">
+            <div class="d-flex align-items-center">
+                <div class="icon-square theme-blue">
+                    <i class="fas fa-calendar-day"></i>
                 </div>
-                <div class="col-md-6 col-lg-3">
-                    <div class="stat-card" style="border-left-color: #198754;">
-                        <div class="d-flex align-items-center">
-                            <div class="stat-icon bg-success"><i class="fas fa-users"></i></div>
-                            <div>
-                                <div class="stat-count"><?= $stats['teams'] ?></div>
-                                <small class="text-muted">Teams Registered</small>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-                <div class="col-md-6 col-lg-3">
-                    <div class="stat-card" style="border-left-color: #0dcaf0;">
-                        <div class="d-flex align-items-center">
-                            <div class="stat-icon bg-info text-white"><i class="fas fa-layer-group"></i></div>
-                            <div>
-                                <div class="stat-count"><?= $stats['categories'] ?></div>
-                                <small class="text-muted">Total Categories (L3)</small>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-                 <div class="col-md-6 col-lg-3">
-                    <div class="stat-card" style="border-left-color: #ffc107;">
-                        <div class="d-flex align-items-center">
-                            <div class="stat-icon bg-warning text-dark"><i class="fas fa-medal"></i></div>
-                            <div>
-                                <div class="stat-count"><?= $stats['total_gold'] ?></div>
-                                <small class="text-muted">Gold Medals Awarded</small>
-                            </div>
-                        </div>
-                    </div>
+                <div>
+                    <div class="stat-value"><?= $stats['events'] ?></div>
+                    <div class="stat-label">Events</div>
                 </div>
             </div>
+        </div>
+    </div>
 
-            <!-- Row 2: Management & Results -->
-            <h5 class="section-title">Live Status</h5>
-            <div class="row g-4 mb-5">
-                
-                
-                <div class="col-lg-4">
-                    <div class="stat-card">
-                        <div class="d-flex justify-content-between align-items-center">
-                            <div>
-                                <h6 class="text-muted text-uppercase mb-2">Result Approvals</h6>
-                                <h2 class="mb-0 fw-bold text-danger"><?= $stats['pending_results'] ?></h2>
-                            </div>
-                            <div class="text-end">
-                                <i class="fas fa-gavel fa-2x text-muted opacity-25 mb-2"></i>
-                                <div class="badge bg-danger d-block">Action Needed</div>
-                            </div>
-                        </div>
-                         <hr class="my-3 opacity-10">
-                         <a href="results.php" class="btn btn-outline-danger btn-sm w-100 rounded-pill">Review Pending Results</a>
-                    </div>
-                </div> 
-
-                <div class="col-lg-4">
-                     <div class="stat-card">
-                        <div class="d-flex justify-content-between align-items-center">
-                            <div>
-                                <h6 class="text-muted text-uppercase mb-2">Account Requests</h6>
-                                <h2 class="mb-0 fw-bold text-warning"><?= $stats['pending_requests'] ?></h2>
-                            </div>
-                            <div class="text-end">
-                                <i class="fas fa-user-plus fa-2x text-muted opacity-25 mb-2"></i>
-                                <div class="badge bg-warning text-dark d-block">Pending</div>
-                            </div>
-                        </div>
-                         <hr class="my-3 opacity-10">
-                         <a href="../Manage_Requests.php" class="btn btn-outline-warning text-dark btn-sm w-100 rounded-pill">Manage Requests</a>
-                    </div>
+    <div class="col-md-6 col-lg-3">
+        <div class="dashboard-card">
+            <div class="d-flex align-items-center">
+                <div class="icon-square theme-green">
+                    <i class="fas fa-users"></i>
+                </div>
+                <div>
+                    <div class="stat-value"><?= $stats['teams'] ?></div>
+                    <div class="stat-label">Teams Joined</div>
                 </div>
             </div>
-            
-            <!-- Row 3: Quick Actions & Logs -->
-            <div class="row g-4">
-                <div class="col-lg-4">
-                    <h5 class="section-title">Quick Actions</h5>
-                    <div class="row g-3">
-                        <div class="col-6">
-                            <a href="colleges.php" class="quick-action-card">
-                                <i class="fas fa-users quick-icon text-success"></i>
-                                <div class="fw-bold">Teams</div>
-                            </a>
-                        </div>
-                        <div class="col-6">
-                             <a href="../Manage_Users.php" class="quick-action-card">
-                                <i class="fas fa-users-cog quick-icon text-info"></i>
-                                <div class="fw-bold">Users</div>
-                            </a>
-                        </div>
-                        <div class="col-6">
-                             <a href="reports.php" class="quick-action-card">
-                                <i class="fas fa-print quick-icon text-secondary"></i>
-                                <div class="fw-bold">Reports</div>
-                            </a>
-                        </div>
-                         <div class="col-6">
-                             <a href="events.php" class="quick-action-card">
-                                <i class="fas fa-calendar-alt quick-icon text-primary"></i>
-                                <div class="fw-bold">Events</div>
-                            </a>
-                        </div>
+        </div>
+    </div>
+
+    <div class="col-md-6 col-lg-3">
+        <div class="dashboard-card">
+            <div class="d-flex align-items-center">
+                <div class="icon-square theme-cyan">
+                    <i class="fas fa-layer-group"></i>
+                </div>
+                <div>
+                    <div class="stat-value"><?= $stats['categories'] ?></div>
+                    <div class="stat-label">Categories</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-md-6 col-lg-3">
+        <div class="dashboard-card">
+            <div class="d-flex align-items-center">
+                <div class="icon-square theme-gold">
+                    <i class="fas fa-medal"></i>
+                </div>
+                <div>
+                    <div class="stat-value"><?= $stats['total_gold'] ?></div>
+                    <div class="stat-label">Gold Awarded</div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+            <h5 class="section-title">Action Center</h5>
+<div class="row g-4 mb-5">
+    
+    <div class="col-lg-6">
+        <div class="dashboard-card action-card">
+            <div class="action-header">
+                <div class="d-flex align-items-center">
+                    <div class="icon-square theme-red" style="width: 50px; height: 50px; font-size: 1.4rem;">
+                        <i class="fas fa-gavel"></i>
+                    </div>
+                    <div>
+                        <h6 class="mb-0 fw-bold text-dark">Result Approvals</h6>
+                        <small class="text-muted">Awaiting your validation</small>
                     </div>
                 </div>
+                
+                <span id="widget-results-badge" class="badge <?= ($stats['pending_results'] > 0) ? 'bg-danger bg-opacity-10 text-danger' : 'bg-success bg-opacity-10 text-success' ?> px-3 py-2 rounded-pill">
+                    <?php if($stats['pending_results'] > 0): ?>
+                        <span class="pulse-dot"></span> Action Needed
+                    <?php else: ?>
+                        <i class="fas fa-check me-1"></i> All Clear
+                    <?php endif; ?>
+                </span>
+            </div>
+
+            <div class="d-flex align-items-end justify-content-between">
+                <div>
+                    <div class="stat-value text-danger" id="widget-results-count"><?= $stats['pending_results'] ?></div>
+                    <div class="stat-label text-muted">Pending Results</div>
+                </div>
+                <div style="width: 180px;">
+                    <a href="results.php" class="btn-action-soft danger">
+                        Review Now <i class="fas fa-arrow-right ms-1"></i>
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div> 
+
+    <div class="col-lg-6">
+        <div class="dashboard-card action-card">
+            <div class="action-header">
+                <div class="d-flex align-items-center">
+                    <div class="icon-square theme-orange" style="width: 50px; height: 50px; font-size: 1.4rem;">
+                        <i class="fas fa-user-plus"></i>
+                    </div>
+                    <div>
+                        <h6 class="mb-0 fw-bold text-dark">Account Requests</h6>
+                        <small class="text-muted">New staff registrations</small>
+                    </div>
+                </div>
+                
+                <span id="widget-requests-badge" class="badge <?= ($stats['pending_requests'] > 0) ? 'bg-warning bg-opacity-10 text-warning' : 'bg-secondary bg-opacity-10 text-secondary' ?> px-3 py-2 rounded-pill">
+                    <?php if($stats['pending_requests'] > 0): ?>
+                        Pending
+                    <?php else: ?>
+                        No Requests
+                    <?php endif; ?>
+                </span>
+            </div>
+
+            <div class="d-flex align-items-end justify-content-between">
+                <div>
+                    <div class="stat-value text-warning" id="widget-requests-count"><?= $stats['pending_requests'] ?></div>
+                    <div class="stat-label text-muted">New Users</div>
+                </div>
+                <div style="width: 180px;">
+                    <a href="../Manage_Requests.php" class="btn-action-soft warning">
+                        Manage Users <i class="fas fa-arrow-right ms-1"></i>
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
 
                 <div class="col-lg-8">
                     <h5 class="section-title">Recent System Activity</h5>
@@ -688,60 +880,143 @@ if ($log_res) {
     </footer>
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
-    <script>
-        document.getElementById('mobileToggle').addEventListener('click', function() {
-            document.getElementById('sidebar').classList.toggle('show');
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+
+        // ==========================================
+        // 1. SIDEBAR TOGGLE & RESIZE LOGIC
+        // ==========================================
+        const mobileToggle = document.getElementById('mobileToggle');
+        const sidebar = document.getElementById('sidebar');
+        const footer = document.querySelector('footer');
+        const navbar = document.querySelector('.navbar');
+        const sidebarOverlay = document.getElementById('sidebarOverlay'); 
+
+        // Toggle Click
+        if (mobileToggle && sidebar) {
+            mobileToggle.addEventListener('click', function() {
+                sidebar.classList.toggle('show');
+            });
+        }
+
+        // Auto-Hide on Resize
+        let resizeTimer;
+        window.addEventListener('resize', function() {
+            clearTimeout(resizeTimer);
+            resizeTimer = setTimeout(function() {
+                if (window.innerWidth > 992) {
+                    if (sidebar) sidebar.classList.remove('show');
+                    if (sidebarOverlay) sidebarOverlay.classList.remove('show');
+                }
+                adjustSidebarHeight(); 
+            }, 250);
         });
 
-        let resizeTimer;
-            window.addEventListener('resize', function() {
-                clearTimeout(resizeTimer);
-                resizeTimer = setTimeout(function() {
-                    if (window.innerWidth > 992) {
-                        sidebar.classList.remove('show');
-                        sidebarOverlay.classList.remove('show');
-                    }
-                }, 250);
-            });
+        // Fix Sidebar/Footer Overlap
+        function adjustSidebarHeight() {
+            if (!sidebar || !footer || !navbar) return;
 
-            // --- ### NEW: FIX SIDEBAR/FOOTER OVERLAP ### ---
-            const sidebar = document.getElementById('sidebar'); // Ensure sidebar variable is defined
-            const footer = document.querySelector('footer');
-            const navbar = document.querySelector('.navbar');
-
-            if (sidebar && footer && navbar) {
-                function adjustSidebarHeight() {
-                    // This logic should only apply to desktop view
-                    if (window.innerWidth <= 992) {
-                        sidebar.style.height = ''; // Reset to CSS default for mobile
-                        return;
-                    }
-
-                    const navbarHeight = navbar.offsetHeight;
-                    const footerTop = footer.getBoundingClientRect().top;
-                    const viewportHeight = window.innerHeight;
-                    
-                    // 1. Calculate the max possible height (navbar top to viewport bottom)
-                    const maxSidebarHeight = viewportHeight - navbarHeight;
-
-                    // 2. Calculate the available height (navbar top to footer top)
-                    const availableHeight = footerTop - navbarHeight;
-
-                    // 3. Choose the smaller of the two heights, but never less than 0
-                    const newHeight = Math.max(0, Math.min(maxSidebarHeight, availableHeight));
-                    
-                    // 4. Apply the new height as an inline style
-                    sidebar.style.height = `${newHeight}px`;
-                }
-
-                // Add listeners for scroll and resize events
-                window.addEventListener('scroll', adjustSidebarHeight, { passive: true });
-                window.addEventListener('resize', adjustSidebarHeight);
-                
-                // Initial call to set the correct height on page load
-                // Small delay to ensure all elements are rendered
-                setTimeout(adjustSidebarHeight, 100);
+            if (window.innerWidth <= 992) {
+                sidebar.style.height = ''; 
+                return;
             }
-    </script>
+
+            const navbarHeight = navbar.offsetHeight;
+            const footerTop = footer.getBoundingClientRect().top;
+            const viewportHeight = window.innerHeight;
+            
+            const maxSidebarHeight = viewportHeight - navbarHeight;
+            const availableHeight = footerTop - navbarHeight;
+            const newHeight = Math.max(0, Math.min(maxSidebarHeight, availableHeight));
+            
+            sidebar.style.height = `${newHeight}px`;
+        }
+
+        window.addEventListener('scroll', adjustSidebarHeight, { passive: true });
+        setTimeout(adjustSidebarHeight, 100);
+
+        // ==========================================
+        // 2. REAL-TIME DASHBOARD UPDATER (Sidebar + Widgets)
+        // ==========================================
+        function updateDashboardData() {
+            // Fetch latest counts from API
+            fetch('../api_notifications.php?t=' + new Date().getTime())
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        // A. UPDATE SIDEBAR BADGES
+                        updateSidebarBadge('results.php', data.pending_results, 'bg-warning text-dark');
+                        updateSidebarBadge('Manage_Requests.php', data.pending_requests, 'bg-danger');
+
+                        // B. UPDATE ACTION CENTER WIDGETS
+                        updateActionWidgets(data);
+                    }
+                })
+                .catch(err => console.error('Dashboard update error:', err));
+        }
+
+        // Helper: Update Sidebar Link Badges
+        function updateSidebarBadge(hrefKeyword, count, colorClasses) {
+            const link = document.querySelector(`.sidebar-nav .nav-link[href*="${hrefKeyword}"]`);
+            if (link) {
+                let badge = link.querySelector('.badge');
+                if (count > 0) {
+                    if (!badge) {
+                        badge = document.createElement('span');
+                        link.appendChild(badge);
+                    }
+                    badge.className = `badge ${colorClasses} ms-auto rounded-pill`;
+                    badge.textContent = count;
+                } else {
+                    if (badge) badge.remove();
+                }
+            }
+        }
+
+        // Helper: Update Action Center Cards
+        function updateActionWidgets(data) {
+            // 1. RESULT APPROVALS WIDGET
+            const resCount = document.getElementById('widget-results-count');
+            const resBadge = document.getElementById('widget-results-badge');
+            
+            if (resCount) resCount.textContent = data.pending_results;
+            
+            if (resBadge) {
+                if (data.pending_results > 0) {
+                    // Urgent State (Red)
+                    resBadge.className = 'badge bg-danger bg-opacity-10 text-danger px-3 py-2 rounded-pill';
+                    resBadge.innerHTML = '<span class="pulse-dot"></span> Action Needed';
+                } else {
+                    // Clear State (Green)
+                    resBadge.className = 'badge bg-success bg-opacity-10 text-success px-3 py-2 rounded-pill';
+                    resBadge.innerHTML = '<i class="fas fa-check me-1"></i> All Clear';
+                }
+            }
+
+            // 2. ACCOUNT REQUESTS WIDGET
+            const reqCount = document.getElementById('widget-requests-count');
+            const reqBadge = document.getElementById('widget-requests-badge');
+
+            if (reqCount) reqCount.textContent = data.pending_requests;
+
+            if (reqBadge) {
+                if (data.pending_requests > 0) {
+                    // Pending State (Yellow)
+                    reqBadge.className = 'badge bg-warning bg-opacity-10 text-warning px-3 py-2 rounded-pill';
+                    reqBadge.textContent = 'Pending';
+                } else {
+                    // Empty State (Grey)
+                    reqBadge.className = 'badge bg-secondary bg-opacity-10 text-secondary px-3 py-2 rounded-pill';
+                    reqBadge.textContent = 'No Requests';
+                }
+            }
+        }
+
+        // Start Real-Time Updates (Run immediately, then every 5s)
+        updateDashboardData();
+        setInterval(updateDashboardData, 5000);
+
+    });
+</script>
 </body>
 </html>

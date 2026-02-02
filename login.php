@@ -297,26 +297,26 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         overflow: hidden;
     }
 
-    .nav-link::before {
-        content: ''; 
-        position: absolute; 
-        top: 0; 
-        left: -100%; 
-        width: 100%; 
-        height: 100%;
-        background: linear-gradient(90deg, transparent, rgba(76, 175, 80, 0.3), transparent);
-        transition: left 0.5s;
-    }
+    .nav-link { 
+            font-weight: 500; 
+            font-size: 0.95rem; 
+            padding: 0.5rem 1.25rem !important; 
+            margin: 0 0.25rem; 
+            transition: var(--transition); 
+            /* Remove border-radius so the line is straight */
+            border-bottom: 3px solid transparent; 
+        }
 
-    .nav-link:hover::before { 
-      left: 100%; 
-    }
-
-    .nav-link:hover { 
-        background: rgba(76, 175, 80, 0.2); 
-        color: var(--primary-green) !important;
-        transform: translateY(-2px);
-    }
+        .nav-link:hover, .nav-link.active { 
+            /* Remove the background box */
+            background: transparent !important; 
+            
+            /* Change text color */
+            color: var(--primary-green) !important; 
+            
+            /* Add the Underline */
+            border-bottom: 3px solid var(--primary-green); 
+        }
 
     .btn-danger, .btn-success { 
         padding: 0.6rem 1.5rem; 

@@ -408,49 +408,33 @@ function render_event_list($managed_data, $college_map)
             
             echo '  </div>';
 
-            // === EMPTY STATE LOGIC ===
-            // === SIMPLIFIED EMPTY STATE (TALLY ONLY) ===
+            // --- UPDATED LOGIC: ALWAYS SHOW TABLE (No "Initialize" Button) ---
+            echo '<div class="table-responsive events-table-container">';
+            echo '  <table class="table events-table table-hover align-middle mb-0">';
+            echo '    <thead>';
+            echo '      <tr>';
+            echo '        <th scope="col" class="text-center" style="min-width: 220px;">Category / Division</th>';
+            echo '        <th scope="col" class="text-center" style="min-width: 160px;">Status</th>';
+            echo '        <th scope="col" class="text-center" style="min-width: 320px;">Approved Winners</th>';
+            echo '        <th scope="col" class="text-center" style="width: 1%; white-space: nowrap;">Actions</th>';
+            echo '      </tr>';
+            echo '    </thead>';
+            echo '    <tbody>';
+
+            // IF NO CATEGORIES -> SHOW EMPTY ROW
             if (empty($categories)) {
-                echo '<div class="card-body text-center p-5 bg-light" style="border-bottom-left-radius: 16px; border-bottom-right-radius: 16px;">';
-                echo '  <div class="d-flex flex-column align-items-center justify-content-center py-4">';
-                
-                echo '      <i class="fas fa-clipboard-list fa-3x text-muted mb-3 opacity-50"></i>';
-                echo '      <h5 class="text-dark fw-bold">Ready to Initialize</h5>';
-                echo '      <p class="text-muted fs-5 mb-4" style="max-width: 600px;">
-                                This event is ready for setup. Initialize the results form to start tallying the medals.
-                            </p>';
-                
-                // SINGLE BUTTON: Initialize Standard Form
-                echo '    <form method="POST" action="my_events.php">';
-                echo '      <input type="hidden" name="action" value="save_category">';
-                echo '      <input type="hidden" name="event_id" value="' . $event_id . '">';
-                echo '      <input type="hidden" name="category_name" value="Single Division">'; 
-                echo '      <input type="hidden" name="category_type" value="medal">'; // Force Medal Type
-                echo '      <input type="hidden" name="status" value="Upcoming">';
-                echo '      <button type="submit" class="btn btn-primary btn-lg px-4 shadow-sm">';
-                echo '          <i class="fas fa-magic me-2"></i> Initialize Results Form';
-                echo '      </button>';
-                echo '    </form>';
-
-                echo '  </div>';
-                echo '</div>';
-            } else {
-                echo '<div class="table-responsive events-table-container">';
-                echo '  <table class="table events-table table-hover align-middle mb-0">';
-                echo '    <thead>';
-                echo '      <tr>';
-                
-                // COLUMN ALWAYS VISIBLE
-                // Added 'text-center' class to all lines
-echo '        <th scope="col" class="text-center" style="min-width: 220px;">Category / Division</th>';
-echo '        <th scope="col" class="text-center" style="min-width: 160px;">Status</th>';
-echo '        <th scope="col" class="text-center" style="min-width: 320px;">Approved Winners</th>';
-// Changed 'text-end' to 'text-center'
-echo '        <th scope="col" class="text-center" style="width: 1%; white-space: nowrap;">Actions</th>';
-                echo '      </tr>';
-                echo '    </thead>';
-                echo '    <tbody>';
-
+                echo '<tr>';
+                echo '  <td colspan="4" class="text-center py-5 text-muted">';
+                echo '      <div class="d-flex flex-column align-items-center justify-content-center">';
+                echo '          <i class="fas fa-clipboard-list fa-2x mb-3 opacity-25"></i>';
+                echo '          <h6 class="fw-bold">No Categories Yet</h6>';
+                echo '          <p class="small mb-0">Click <span class="badge bg-primary text-white"><i class="fas fa-plus"></i> Add Category</span> above to set up Men\'s, Women\'s, etc.</p>';
+                echo '      </div>';
+                echo '  </td>';
+                echo '</tr>';
+            } 
+            // IF CATEGORIES EXIST -> LOOP THEM
+            else {
                 foreach ($categories as $category) {
                     $category_status = $category['status'];
                     
@@ -460,22 +444,21 @@ echo '        <th scope="col" class="text-center" style="width: 1%; white-space:
                     }
 
                     echo '  <tr class="' . $table_row_class . '">';
-
-                    // CELL ALWAYS VISIBLE
                     echo '    <td class="category-cell">' . htmlspecialchars($category['category_name']) . '</td>';
-
-                    echo '    <td>' . get_status_badge($category['status'], $category['notes'], $category['category_id'], $category['category_name']) . '</td>';
+                    echo '    <td>' . get_status_badge($category['status'], $category['notes'], $category['category_id'], $category['category_name'], $event_name) . '</td>';
                     echo '    <td>' . render_winner_list($category, $college_map) . '</td>';
                     echo '    <td class="action-cell text-end">' . render_category_actions($category, $event_id, $event_name) . '</td>';
+                    echo '  </tr>';
                 }
-
-                echo '    </tbody>';
-                echo '  </table>';
-                echo '</div>';
             }
-            echo '</div>';
+
+            echo '    </tbody>';
+            echo '  </table>';
+            echo '</div>'; // End table-responsive
+            
+            echo '</div>'; // End card
         }
-        echo '</div>';
+        echo '</div>'; // End game section
     }
 }
 
@@ -541,7 +524,7 @@ function render_winner_list($category, $college_map)
 /**
  * Returns enhanced status badge
  */
-function get_status_badge($status, $notes = null, $category_id = null, $category_name = null)
+function get_status_badge($status, $notes = null, $category_id = null, $category_name = null, $event_name = '')
 {
     $badge_configs = [
         'Upcoming' => ['class' => 'text-bg-primary', 'icon' => 'fa-calendar-alt', 'text' => 'Upcoming'],
@@ -563,18 +546,16 @@ function get_status_badge($status, $notes = null, $category_id = null, $category
         
         $note_button_html = '';
         if (!empty($notes)) {
-            $note_data_attrs = "data-bs-toggle='modal' 
-                                data-bs-target='#noteModal' 
-                                data-category-name='" . htmlspecialchars($category_name, ENT_QUOTES) . "' 
-                                data-note='" . htmlspecialchars($notes, ENT_QUOTES) . "'";
-            
-            $note_button_html = '
-                <button type="button" 
-                        class="btn btn-sm btn-outline-danger note-alert-btn" 
-                        ' . $note_data_attrs . ' 
-                        data-bs-toggle="tooltip" title="View Rejection Note">
-                    <i class="fas fa-exclamation-triangle"></i> NOTE!
-                </button>';
+            // Correctly creating the string using variables, not <?php tags
+            $note_button_html = '<button type="button" 
+                    class="note-alert-btn btn btn-sm btn-outline-danger ms-2" 
+                    data-bs-toggle="modal" 
+                    data-bs-target="#noteModal" 
+                    data-category-name="' . htmlspecialchars($category_name, ENT_QUOTES) . '"
+                    data-note="' . htmlspecialchars($notes, ENT_QUOTES) . '"
+                    data-event-name="' . htmlspecialchars($event_name, ENT_QUOTES) . '">
+                <i class="fas fa-exclamation-circle"></i> Note
+            </button>';
         }
         
         return '<div>' . $badge . $note_button_html . '</div>';

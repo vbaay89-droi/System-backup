@@ -35,7 +35,9 @@ $sql_fetch_events = "
         ge.event_name AS category,
         g.game_name AS sport_name,
         
-        COALESCE(u.full_name, u.username) AS manager_name
+        COALESCE(u.full_name, u.username) AS manager_name , c.event_date
+        , c.event_time
+        , c.venue
         
     FROM categories c
     JOIN game_events ge ON c.event_id = ge.event_id
@@ -131,8 +133,26 @@ $conn->close();
         .navbar-brand:hover { transform: translateY(-2px); }
         .brand-logo { filter: drop-shadow(0 2px 4px rgba(255,255,255,0.1)); }
         .brand-heading { font-family: 'Poppins', sans-serif; font-weight: 700; letter-spacing: -0.5px; }
-        .nav-link { font-weight: 500; font-size: 0.95rem; padding: 0.5rem 1.25rem !important; margin: 0 0.25rem; border-radius: 8px; transition: var(--transition); }
-        .nav-link:hover, .nav-link.active { background: rgba(255,255,255,0.1); color: var(--primary-green) !important; }
+        .nav-link { 
+            font-weight: 500; 
+            font-size: 0.95rem; 
+            padding: 0.5rem 1.25rem !important; 
+            margin: 0 0.25rem; 
+            transition: var(--transition); 
+            /* Remove border-radius so the line is straight */
+            border-bottom: 3px solid transparent; 
+        }
+
+        .nav-link:hover, .nav-link.active { 
+            /* Remove the background box */
+            background: transparent !important; 
+            
+            /* Change text color */
+            color: var(--primary-green) !important; 
+            
+            /* Add the Underline */
+            border-bottom: 3px solid var(--primary-green); 
+        }
         
         .btn-danger, .btn-success { 
             padding: 0.6rem 1.5rem; 
@@ -164,23 +184,80 @@ $conn->close();
             overflow: hidden;
         }
         
+        /* --- NEW HERO & STATS STYLES --- */
         .hero-section {
-            background: linear-gradient(135deg, rgba(255,255,255,0.9) 0%, rgba(233,236,239,0.9) 100%);
+            /* Subtle gradient to make it feel premium, not just white */
+            background: linear-gradient(135deg, #ffffff 0%, #f8fcf9 100%);
+            border: 1px solid rgba(0,0,0,0.04);
             border-radius: 16px;
-            padding: 32px;
-            box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+            padding: 40px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.03);
         }
-        
+
         .stat-card {
             background: white;
             border-radius: 12px;
-            padding: 20px 15px;
-            box-shadow: 0 2px 8px rgba(0,0,0,0.06);
-            transition: transform 0.2s, box-shadow 0.2s;
+            padding: 20px;
+            border: 1px solid rgba(0,0,0,0.06);
+            box-shadow: 0 4px 12px rgba(0,0,0,0.02);
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            height: 100%;
+            
+            /* FIX: Flex row for professional "Widget" look */
+            display: flex;
+            align-items: center; 
+            text-align: left; /* Reset text alignment */
         }
+
         .stat-card:hover {
-            transform: translateY(-4px);
-            box-shadow: 0 6px 16px rgba(0,0,0,0.12);
+            transform: translateY(-5px);
+            box-shadow: 0 15px 30px rgba(0,0,0,0.08);
+            border-color: rgba(25, 135, 84, 0.3); /* Green glow on hover */
+        }
+
+        /* Stat Icon Circle (Matches your Event Cards!) */
+        .stat-icon-circle {
+            width: 64px;
+            height: 64px;
+            min-width: 64px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin-right: 1.25rem;
+            transition: transform 0.3s ease;
+        }
+
+        .stat-card:hover .stat-icon-circle {
+            transform: scale(1.1); /* Subtle pop effect */
+        }
+
+        /* Color Themes for Stats */
+        .stat-theme-total { background: rgba(33, 37, 41, 0.05); }   /* Dark/Gray */
+        .stat-theme-completed { background: rgba(13, 110, 253, 0.1); } /* Blue */
+        .stat-theme-ongoing { background: rgba(25, 135, 84, 0.1); }    /* Green */
+
+        /* --- LIVE BADGE ANIMATION (GREEN) --- */
+        .animation-blink {
+            animation: blink-green 2s infinite;
+        }
+
+        @keyframes blink-green {
+            0% {
+                /* Start with a strong green glow */
+                box-shadow: 0 0 0 0 rgba(25, 135, 84, 0.7); 
+                transform: scale(1);
+            }
+            50% {
+                /* Expands outward */
+                transform: scale(1.05); 
+                /* Fades into a ripple */
+                box-shadow: 0 0 0 10px rgba(25, 135, 84, 0); 
+            }
+            100% {
+                transform: scale(1);
+                box-shadow: 0 0 0 0 rgba(25, 135, 84, 0);
+            }
         }
         
         .events-nav-tabs {
@@ -236,17 +313,27 @@ $conn->close();
         }
 
         .sport-card {
-            border-radius: 12px;
+            border-radius: 16px; /* Slightly rounder for a modern look */
             background: #fff;
-            box-shadow: 0 2px 10px rgba(0,0,0,0.06);
+            
+            /* NEW: Stronger Shadow for visibility */
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.12); 
+            
+            /* NEW: Light border to separate it from the white background */
+            border: 1px solid rgba(0, 0, 0, 0.05);
+
             padding: 24px;
             margin-bottom: 24px;
             transition: all 0.3s ease;
-            height: 240px; 
-            border-left: 4px solid transparent;
+            
+            height: 100%;           
+            min-height: 220px;      
+            
+            border-left: 5px solid transparent; /* Slightly thicker accent line */
             display: flex;
             flex-direction: column;
         }
+
         .sport-card:hover {
             transform: translateY(-6px);
             box-shadow: 0 8px 24px rgba(0,0,0,0.12);
@@ -264,21 +351,19 @@ $conn->close();
         }
         
         .event-title {
-    font-family: 'Roboto', sans-serif;
-    font-weight: 700;
-    font-size: 1.1rem;
-    margin: 0;
-    color: #2c3e50;
-    margin-right: 0; /* Removed fixed margin */
-    
-    /* FIX: Allow text to wrap and break long words */
-    white-space: normal;      
-    overflow-wrap: break-word; /* standard */
-    word-wrap: break-word;     /* older browsers */
-    word-break: break-word;    /* forces break for long strings like Chess(INDIVIDUAL) */
-    line-height: 1.2;
-    flex: 1 1 auto;            /* Allow title to take available space */
-}
+            font-family: 'Roboto', sans-serif;
+            font-weight: 700;
+            font-size: 1.25rem;       /* Increased size slightly for impact */
+            color: #2c3e50;
+            margin: 0;
+            line-height: 1.2;
+            padding-top: 2px;
+            
+            /* FIX: Professional Wrapping */
+            white-space: normal;
+            word-break: normal;       /* Stops "Basketb all" */
+            overflow-wrap: break-word; /* Wraps "Chess(INDIVIDUAL)" naturally */
+        }
         
         .check-event {
             font-weight: 600;
@@ -860,35 +945,57 @@ $conn->close();
                 <div class="hero-section mb-5">
                     <div class="row align-items-center">
                         <div class="col-lg-6 mb-4 mb-lg-0">
-                            <h1 class="display-4 fw-bold mb-3">
-                                <img src="images/SiglakaseventIcon.png" alt="Events Icon" class="me-2" style="width: 3.5rem; height: 3.5rem; object-fit: contain;">
+                            <h1 class="display-5 fw-bold mb-3 text-dark" style="letter-spacing: -1px;">
+                                <img src="images/SiglakaseventIcon.png" alt="Events Icon" class="me-3" style="width: 4rem; height: 4rem; object-fit: contain; filter: drop-shadow(0 4px 6px rgba(0,0,0,0.1));">
                                 Siglakas Events
                             </h1>
-                            <p class="lead text-muted">Your centralized hub for the Siglakas Tournament. Stay updated with official event schedules, view real-time results, and track the latest medal standings as they happen</p>
+                            <p class="lead text-muted" style="font-size: 1.1rem; line-height: 1.8;">
+                                Your centralized hub for the Siglakas Tournament. Track live results, view official schedules, and check the latest medal standings in real-time.
+                            </p>
                         </div>
+
                         <div class="col-lg-6">
                             <div class="row g-3">
-                                <div class="col-4">
-                                    <div class="stat-card text-center">
-                                        <img src="images/EventsIcon.png" alt="Event Icon" style="width: 2.5em; height: 2.5em;">
-                                        <div class="fw-bold fs-3 mt-2" id="stat-total"><?= $total_events ?></div>
-                                        <div class="text-muted small">Total Events</div>
+                                
+                                <div class="col-md-6 col-12"> <div class="stat-card">
+                                        <div class="stat-icon-circle stat-theme-total">
+                                            <img src="images/EventsIcon.png" alt="Total" style="width: 32px; height: 32px; opacity: 0.8;">
+                                        </div>
+                                        <div>
+                                            <div class="fw-bold text-dark display-6 mb-0" id="stat-total" style="line-height: 1;"><?= $total_events ?></div>
+                                            <small class="text-uppercase text-muted fw-bold" style="font-size: 0.7rem; letter-spacing: 1px;">Total Events</small>
+                                        </div>
                                     </div>
                                 </div>
-                                <div class="col-4">
-                                    <div class="stat-card text-center">
-                                        <img src="images/CompleteIcon.png" alt="Complete Icon" style="width: 2.5em; height: 2.5em;">
-                                        <div class="fw-bold fs-3 mt-2" id="stat-completed"><?= $completed_events ?></div>
-                                        <div class="text-muted small">Completed</div>
+
+                                <div class="col-md-6 col-12">
+                                    <div class="stat-card">
+                                        <div class="stat-icon-circle stat-theme-completed">
+                                            <img src="images/CompleteIcon.png" alt="Completed" style="width: 32px; height: 32px;">
+                                        </div>
+                                        <div>
+                                            <div class="fw-bold text-primary display-6 mb-0" id="stat-completed" style="line-height: 1;"><?= $completed_events ?></div>
+                                            <small class="text-uppercase text-primary fw-bold opacity-75" style="font-size: 0.7rem; letter-spacing: 1px;">Completed</small>
+                                        </div>
                                     </div>
                                 </div>
-                                <div class="col-4">
-                                    <div class="stat-card text-center">
-                                        <img src="images/OngoingIcon.png" alt="Ongoing Icon" style="width: 2.5em; height: 2.5em;">
-                                        <div class="fw-bold fs-3 mt-2" id="stat-ongoing"><?= $ongoing_events ?></div>
-                                        <div class="text-muted small">Ongoing</div>
+
+                                <div class="col-12"> <div class="stat-card">
+                                        <div class="stat-icon-circle stat-theme-ongoing">
+                                            <img src="images/OngoingIcon.png" alt="Ongoing" style="width: 32px; height: 32px;">
+                                        </div>
+                                        <div>
+                                            <div class="d-flex align-items-center">
+                                                <div class="fw-bold text-success display-6 mb-0 me-3" id="stat-ongoing" style="line-height: 1;"><?= $ongoing_events ?></div>
+                                                <span class="badge bg-success text-white px-3 py-2 rounded-pill shadow-sm d-flex align-items-center animation-blink" style="font-size: 0.75rem; letter-spacing: 1px;">
+                                                    <i class="fas fa-circle me-2 text-white" style="font-size: 8px;"></i> LIVE NOW
+                                                </span>
+                                            </div>
+                                            <small class="text-uppercase text-success fw-bold opacity-75 mt-1 d-block" style="font-size: 0.7rem; letter-spacing: 1px;">Ongoing Matches</small>
+                                        </div>
                                     </div>
                                 </div>
+
                             </div>
                         </div>
                     </div>
@@ -990,13 +1097,22 @@ $conn->close();
                         
 
                         <li class="nav-item" role="presentation">
-                            <button class="nav-link rounded-top" id="winners-tab" 
-                                    data-bs-toggle="tab" data-bs-target="#tab-winners" 
-                                    type="button" role="tab">
-                                <i class="fas fa-award me-2"></i>
-                                Medal Winners
-                            </button>
-                        </li>
+    <button class="nav-link rounded-top" id="result-tab" 
+            data-bs-toggle="tab" data-bs-target="#tab-result" 
+            type="button" role="tab">
+        <i class="fas fa-trophy me-2"></i>
+        Event Result
+    </button>
+</li>
+
+<li class="nav-item" role="presentation">
+    <button class="nav-link rounded-top" id="moment-tab" 
+            data-bs-toggle="tab" data-bs-target="#tab-moment" 
+            type="button" role="tab">
+        <i class="fas fa-camera-retro me-2"></i>
+        Winning Moment
+    </button>
+</li>
                     </ul>
 
                     <div class="tab-content" id="eventDetailsTabContent">
@@ -1080,35 +1196,47 @@ $conn->close();
                         </div>
 
 
-                        <div class="tab-pane fade p-0" id="tab-winners" role="tabpanel" data-tab-type="medal">
-                            <div class="card border-0">
-                                <div class="card-header bg-warning bg-opacity-10 border-0">
-                                    <h6 class="mb-0 text-dark">
-                                        <i class="fas fa-award me-2"></i>Event Medal Winners
-                                    </h6>
-                                </div>
-                                <div class="card-body">
-                                    
-                                    <div id="podiumPhotoContainer" class="text-center mb-4 d-none">
-                                        <h6 class="text-uppercase text-muted small fw-bold mb-3">
-                                            <i class="fas fa-camera-retro me-1"></i> Winning Moment
-                                        </h6>
-                                        
-                                        <div class="winning-photo-frame">
-                                            <img id="podiumPhotoImg" src="" alt="Winning Moment" title="Click to view full size">
-                                        </div>
-                                        
-                                        <div class="small text-muted mt-2">
-                                            <i class="fas fa-search-plus me-1"></i>Click image to expand
-                                        </div>
-                                    </div>
+                        <div class="tab-pane fade p-0" id="tab-result" role="tabpanel">
+    <div class="card border-0">
+        <div class="card-header bg-warning bg-opacity-10 border-0">
+            <h6 class="mb-0 text-dark">
+                <i class="fas fa-award me-2"></i>Official Medal Winners
+            </h6>
+        </div>
+        <div class="card-body">
+            <div id="medal-winners-body">
+                <div class="text-center p-5 text-muted">Loading...</div>
+            </div>
+        </div>
+    </div>
+</div>
 
-                                    <div id="medal-winners-body">
-                                        <div class="text-center p-5 text-muted">Loading...</div>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
+<div class="tab-pane fade p-0" id="tab-moment" role="tabpanel">
+    <div class="card border-0">
+        <div class="card-header bg-success bg-opacity-10 border-0">
+            <h6 class="mb-0 text-dark">
+                <i class="fas fa-image me-2"></i>Captured Moment
+            </h6>
+        </div>
+        <div class="card-body text-center p-4">
+            
+            <div id="podiumPhotoContainer" class="d-none">
+                <div class="winning-photo-frame mx-auto">
+                    <img id="podiumPhotoImg" src="" alt="Winning Moment" title="Click to view full size">
+                </div>
+                <div class="small text-muted mt-2">
+                    <i class="fas fa-search-plus me-1"></i>Click image to expand
+                </div>
+            </div>
+
+            <div id="noPhotoMessage" class="py-5 text-muted" style="display:none;">
+                <i class="fas fa-camera-slash mb-2 fs-3 opacity-50"></i><br>
+                No winning moment photo available for this event.
+            </div>
+
+        </div>
+    </div>
+</div>
 
                     </div>
                 </div>
@@ -1245,7 +1373,10 @@ $conn->close();
                 const mainTitle = String(event.category || 'Untitled'); // e.g., "Basketball"
                 const subCategory = String(event.event_name || 'General'); // e.g., "Men's Division"
                 const sportName = String(event.sport_name || 'Unknown Sport'); // e.g., "Ball Games"
-                const desc = String(event.description || 'No description provided.');
+                // 1. Get Data
+                const eventDate = formatDate(event.event_date); // Uses your existing helper
+                const eventTime = formatTime(event.event_time); // Uses your existing helper
+                const venue = event.venue || 'Venue TBA';
                 
                 const originalStatus = event.event_status || 'Unknown';
                 const displayStatus = formatStatusTextForCard(originalStatus);
@@ -1253,42 +1384,84 @@ $conn->close();
                 const managerNameHtml = event.manager_name ? 
                     `<div class="small text-muted mt-2 border-top pt-2"><i class="fas fa-user-tie me-1"></i>Manager: ${escapeHtml(event.manager_name)}</div>` : '';
                 
+                // Get the icon using our new helper
+                const iconClass = getEventIconJS(sportName, mainTitle);
+
                 return `
-                    <div class="col-md-4 event-card-item" 
-                         data-category="${(event.sport_name||'others').toLowerCase()}" 
-                         data-status="${(originalStatus).toLowerCase()}" 
-                         data-search-text="${escapeHtml(mainTitle.toLowerCase())} ${escapeHtml(sportName.toLowerCase())}">
+                    <div class="col-md-4 col-sm-6 mb-4 event-card-item" 
+                        data-category="${(event.sport_name||'others').toLowerCase()}" 
+                        data-status="${(originalStatus).toLowerCase()}" 
+                        data-search-text="${escapeHtml(mainTitle.toLowerCase())} ${escapeHtml(sportName.toLowerCase())}">
+                        
                         <div class="sport-card h-100">
                             <div class="sport-card-body d-flex flex-column">
-                                <div class="d-flex justify-content-between align-items-start mb-2">
-                                    <h5 class="mb-0 event-title fw-bold text-dark" style="font-size: 1.25rem;" title="${escapeHtml(mainTitle)}">
-                                        ${escapeHtml(mainTitle)}
-                                    </h5>
-                                    <span class="status-pill ${statusClass} ms-2" title="${escapeHtml(originalStatus)}">${escapeHtml(displayStatus)}</span>
+                                
+                                <div class="d-flex align-items-start mb-3">
+                                    <div class="me-3 flex-shrink-0 d-flex align-items-center justify-content-center bg-success bg-opacity-10 rounded-circle text-success shadow-sm" 
+                                        style="width: 50px; height: 50px;">
+                                        <i class="${iconClass} fa-lg"></i>
+                                    </div>
+
+                                    <div class="flex-grow-1" style="min-width: 0;">
+                                        
+                                        <div class="d-flex justify-content-between align-items-center mb-1">
+                                            <span class="text-uppercase text-primary fw-bold small" style="font-size: 0.7rem; letter-spacing: 0.5px;">
+                                                ${escapeHtml(sportName)}
+                                            </span>
+                                            <span class="status-pill ${statusClass}" style="transform: scale(0.85); transform-origin: right center;">
+                                                ${escapeHtml(displayStatus)}
+                                            </span>
+                                        </div>
+
+                                        <h5 class="event-title text-dark">
+                                            ${escapeHtml(mainTitle)}
+                                        </h5>
+                                    </div>
                                 </div>
-                                <div class="mb-1 text-uppercase text-primary fw-bold" style="font-size: 0.75rem; letter-spacing: 0.5px;">
-                                    ${escapeHtml(sportName)}
+                         
+                                <div class="mb-3 ps-1">
+                                    <div class="d-flex align-items-center text-dark fw-bolder text-uppercase" style="font-size: 0.85rem; letter-spacing: 0.5px;">
+                                        <i class="fas fa-tag me-2 text-primary opacity-75"></i>
+                                        <span>${escapeHtml(subCategory)}</span>
+                                    </div>
                                 </div>
-                                <div class="mb-3">
-                                    <span class="badge bg-light text-dark border border-secondary-subtle">
-                                        <i class="fas fa-layer-group me-1 text-muted"></i> ${escapeHtml(subCategory)}
-                                    </span>
+
+                                <div class="mb-3 ps-1 flex-grow-1">
+    
+                                    <div class="d-flex align-items-center mb-2">
+                                        <div class="d-flex align-items-center justify-content-center bg-light rounded-circle me-2" style="width: 28px; height: 28px;">
+                                            <i class="fas fa-calendar-alt text-secondary" style="font-size: 0.8rem;"></i>
+                                        </div>
+                                        <span class="text-dark small fw-medium">
+                                            ${eventDate} <span class="mx-1 text-muted">•</span> ${eventTime}
+                                        </span>
+                                    </div>
+
+                                    <div class="d-flex align-items-center">
+                                        <div class="d-flex align-items-center justify-content-center bg-light rounded-circle me-2" style="width: 28px; height: 28px;">
+                                            <i class="fas fa-map-marker-alt text-danger" style="font-size: 0.8rem;"></i>
+                                        </div>
+                                        <span class="text-dark small fw-medium">
+                                            ${escapeHtml(venue)}
+                                        </span>
+                                    </div>
+
                                 </div>
-                                <p class="text-muted small flex-grow-1 mb-3">${escapeHtml(desc)}</p>
                                 ${managerNameHtml}
                             </div>
-                            <div class="d-flex justify-content-end align-items: center mt-3 pt-3 border-top">
+
+                            <div class="d-flex justify-content-end align-items-center mt-3 pt-3 border-top">
                                 <a href="#" class="check-event btn btn-sm btn-outline-primary rounded-pill px-3 fw-bold" 
-                                   data-bs-toggle="modal" data-bs-target="#viewEventModal" 
-                                   data-id="${event.event_id}" 
-                                   data-category-type="${event.category_type || 'medal'}"
-                                   data-status="${(originalStatus).toLowerCase()}">
+                                data-bs-toggle="modal" data-bs-target="#viewEventModal" 
+                                data-id="${event.event_id}" 
+                                data-category-type="${event.category_type || 'medal'}"
+                                data-status="${(originalStatus).toLowerCase()}">
                                     View Details <i class="fas fa-arrow-right ms-1"></i>
                                 </a>
                             </div>
                         </div>
                     </div>`;
-            }
+                        }
 
             function renderEvents(events) {
                 if (!eventsGridContainer) return;
@@ -1383,7 +1556,7 @@ $conn->close();
                     // 2. Smart Tab Activation
                     let targetTabId = 'details-tab';
                     if (status === 'completed' || status === 'completed (pending results)' || status === 'results submitted' || status === 'results approved') {
-                        targetTabId = 'winners-tab'; // Show Podium for completed events
+                        targetTabId = 'result-tab'; // Show Podium for completed events
                     }
                     
                     const tabToActivate = document.getElementById(targetTabId);
@@ -1685,8 +1858,24 @@ $conn->close();
 
             // START THE ENGINE!
             startRealTimeUpdates();
-            
-        }); 
+
+            // --- 1. NEW HELPER: GET ICON CLASS (Matches Director Panel) ---
+            function getEventIconJS(gameName, eventName) {
+                // Combine text to search safely
+                const text = (String(gameName) + ' ' + String(eventName)).toLowerCase();
+                
+                if (text.includes('athletics') || text.includes('run')) return 'fas fa-running';
+                if (text.includes('ball') || text.includes('takraw')) return 'fas fa-basketball-ball';
+                if (text.includes('swim')) return 'fas fa-swimmer';
+                if (text.includes('racket') || text.includes('badminton') || text.includes('tennis')) return 'fas fa-table-tennis-paddle-ball';
+                if (text.includes('chess') || text.includes('scrabble') || text.includes('word') || text.includes('board')) return 'fas fa-puzzle-piece';
+                if (text.includes('e-sports') || text.includes('mobile') || text.includes('game') || text.includes('valorant')) return 'fas fa-gamepad';
+                if (text.includes('dance') || text.includes('vocal') || text.includes('sing') || text.includes('cultural')) return 'fas fa-music';
+                
+                return 'fas fa-trophy'; // Default fallback
+            }
+                    
+                }); 
     </script>
 </body>
 </html>
