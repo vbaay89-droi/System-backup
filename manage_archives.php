@@ -221,6 +221,32 @@ $pending_results_count = $conn->query("SELECT COUNT(*) FROM categories WHERE sta
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=Poppins:wght@400;500;600;700;800&display=swap" rel="stylesheet">
     <style>
+
+        /* ========================================
+        ENHANCED PAGE HEADER
+        ======================================== */
+        .page-header {
+            position: relative;
+            margin-bottom: 2rem;
+        }
+
+        .page-header .section-title {
+            font-family: 'Poppins', sans-serif;
+            font-weight: 800;
+            font-size: 2.2rem;
+            color: #2c3e50;
+            margin-bottom: 0.5rem;
+            display: flex;
+            align-items: center;
+        }
+
+        .page-header .section-title i {
+            background: linear-gradient(135deg, var(--accent-color) 0%, #16a085 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
         /* --- CORE STYLES --- */
         :root { --sidebar-width: 260px; --header-height: 82px; --bg-light: #F8F9FA; --accent-color: #1abc9c; }
         body { background-color: var(--bg-light); margin: 0; padding: 0; min-height: 100vh; font-family: 'Inter', sans-serif; display: flex; flex-direction: column; }
@@ -276,18 +302,197 @@ $pending_results_count = $conn->query("SELECT COUNT(*) FROM categories WHERE sta
         .action-card.reset-action { border-top-color: #ef4444; background: linear-gradient(135deg, #fff 0%, #fef2f2 100%); }
         .action-icon { font-size: 4rem; margin-bottom: 1.5rem; opacity: 0.9; }
 
-        /* --- STICKY SIDEBAR REPORT STYLES --- */
-        #fullReportModal .modal-body { height: calc(100vh - 65px); overflow: hidden; }
-        .report-layout { display: flex; height: 100%; }
-        .report-sidebar { width: 250px; background: #f8f9fa; border-right: 1px solid #dee2e6; padding: 1.5rem; overflow-y: auto; flex-shrink: 0; }
-        .report-content { flex-grow: 1; overflow-y: auto; padding: 2rem; background: #fff; scroll-behavior: smooth; }
-        .report-nav-link { display: block; padding: 10px 15px; color: #495057; text-decoration: none; border-radius: 8px; margin-bottom: 5px; font-weight: 500; transition: all 0.2s; }
-        .report-nav-link:hover { background: #e9ecef; color: #212529; }
-        .report-nav-link.active { background: #e7f1ff; color: #0d6efd; font-weight: 600; }
-        .report-nav-link i { width: 25px; text-align: center; margin-right: 8px; }
-        .report-section { margin-bottom: 3rem; scroll-margin-top: 2rem; }
-        .report-section-title { font-size: 1.5rem; font-weight: 700; color: #343a40; border-bottom: 2px solid #e9ecef; padding-bottom: 0.5rem; margin-bottom: 1.5rem; display: flex; align-items: center; }
-        .report-section-title i { margin-right: 10px; color: #6c757d; }
+        /* --- PROFESSIONAL REPORT VIEWER STYLES --- */
+#fullReportModal .modal-body { 
+    height: calc(100vh - 65px); 
+    overflow: hidden; 
+    background: #f8f9fa;
+}
+
+.report-layout { 
+    display: flex; 
+    height: 100%; 
+    gap: 0;
+}
+
+.report-sidebar { 
+    width: 280px; 
+    background: #ffffff;
+    border-right: 1px solid #e9ecef; 
+    padding: 2rem 0;
+    overflow-y: auto; 
+    flex-shrink: 0;
+    box-shadow: 2px 0 8px rgba(0,0,0,0.03);
+}
+
+.report-sidebar .text-muted {
+    padding: 0 1.5rem;
+    font-size: 0.7rem;
+    font-weight: 700;
+    letter-spacing: 1.2px;
+    color: #adb5bd;
+    margin-bottom: 1rem;
+}
+
+.report-content { 
+    flex-grow: 1; 
+    overflow-y: auto; 
+    padding: 3rem;
+    background: #f8f9fa;
+    scroll-behavior: smooth;
+}
+
+.report-nav-link { 
+    display: flex;
+    align-items: center;
+    padding: 0.875rem 1.5rem;
+    color: #6c757d;
+    text-decoration: none;
+    margin: 0;
+    font-weight: 500;
+    font-size: 0.9rem;
+    transition: all 0.2s ease;
+    border-left: 3px solid transparent;
+}
+
+.report-nav-link:hover { 
+    background: #f8f9fa;
+    color: #212529;
+    border-left-color: #dee2e6;
+}
+
+.report-nav-link.active { 
+    background: linear-gradient(90deg, #e7f1ff 0%, transparent 100%);
+    color: #0d6efd;
+    font-weight: 600;
+    border-left-color: #0d6efd;
+}
+
+.report-nav-link i { 
+    width: 28px;
+    text-align: center;
+    margin-right: 12px;
+    font-size: 1.1rem;
+}
+
+/* Report Section Styling */
+.report-section { 
+    background: white;
+    border-radius: 12px;
+    padding: 2.5rem;
+    margin-bottom: 2rem;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.04);
+    border: 1px solid #e9ecef;
+}
+
+.report-section-title { 
+    font-family: 'Poppins', sans-serif;
+    font-size: 1.5rem;
+    font-weight: 700;
+    color: #212529;
+    margin-bottom: 2rem;
+    padding-bottom: 1rem;
+    border-bottom: 2px solid #f1f3f5;
+    display: flex;
+    align-items: center;
+}
+
+.report-section-title i { 
+    margin-right: 12px;
+    color: #6c757d;
+    font-size: 1.3rem;
+}
+
+/* Table Enhancements */
+.report-section .table-responsive {
+    border-radius: 8px;
+    overflow: hidden;
+    border: 1px solid #e9ecef;
+}
+
+.report-section table {
+    margin-bottom: 0;
+    font-size: 0.9rem;
+}
+
+.report-section thead th {
+    background: #f8f9fa;
+    color: #495057;
+    font-weight: 600;
+    text-transform: uppercase;
+    font-size: 0.75rem;
+    letter-spacing: 0.5px;
+    padding: 1rem;
+    border-bottom: 2px solid #dee2e6;
+}
+
+.report-section tbody td {
+    padding: 1rem;
+    vertical-align: middle;
+    border-bottom: 1px solid #f1f3f5;
+}
+
+.report-section tbody tr:last-child td {
+    border-bottom: none;
+}
+
+.report-section tbody tr:hover {
+    background: #f8f9fa;
+}
+
+/* Chart Containers */
+.chart-container { 
+    height: 400px;
+    position: relative;
+    margin: 1.5rem 0;
+}
+
+.report-section .card {
+    border: 1px solid #e9ecef;
+    box-shadow: none;
+}
+
+.report-section .card-header {
+    background: #f8f9fa;
+    border-bottom: 2px solid #e9ecef;
+    font-weight: 600;
+    font-size: 0.95rem;
+    padding: 1rem 1.5rem;
+}
+
+.report-section .card-body {
+    padding: 2rem;
+}
+
+/* Stat Badges & Visual Elements */
+.badge {
+    font-weight: 600;
+    padding: 0.35rem 0.65rem;
+    font-size: 0.75rem;
+}
+
+/* Medal Row Enhancements */
+#tableMedals tbody tr td:first-child {
+    font-size: 1.5rem;
+}
+
+#tableMedals tbody tr:nth-child(1) {
+    background: linear-gradient(90deg, #fff9e6 0%, #ffffff 100%);
+}
+
+#tableMedals tbody tr:nth-child(2) {
+    background: linear-gradient(90deg, #f5f5f5 0%, #ffffff 100%);
+}
+
+#tableMedals tbody tr:nth-child(3) {
+    background: linear-gradient(90deg, #fff5f0 0%, #ffffff 100%);
+}
+
+/* Empty State */
+.report-section .text-muted.py-5 {
+    font-size: 0.95rem;
+    color: #adb5bd;
+}
 
         /* Chart Containers */
         .chart-container { height: 400px; position: relative; margin-bottom: 2rem; }
@@ -628,11 +833,10 @@ $pending_results_count = $conn->query("SELECT COUNT(*) FROM categories WHERE sta
     <div class="main-content">
         <div class="container-fluid">
         
-            <div class="page-header">
-                <h2>
-                    <i class="fas fa-archive text-primary"></i>
-                    Season Archives
-                </h2>
+            <div class="page-header mb-4">
+                <h1 class="section-title">
+                    </i>Manage Archives
+                </h1>
                 <p class="subtitle">Manage historical data and prepare for new seasons</p>
             </div>
 
@@ -828,26 +1032,38 @@ $pending_results_count = $conn->query("SELECT COUNT(*) FROM categories WHERE sta
     <div class="modal fade" id="fullReportModal" tabindex="-1">
         <div class="modal-dialog modal-fullscreen">
             <div class="modal-content">
-                <div class="modal-header bg-dark text-white" style="height: 65px;">
-                    <h5 class="modal-title" id="reportModalTitle"><i class="fas fa-history me-2"></i>Archive Viewer</h5>
-                    <div class="ms-auto">
-                        <button class="btn btn-outline-light btn-sm me-2" onclick="printReport()">
-                            <i class="fas fa-print me-1"></i> Print Report
+                <div class="modal-header" style="height: 65px; background: #ffffff; border-bottom: 2px solid #e9ecef;">
+                    <h5 class="modal-title text-dark fw-bold" id="reportModalTitle">
+                        <i class="fas fa-history me-2 text-primary"></i>Archive Viewer
+                    </h5>
+                    <div class="ms-auto d-flex gap-2">
+                        <button class="btn btn-light border btn-sm" onclick="printReport()">
+                            <i class="fas fa-print me-1"></i> Print
                         </button>
-                        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
                     </div>
                 </div>
                 
                 <div class="modal-body p-0">
                     <div class="report-layout">
                         <div class="report-sidebar">
-                            <div class="text-muted small fw-bold text-uppercase mb-3 mt-2">Quick Jump</div>
+                            <div class="text-muted small fw-bold text-uppercase mb-3 mt-2">NAVIGATION</div>
                             <nav class="nav flex-column">
-                                <a class="report-nav-link" href="#sec-medals"><i class="fas fa-medal text-warning"></i>Medal Tally</a>
-                                <a class="report-nav-link" href="#sec-charts"><i class="fas fa-chart-pie text-primary"></i>Visual Reports</a>
-                                <a class="report-nav-link" href="#sec-events"><i class="fas fa-calendar-day text-success"></i>Events Results</a>
-                                <a class="report-nav-link" href="#sec-teams"><i class="fas fa-users text-info"></i>Participating Teams</a>
-                                <a class="report-nav-link" href="#sec-officials"><i class="fas fa-user-tie text-secondary"></i>Officials</a>
+                                <a class="report-nav-link" href="#sec-medals">
+                                    <i class="fas fa-medal"></i>Medal Tally
+                                </a>
+                                <a class="report-nav-link" href="#sec-charts">
+                                    <i class="fas fa-chart-bar"></i>Visual Analytics
+                                </a>
+                                <a class="report-nav-link" href="#sec-events">
+                                    <i class="fas fa-calendar-check"></i>Event Results
+                                </a>
+                                <a class="report-nav-link" href="#sec-teams">
+                                    <i class="fas fa-users"></i>Teams
+                                </a>
+                                <a class="report-nav-link" href="#sec-officials">
+                                    <i class="fas fa-user-tie"></i>Officials
+                                </a>
                             </nav>
                         </div>
                         
@@ -1057,15 +1273,16 @@ $pending_results_count = $conn->query("SELECT COUNT(*) FROM categories WHERE sta
                         .then(response => response.json())
                         .then(data => {
                             if (data.success) {
-                                const archiveDate = new Date(data.archived_at).toLocaleDateString('en-US', {year: 'numeric', month: 'long', day: 'numeric'});
-                                document.getElementById('reportModalTitle').innerHTML = `
-                                    <div class="d-flex align-items-center w-100">
-                                        <div class="me-auto">
-                                            <i class="fas fa-history me-2"></i> ${data.season_name} 
-                                            <span class="badge bg-secondary ms-2" style="font-size: 0.75rem;">Archived: ${archiveDate}</span>
-                                        </div>
-                                    </div>`;
-                                populateModal(data);
+                            const archiveDate = new Date(data.archived_at).toLocaleDateString('en-US', {year: 'numeric', month: 'long', day: 'numeric'});
+                            document.getElementById('reportModalTitle').innerHTML = `
+                                <div class="d-flex align-items-center">
+                                    <i class="fas fa-file-alt me-2 text-primary"></i>
+                                    <span class="fw-bold">${data.season_name}</span>
+                                    <span class="badge bg-light text-dark border ms-3" style="font-size: 0.7rem; font-weight: 500;">
+                                        ${archiveDate}
+                                    </span>
+                                </div>`;
+                            populateModal(data);
                             } else {
                                 alert('Error: ' + (data.message || 'Unknown error'));
                                 modal.hide();
@@ -1203,6 +1420,9 @@ $pending_results_count = $conn->query("SELECT COUNT(*) FROM categories WHERE sta
                 if (data.stats && data.stats.charts) {
                     renderCharts(data.stats.charts);
                 }
+                
+                // 6. Initialize Smooth Navigation (NEW)
+                initializeReportNavigation();
             }
 
             function renderCharts(chartData) {
@@ -1251,44 +1471,106 @@ $pending_results_count = $conn->query("SELECT COUNT(*) FROM categories WHERE sta
                 }
             }
 
-                 // ==========================================
-        // 2. REAL-TIME BADGE UPDATER
-        // ==========================================
-        function updateSidebarBadges() {
-            fetch('api_notifications.php?t=' + new Date().getTime())
-                .then(response => response.json())
-                .then(data => {
-                    if (data.success) {
-                        // Update "Approve Results" (Yellow)
-                        updateSingleBadge('results.php', data.pending_results, 'bg-warning text-dark');
+            // ==========================================
+            // NEW: SMOOTH NAVIGATION & ACTIVE STATES
+            // ==========================================
+            function initializeReportNavigation() {
+                const reportContent = document.querySelector('.report-content');
+                const navLinks = document.querySelectorAll('.report-nav-link');
+                const sections = document.querySelectorAll('.report-section');
 
-                        // Update "Account Requests" (Red)
-                        updateSingleBadge('Manage_Requests.php', data.pending_requests, 'bg-danger');
-                    }
-                })
-                .catch(err => console.error('Badge update error:', err));
-        }
+                // Click handler for smooth scroll
+                navLinks.forEach(link => {
+                    link.addEventListener('click', function(e) {
+                        e.preventDefault();
+                        
+                        // Remove active class from all links
+                        navLinks.forEach(l => l.classList.remove('active'));
+                        
+                        // Add active class to clicked link
+                        this.classList.add('active');
+                        
+                        // Smooth scroll to section
+                        const targetId = this.getAttribute('href');
+                        const targetSection = document.querySelector(targetId);
+                        if (targetSection && reportContent) {
+                            const offsetTop = targetSection.offsetTop - reportContent.offsetTop;
+                            reportContent.scrollTo({
+                                top: offsetTop,
+                                behavior: 'smooth'
+                            });
+                        }
+                    });
+                });
 
-        function updateSingleBadge(hrefKeyword, count, colorClasses) {
-            const link = document.querySelector(`.sidebar-nav .nav-link[href*="${hrefKeyword}"]`);
-            if (link) {
-                let badge = link.querySelector('.badge');
-                if (count > 0) {
-                    if (!badge) {
-                        badge = document.createElement('span');
-                        link.appendChild(badge);
+                // Scroll spy - update active link on scroll
+                if (reportContent) {
+                    reportContent.addEventListener('scroll', function() {
+                        let currentSection = '';
+                        const scrollPos = reportContent.scrollTop + 150;
+
+                        sections.forEach(section => {
+                            const sectionTop = section.offsetTop - reportContent.offsetTop;
+                            const sectionHeight = section.offsetHeight;
+                            
+                            if (scrollPos >= sectionTop && scrollPos < sectionTop + sectionHeight) {
+                                currentSection = section.getAttribute('id');
+                            }
+                        });
+
+                        navLinks.forEach(link => {
+                            link.classList.remove('active');
+                            if (link.getAttribute('href') === '#' + currentSection) {
+                                link.classList.add('active');
+                            }
+                        });
+                    });
+
+                    // Set first link as active by default
+                    if (navLinks.length > 0) {
+                        navLinks[0].classList.add('active');
                     }
-                    badge.className = `badge ${colorClasses} ms-auto rounded-pill`;
-                    badge.textContent = count;
-                } else {
-                    if (badge) badge.remove();
                 }
             }
-        }
 
-        // Run Badges
-        updateSidebarBadges();
-        setInterval(updateSidebarBadges, 5000);
+            // ==========================================
+            // REAL-TIME BADGE UPDATER
+            // ==========================================
+            function updateSidebarBadges() {
+                fetch('api_notifications.php?t=' + new Date().getTime())
+                    .then(response => response.json())
+                    .then(data => {
+                        if (data.success) {
+                            // Update "Approve Results" (Yellow)
+                            updateSingleBadge('results.php', data.pending_results, 'bg-warning text-dark');
+
+                            // Update "Account Requests" (Red)
+                            updateSingleBadge('Manage_Requests.php', data.pending_requests, 'bg-danger');
+                        }
+                    })
+                    .catch(err => console.error('Badge update error:', err));
+            }
+
+            function updateSingleBadge(hrefKeyword, count, colorClasses) {
+                const link = document.querySelector(`.sidebar-nav .nav-link[href*="${hrefKeyword}"]`);
+                if (link) {
+                    let badge = link.querySelector('.badge');
+                    if (count > 0) {
+                        if (!badge) {
+                            badge = document.createElement('span');
+                            link.appendChild(badge);
+                        }
+                        badge.className = `badge ${colorClasses} ms-auto rounded-pill`;
+                        badge.textContent = count;
+                    } else {
+                        if (badge) badge.remove();
+                    }
+                }
+            }
+
+            // Run Badges
+            updateSidebarBadges();
+            setInterval(updateSidebarBadges, 5000);
         
         });
 
@@ -1296,6 +1578,6 @@ $pending_results_count = $conn->query("SELECT COUNT(*) FROM categories WHERE sta
             const alerts = document.querySelectorAll('.alert');
             alerts.forEach(alert => { new bootstrap.Alert(alert).close(); });
         }, 5000);
-    </script>
+</script>
 </body>
 </html>

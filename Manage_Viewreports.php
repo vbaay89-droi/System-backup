@@ -213,9 +213,37 @@ function getStatusBadge($status) {
         .sidebar-nav .nav-link.active { color: white; background: rgba(255, 255, 255, 0.1); border-left-color: #3498db; font-weight: 600; }
         .sidebar-nav .nav-title { padding: 15px 25px 5px; font-size: 0.75rem; font-weight: 700; color: rgba(255, 255, 255, 0.4); text-transform: uppercase; letter-spacing: 1px; }
 
+
+        /* ========================================
+        ENHANCED PAGE HEADER
+        ======================================== */
+        .page-header {
+            position: relative;
+            margin-bottom: 2rem;
+        }
+
+        .page-header .section-title {
+            font-family: 'Poppins', sans-serif;
+            font-weight: 800;
+            font-size: 2.2rem;
+            color: #2c3e50;
+            margin-bottom: 0.5rem;
+            display: flex;
+            align-items: center;
+        }
+
+        .page-header .section-title i {
+            background: linear-gradient(135deg, var(--accent-color) 0%, #16a085 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
         /* Main Content */
         .main-content { flex: 1 0 auto; padding: 30px; margin-top: var(--header-height); margin-left: var(--sidebar-width); transition: margin-left var(--transition); min-height: calc(100vh - var(--header-height)); }
         .section-title { font-family: 'Poppins', sans-serif; font-weight: 600; color: #333; }
+
+
         
         /* Footer */
         footer {
@@ -472,7 +500,121 @@ function getStatusBadge($status) {
       }
     }
 
-    @media (max-width: 991px) {
+    /* =========================================
+   MOBILE OPTIMIZATION (Sports Director)
+   ========================================= */
+@media (max-width: 991.98px) {
+    
+    /* 1. COMPACT NAVBAR & LAYOUT */
+    .navbar {
+        padding: 0.5rem 1rem !important;
+        height: 60px !important; /* Fixed compact height */
+        display: flex !important;
+        flex-wrap: nowrap !important;
+        align-items: center !important;
+    }
+    
+    /* A. LEFT: Toggler Button */
+    .navbar-toggler {
+        order: 1 !important; /* First item */
+        border: 1px solid rgba(255,255,255,0.1);
+        padding: 4px 8px;
+        font-size: 1.2rem;
+        margin-right: 10px !important;
+    }
+    .navbar-toggler:focus { box-shadow: none; }
+
+    /* B. LEFT/CENTER: Brand Logo */
+    /* margin-right: auto PUSHES the Profile Icon to the far right */
+    .navbar-brand {
+        order: 2 !important; /* Second item */
+        margin-right: auto !important; /* THE KEY SPACER */
+        display: flex;
+        align-items: center;
+        max-width: 60%;
+    }
+    .navbar-brand img {
+        height: 30px !important;
+        width: 30px !important;
+        margin-right: 8px !important;
+    }
+    .navbar-brand strong {
+        font-size: 0.95rem !important;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
+    .navbar-brand small { display: none !important; }
+
+    /* C. RIGHT: Profile Menu Icon */
+    .user-dropdown {
+        order: 3 !important; /* Third item */
+        margin-left: 0 !important; 
+        position: relative;
+    }
+    .user-dropdown .user-name { display: none !important; } /* Hide Name */
+    
+    /* Icon Styling */
+    .user-dropdown .dropdown-toggle i { 
+        font-size: 26px !important; 
+        margin: 0 !important;
+        color: #fff; /* Ensure visibility */
+        cursor: pointer;
+    }
+
+    /* Order 3: Brand Logo */
+    .navbar-brand {
+        order: 3 !important;
+        display: flex;
+        align-items: center;
+        max-width: 55%; /* Adjust width to prevent overflow */
+        margin-right: 0 !important;
+    }
+    .navbar-brand img {
+        height: 30px !important;
+        width: 30px !important;
+        margin-right: 8px !important;
+    }
+    .navbar-brand strong {
+        font-size: 0.95rem !important;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
+    .navbar-brand small { display: none !important; }
+    
+    /* Compact Profile Menu */
+    .user-dropdown .user-name { display: none !important; }
+    .user-dropdown .dropdown-toggle i { font-size: 28px !important; margin: 0 !important; }
+
+    /* 2. SIDEBAR DRAWER (Fix Gap & Animation) */
+    .sidebar {
+        position: fixed !important;
+        top: 60px !important; /* Matches Navbar Height */
+        left: -260px !important; /* Hidden */
+        width: 260px !important;
+        height: calc(100vh - 60px) !important;
+        background-color: #2c3e50 !important;
+        box-shadow: 5px 0 15px rgba(0,0,0,0.3);
+        transition: left 0.3s ease-in-out !important;
+        z-index: 1045;
+        overflow-y: auto;
+    }
+    .sidebar.show { left: 0 !important; } /* Slide In */
+    
+    /* Prevent text cutoff in menu */
+    .sidebar-nav .nav-link { 
+        white-space: nowrap; 
+        font-size: 0.95rem;
+    }
+
+    /* 3. MAIN CONTENT ADJUSTMENTS */
+    .main-content {
+        padding: 15px !important;
+        margin-top: 60px !important;
+        margin-left: 0 !important;
+    }
+}
             /* 1. Center text on smaller screens */
             .footer-main { 
                 text-align: center; 
@@ -605,10 +747,16 @@ function getStatusBadge($status) {
             </nav>
 
             <div class="d-flex justify-content-between align-items-center mb-4">
-                <h1 class="section-title mb-0">View Reports</h1>
+    
+                <div class="page-header"> 
+                    <h1 class="section-title mb-0">
+                        </i>View Reports
+                    </h1>
+                </div>
+
                 <button class="btn btn-secondary" onclick="window.open('print_official_report.php', '_blank')">
-    <i class="fas fa-print me-2"></i> Print Official Report
-</button>
+                    <i class="fas fa-print me-2"></i> Print Official Report
+                </button>
             </div>
             
             <ul class="nav nav-tabs" id="reportTab" role="tablist">

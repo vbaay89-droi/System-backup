@@ -150,7 +150,7 @@ $conn->close();
             left: 0;
             width: 100%;
             height: calc(100% - 80px);
-            background-image: url('confettitest.gif');
+            background-image: url('images/confetti-ezgif.gif');
             background-size: 40%;
             background-position: center top;
             background-repeat: repeat;
@@ -627,69 +627,56 @@ $conn->close();
     box-shadow: none !important; 
 }
 
+/* --- COMPACT MOBILE HEADER --- */
 @media (max-width: 991px) {
-    /* 1. Container Wrapper: Allows wrapping so we can make 2 distinct rows */
-    .navbar .container-fluid {
-        display: flex;
-        flex-wrap: wrap; 
-        align-items: center;
-        padding-bottom: 5px;
+    /* 1. Reduce Navbar Height & Padding */
+    .navbar {
+        padding: 0.5rem 1rem !important; /* Smaller vertical padding */
+        min-height: 60px; /* Force a compact height */
     }
 
-    /* 2. ROW 1: Brand/Logo (Takes Full Width) */
-    .navbar-brand {
-        width: 100%;       
-        margin-right: 0;
-        margin-bottom: 5px; /* Tiny space between Title and Menu */
-        border-bottom: 1px solid rgba(255,255,255,0.1); /* Optional Divider */
-        padding-bottom: 10px;
+    /* 2. Adjust Logo Size for Compact Header */
+    .brand-logo {
+        height: 36px !important; /* Slightly smaller logo */
+        width: 36px !important;
     }
-
     
+    .brand-heading {
+        font-size: 1rem !important; /* Smaller title text */
+    }
+    
+    .brand-subheading {
+        font-size: 0.65rem !important; /* Smaller subtitle */
+    }
 
-    /* 4. ROW 2 Right: The Menu Container */
-    /* This forces the menu to sit NEXT TO the toggler, not below it */
+    /* 3. Horizontal Menu Layout (Side-by-Side) */
     .navbar-collapse {
-        width: auto !important; /* Let it fit the remaining space */
-        flex-grow: 1;           /* Fill the rest of the row */
-        margin-top: 0;
-        background: transparent;
-        box-shadow: none;
-        border: none;
+        margin-top: 0; /* Remove top margin */
+        padding-bottom: 0;
+        border-top: none; /* Remove divider if desired */
     }
 
-    /* When Open: Force Flex Layout (Side-by-Side) */
-    .navbar-collapse.show {
-        display: flex !important;
-        align-items: center;
-    }
-
-    /* 5. Force Links to be a Horizontal Row */
     .navbar-nav {
-        flex-direction: row !important;
-        align-items: center;
+        flex-direction: row !important; /* Force row layout */
+        align-items: center !important;
+        justify-content: flex-end; /* Align to the right, near hamburger if expanded, or center */
+        gap: 10px; /* Tighter spacing */
         width: 100%;
-        gap: 10px; /* Space between links */
+        padding: 5px 0;
     }
 
-    /* 6. Link Styling (Compact for Mobile) */
-    .nav-item {
-        margin: 0;
-    }
+    /* 4. Compact Links */
     .nav-link {
-        font-size: 0.9rem; 
-        margin: 0;
-        padding: 5px 8px !important;
-        white-space: nowrap; /* Prevent text from breaking */
+        padding: 0.4rem 0.6rem !important;
+        font-size: 0.85rem !important;
     }
-    
-    /* 7. Admin Button (Pushed to the right) */
-    .navbar-nav .btn {
-        margin: 0;
-        margin-left: auto; /* Pushes button to the far right */
-        padding: 5px 12px;
-        font-size: 0.8rem;
-        white-space: nowrap;
+
+    /* 5. Compact Login Button (Placed Beside Links) */
+    .nav-item .btn {
+        margin: 0 !important;
+        padding: 0.3rem 0.8rem !important; /* Smaller button padding */
+        font-size: 0.8rem !important;      /* Smaller text */
+        line-height: 1.2;
     }
 }
 
@@ -702,7 +689,7 @@ $conn->close();
             <a class="navbar-brand d-flex align-items-center" href="home.php">
                 <img src="imageslogo.png" alt="Logo" class="me-2 brand-logo" style="height: 50px; width: 48px; object-fit: contain;">
                 <div class="d-flex flex-column lh-sm">
-                    <strong class="text-white brand-heading" style="font-size: 1.25rem;">PIT SIGLAKAS MEDAL Tallying</strong>
+                    <strong class="text-white brand-heading" style="font-size: 1.25rem;">PIT SIGLAKAS MEDAL TALLY</strong>
                     <small class="text-light brand-subheading" style="font-size: 0.75rem;">Official College Medal Tally System</small>
                 </div>
             </a>

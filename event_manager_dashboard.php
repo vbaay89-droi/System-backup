@@ -444,6 +444,217 @@ try {
         .sidebar.show { left: 0; } 
         .main-content, footer { margin-left: 0; } 
     }
+/* =========================================
+   MOBILE OPTIMIZATION (Event Manager)
+   ========================================= */
+@media (max-width: 991.98px) {
+
+    /* === 1. COMPACT NAVBAR === */
+    .navbar { 
+        padding: 0.5rem 1rem !important; 
+        height: 60px !important;
+        align-items: center;
+    }
+    
+    /* Move Toggler to LEFT (Below Logo) */
+    .navbar .container-fluid {
+        flex-wrap: nowrap !important;
+        gap: 10px;
+    }
+    
+    /* Toggler Button - Styled & Positioned Left */
+    .navbar-toggler {
+        order: -1 !important;          /* Forces it to appear FIRST (leftmost) */
+        width: 36px;
+        height: 36px;
+        background-color: rgba(255, 255, 255, 0.1);
+        border-radius: 8px;
+        border: 1px solid rgba(255, 255, 255, 0.2);
+        padding: 0;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        margin-right: 8px;             /* Small gap before logo */
+    }
+    .navbar-toggler:focus { 
+        box-shadow: 0 0 0 2px rgba(255, 255, 255, 0.2); 
+    }
+    
+    /* === 2. SHRINK NAVBAR BRAND === */
+    .navbar-brand {
+        display: flex;
+        align-items: center;
+        max-width: 55%;                /* Shrink to fit with toggler */
+        order: 0;
+    }
+    .navbar-brand img { 
+        height: 30px !important; 
+        width: 30px !important;
+        margin-right: 8px !important;
+    }
+    .navbar-brand .brand-heading { 
+        font-size: 0.85rem !important; /* Even smaller for tight fit */
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        line-height: 1.2;
+    }
+    .navbar-brand small { 
+        display: none !important;      /* Hide subtitle */
+    }
+    
+    /* === 3. USER DROPDOWN COMPACT === */
+    .user-dropdown {
+        order: 1;                      /* Appears last (rightmost) */
+        margin-left: auto !important;
+        margin-right: 0 !important;
+    }
+    .user-dropdown .user-name { 
+        display: none !important;      /* Hide username text */
+    }
+    .user-dropdown .dropdown-toggle {
+        padding: 6px 8px !important;
+        font-size: 1.2rem;
+    }
+    .user-dropdown .dropdown-toggle img {
+        width: 28px !important;
+        height: 28px !important;
+        margin-right: 0 !important;
+    }
+
+    /* === 4. SIDEBAR OPTIMIZATION === */
+    .sidebar { 
+        position: fixed !important;
+        left: -260px !important;
+        top: 60px !important;
+        width: 260px !important;
+        height: calc(100vh - 60px) !important;
+        background-color: #2c3e50 !important;
+        transition: left 0.3s ease-in-out !important;
+        z-index: 1045 !important;
+        box-shadow: 5px 0 15px rgba(0,0,0,0.3);
+        overflow-y: auto;
+    }
+    .sidebar.show { 
+        left: 0 !important; 
+    }
+
+    /* === 5. MAIN CONTENT COMPACT === */
+    .main-content { 
+        padding: 12px !important;
+        margin-top: 60px !important;
+        margin-left: 0 !important;
+    }
+
+    /* === 6. HERO SECTION MOBILE === */
+    .hero-section {
+        padding: 20px !important;
+        margin-bottom: 20px !important;
+    }
+    .welcome-badge {
+        font-size: 0.7rem !important;
+        padding: 4px 10px !important;
+    }
+    .hero-section h1 {
+        font-size: 1.5rem !important;
+        margin-bottom: 8px !important;
+    }
+    .hero-section h5 {
+        font-size: 0.9rem !important;
+        margin-bottom: 12px !important;
+    }
+    .hero-section .lead {
+        font-size: 0.85rem !important;
+        line-height: 1.5 !important;
+    }
+    .hero-section hr {
+        width: 100% !important;
+        margin: 15px 0 !important;
+    }
+
+    /* === 7. DASHBOARD CARDS COMPACT === */
+    .dashboard-card {
+        padding: 16px !important;
+        margin-bottom: 12px;
+    }
+    .icon-square {
+        width: 45px !important;
+        height: 45px !important;
+        font-size: 1.2rem !important;
+        margin-right: 12px !important;
+    }
+    .stat-value {
+        font-size: 1.8rem !important;
+        margin-bottom: 2px !important;
+    }
+    .stat-label {
+        font-size: 0.7rem !important;
+    }
+    .section-title {
+        font-size: 0.75rem !important;
+        margin-bottom: 12px !important;
+    }
+
+    /* === 8. QUICK ACTIONS LIST COMPACT === */
+    .list-group-item {
+        padding: 12px 16px !important;
+    }
+    .list-group-item .fa-lg {
+        font-size: 1rem !important;
+        margin-right: 10px !important;
+    }
+    .list-group-item .fw-bold {
+        font-size: 0.9rem !important;
+    }
+    .list-group-item .small {
+        font-size: 0.75rem !important;
+    }
+
+    /* === 9. ACTIVITY LOG COMPACT === */
+    .activity-log-container .icon-square {
+        width: 35px !important;
+        height: 35px !important;
+        font-size: 0.9rem !important;
+        margin-right: 10px !important;
+    }
+    .activity-log-container .small {
+        font-size: 0.8rem !important;
+    }
+
+    /* === 10. FOOTER ADJUSTMENT === */
+    .footer-main {
+        padding-left: 0 !important;
+        padding: 2rem 0 1.5rem 0 !important;
+    }
+    .footer-main .footer-logo-group img {
+        height: 35px !important;
+        width: 35px !important;
+    }
+    .footer-main .footer-logo-group h5 {
+        font-size: 0.9rem !important;
+    }
+    .footer-main p,
+    .footer-main .footer-links a {
+        font-size: 0.8rem !important;
+    }
+}
+
+/* === EXTRA SMALL PHONES (< 576px) === */
+@media (max-width: 575.98px) {
+    .navbar-brand .brand-heading {
+        font-size: 0.75rem !important;
+    }
+    .hero-section h1 {
+        font-size: 1.25rem !important;
+    }
+    .stat-value {
+        font-size: 1.5rem !important;
+    }
+    .col-xl-3.col-md-6 {
+        flex: 0 0 100% !important;
+        max-width: 100% !important;
+    }
+}
 </style>
 </head>
 <body>
@@ -453,7 +664,7 @@ try {
             <a class="navbar-brand d-flex align-items-center" href="event_manager_dashboard.php">
                 <img src="imageslogo.png" alt="Logo" class="me-2" style="height: 50px; width: 48px; object-fit: contain;">
                 <div class="d-flex flex-column lh-sm">
-                    <strong class="text-white brand-heading" style="font-size: 1.25rem;">PIT SPORTS TALLYING</strong>
+                    <strong class="text-white brand-heading" style="font-size: 1.25rem;">PIT SIGLAKAS MEDAL TALLY</strong>
                     <small class="text-light" style="font-size: 0.75rem;">Event Manager Panel</small>
                 </div>
             </a>
@@ -679,76 +890,84 @@ try {
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
     <script>
         document.addEventListener('DOMContentLoaded', function () {
+    
+    // --- 1. SIDEBAR TOGGLE & SMOOTH TRANSITION ---
+    const mobileToggle = document.getElementById('mobileToggle');
+    const sidebar = document.getElementById('sidebar');
+
+    if (mobileToggle && sidebar) {
+        mobileToggle.addEventListener('click', function(e) {
+            e.stopPropagation(); // Prevent immediate closing from the document listener
+            sidebar.classList.toggle('show');
             
-            // --- Sidebar Toggle for Mobile ---
-            const mobileToggle = document.getElementById('mobileToggle');
-            if (mobileToggle) {
-                mobileToggle.addEventListener('click', function() {
-                    document.getElementById('sidebar').classList.toggle('show');
-                });
-            }
-
-            // --- AJAX STATS LOADER ---
-            function loadDashboardStats() {
-                // This assumes your API file is accessible from this path
-                fetch('event_manager_api.php?action=get_dashboard_stats')
-                    .then(response => {
-                        if (!response.ok) {
-                            throw new Error('Network response was not ok');
-                        }
-                        return response.json();
-                    })
-                    .then(data => {
-                        if (data.success) {
-                            document.getElementById('stat-assigned-events').textContent = data.stats.assigned_events;
-                            document.getElementById('stat-total-categories').textContent = data.stats.total_categories;
-                            document.getElementById('stat-pending-results').textContent = data.stats.pending_results;
-                            document.getElementById('stat-approved-medals').textContent = data.stats.approved_medals;
-                        } else {
-                            console.error('Failed to load stats:', data.message);
-                        }
-                    })
-                    .catch(error => {
-                        console.error('Error fetching stats:', error);
-                    });
-            }
-            loadDashboardStats();
-
-            // --- DYNAMIC SIDEBAR/FOOTER ADJUSTMENT ---
-            const footer = document.querySelector('footer');
-            const sidebar = document.getElementById('sidebar');
-            const navbar = document.querySelector('.navbar');
-
-            if (sidebar && footer && navbar) {
-                function adjustSidebarHeight() {
-                    // Only apply to desktop view (lg screens and up)
-                    if (window.innerWidth <= 992) {
-                        sidebar.style.height = ''; // Reset to CSS default for mobile
-                        return;
-                    }
-
-                    const navbarHeight = navbar.offsetHeight;
-                    const footerTop = footer.getBoundingClientRect().top;
-                    const viewportHeight = window.innerHeight;
-                    
-                    // 1. Calculate max possible height (navbar top to viewport bottom)
-                    const maxSidebarHeight = viewportHeight - navbarHeight;
-
-                    // 2. Calculate available height (navbar top to footer top)
-                    const availableHeight = footerTop - navbarHeight;
-
-                    // 3. Choose the smaller of the two heights
-                    const newHeight = Math.max(0, Math.min(maxSidebarHeight, availableHeight));
-                    
-                    // 4. Apply the new height
-                    sidebar.style.height = `${newHeight}px`;
-                }
-
-                window.addEventListener('scroll', adjustSidebarHeight, { passive: true });
-                window.addEventListener('resize', adjustSidebarHeight);
-                setTimeout(adjustSidebarHeight, 100);
+            // Optional: Prevent body scroll when menu is open on mobile
+            if (window.innerWidth <= 992) {
+                document.body.style.overflow = sidebar.classList.contains('show') ? 'hidden' : '';
             }
         });
+
+        // Close sidebar when clicking anywhere outside of it
+        document.addEventListener('click', function(event) {
+            const isClickInsideSidebar = sidebar.contains(event.target);
+            const isClickInsideToggle = mobileToggle.contains(event.target);
+
+            if (!isClickInsideSidebar && !isClickInsideToggle && sidebar.classList.contains('show')) {
+                sidebar.classList.remove('show');
+                document.body.style.overflow = '';
+            }
+        });
+    }
+
+    // --- 2. AJAX STATS LOADER ---
+    function loadDashboardStats() {
+        fetch('event_manager_api.php?action=get_dashboard_stats')
+            .then(response => {
+                if (!response.ok) throw new Error('Network response was not ok');
+                return response.json();
+            })
+            .then(data => {
+                if (data.success) {
+                    document.getElementById('stat-assigned-events').textContent = data.stats.assigned_events;
+                    document.getElementById('stat-total-categories').textContent = data.stats.total_categories;
+                    document.getElementById('stat-pending-results').textContent = data.stats.pending_results;
+                    document.getElementById('stat-approved-medals').textContent = data.stats.approved_medals;
+                } else {
+                    console.error('Failed to load stats:', data.message);
+                }
+            })
+            .catch(error => console.error('Error fetching stats:', error));
+    }
+    loadDashboardStats();
+
+    // --- 3. DYNAMIC SIDEBAR/FOOTER ADJUSTMENT (Desktop Only) ---
+    const footer = document.querySelector('footer');
+    const navbar = document.querySelector('.navbar');
+
+    if (sidebar && footer && navbar) {
+        function adjustSidebarHeight() {
+            // Only apply to desktop view
+            if (window.innerWidth <= 992) {
+                sidebar.style.height = ''; 
+                return;
+            }
+
+            const navbarHeight = navbar.offsetHeight;
+            const footerTop = footer.getBoundingClientRect().top;
+            const viewportHeight = window.innerHeight;
+            
+            const maxSidebarHeight = viewportHeight - navbarHeight;
+            const availableHeight = footerTop - navbarHeight;
+            const newHeight = Math.max(0, Math.min(maxSidebarHeight, availableHeight));
+            
+            sidebar.style.height = `${newHeight}px`;
+        }
+
+        window.addEventListener('scroll', adjustSidebarHeight, { passive: true });
+        window.addEventListener('resize', adjustSidebarHeight);
+        setTimeout(adjustSidebarHeight, 100);
+    }
+});
+
     </script>
 </body>
 </html>

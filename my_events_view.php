@@ -18,8 +18,11 @@ function render_event_list($managed_data, $college_map)
 {
     // Add custom CSS for enhanced table design
     echo '<style>
-        /* Modern Table Design System - SCALED UP VERSION */
-        /* 1. Container for scrolling */
+        /* =========================================
+           1. MODERN TABLE DESIGN SYSTEM (Desktop)
+           ========================================= */
+        
+        /* Container for scrolling */
         .events-table-container {
             background: #ffffff;
             border-radius: 16px;
@@ -28,16 +31,16 @@ function render_event_list($managed_data, $college_map)
             margin-bottom: 2rem;
             position: relative; 
             
-            /* Keep overflow enabled for Sticky Columns to work */
+            /* Horizontal Scroll */
             overflow-x: auto; 
             scroll-behavior: smooth;
 
-            /* NEW: Hide the scrollbar for Firefox & IE/Edge */
+            /* Hide the scrollbar for Firefox & IE/Edge */
             scrollbar-width: none; 
             -ms-overflow-style: none; 
         }
 
-        /* NEW: Hide the scrollbar for Chrome, Safari, and Opera */
+        /* Hide the scrollbar for Chrome, Safari, and Opera */
         .events-table-container::-webkit-scrollbar {
             display: none;
         }
@@ -45,8 +48,9 @@ function render_event_list($managed_data, $college_map)
         .events-table {
             margin-bottom: 0;
             font-size: 1.05rem;
-            border-collapse: separate; /* Required for sticky borders to work nicely */
+            border-collapse: separate;
             border-spacing: 0;
+            width: 100%; /* Ensure it fills container */
         }
         
         /* Enhanced Table Header */
@@ -78,9 +82,7 @@ function render_event_list($managed_data, $college_map)
         
         .events-table tbody tr:hover {
             background-color: #f8f9fa;
-            transform: scale(1.002);
-            position: relative;
-            z-index: 5; /* Ensure hovered row is above others */
+            transform: scale(1.001); /* Subtle scale */
         }
         
         /* Category Column Styling */
@@ -178,11 +180,11 @@ function render_event_list($managed_data, $college_map)
         .winner-item-line.silver .winner-icon { color: #64748b; }
         .winner-item-line.bronze .winner-icon { color: #ea580c; }
         
-        /* Action Buttons Enhancement - PROFESSIONAL FIT */
+        /* Action Buttons Enhancement */
         .action-cell {
             white-space: nowrap;     /* Prevent text wrapping */
             text-align: right;
-            width: 1%;               /* CRITICAL: Forces column to shrink to minimum content width */
+            width: 1%;               /* Forces column to shrink to minimum content width */
             vertical-align: middle;
             padding: 0.75rem !important; 
         }
@@ -203,27 +205,27 @@ function render_event_list($managed_data, $college_map)
             gap: 6px;
         }
 
-        /* Button Styling - PRO SIZE */
+        /* Button Styling */
         .action-btn-group .btn {
             transition: all 0.2s ease;
             font-weight: 600;
-            font-size: 0.95rem;      /* Increased from 0.85rem */
-            padding: 0.6rem 1.2rem;  /* Increased padding */
+            font-size: 0.95rem;      
+            padding: 0.6rem 1.2rem;  
             line-height: 1.5;
             box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
             display: inline-flex;
             align-items: center;
             justify-content: center;
-            border-radius: 8px;      /* Softer corners */
-            width: 100%;             
-            min-height: 42px;        /* Enforce professional height */
+            border-radius: 8px;      
+            width: 100%;            
+            min-height: 42px;        
         }
         
         /* Edit/Delete specific styling */
         .action-row-bottom .btn {
             flex: 1;                 
-            padding: 0.5rem 0;       /* Balanced vertical padding */
-            min-height: 40px;        /* Matches the top button height */
+            padding: 0.5rem 0;       
+            min-height: 40px;        
         }
         
         /* Icon adjustments */
@@ -242,12 +244,6 @@ function render_event_list($managed_data, $college_map)
         .events-table thead th:last-child {
             width: 1%;
             white-space: nowrap;
-        }
-        
-        .action-btn-group .btn:hover:not(:disabled) {
-            transform: translateY(-2px);
-            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15);
-            z-index: 105;
         }
         
         /* Icon-only buttons */
@@ -321,8 +317,7 @@ function render_event_list($managed_data, $college_map)
             letter-spacing: 0.5px;
         }
         
-        /* --- STICKY COLUMN LOGIC --- */
-        /* 1. Enable scrolling on container */
+        /* Responsive scroll wrapper (Keep for tablets, but override for mobile) */
         .table-responsive {
             border-radius: 16px;
             overflow-x: auto;
@@ -330,39 +325,104 @@ function render_event_list($managed_data, $college_map)
             padding-bottom: 5px;
         }
 
-        /* 2. Sticky Header Cell */
-        .events-table thead th:last-child {
-            position: sticky;
-            right: 0;
-            z-index: 20; /* Higher than body cells */
-            background: #e9ecef; /* Match header gradient end */
-            border-left: 1px solid #dee2e6;
-            box-shadow: -5px 0 10px rgba(0,0,0,0.05);
-        }
+        /* =========================================
+           2. MOBILE VIEW TRANSFORMATION (Card Layout)
+           ========================================= */
+        @media screen and (max-width: 768px) {
+            
+            /* Reset Table Structure to Block (Card Style) */
+            .events-table, 
+            .events-table tbody, 
+            .events-table tr, 
+            .events-table td {
+                display: block;
+                width: 100%;
+            }
 
-        /* 3. Sticky Body Cell */
-        .events-table tbody td:last-child {
-            position: sticky;
-            right: 0;
-            z-index: 15;
-            background-color: #ffffff; /* Default background */
-            border-left: 1px solid #f1f3f5;
-            box-shadow: -5px 0 10px rgba(0,0,0,0.05);
-        }
+            /* Hide the Desktop Header */
+            .events-table thead {
+                display: none;
+            }
 
-        /* 4. Hover State Fix for Sticky Column */
-        .events-table tbody tr:hover td:last-child {
-            background-color: #f8f9fa; /* Match row hover color */
-        }
-        
-        /* 5. Danger Row Hover Fix */
-        .events-table tbody tr.table-danger-light td:last-child {
-            background-color: #fff5f5;
-        }
-        .events-table tbody tr.table-danger-light:hover td:last-child {
-            background-color: #ffe3e3;
-        }
+            /* Style Each Row as a Standalone Card */
+            .events-table tbody tr {
+                background: #ffffff;
+                margin-bottom: 1.5rem;
+                border-radius: 16px;
+                box-shadow: 0 4px 15px rgba(0,0,0,0.05);
+                border: 1px solid #e2e8f0;
+                overflow: hidden; 
+            }
 
+            /* General Cell Styling for Mobile */
+            .events-table tbody td {
+                padding: 1rem 1.25rem;
+                text-align: left; /* Reset right align */
+                border-bottom: 1px solid #f1f5f9;
+                display: flex;
+                flex-direction: column;
+                gap: 0.5rem;
+                align-items: flex-start; /* Left align content */
+            }
+
+            /* Remove border from the last item in the card */
+            .events-table tbody td:last-child {
+                border-bottom: none;
+            }
+
+            /* Transform "Category" Column into a Card Header */
+            .category-cell {
+                background: linear-gradient(to right, #f8fafc, #ffffff);
+                font-size: 1.25rem !important; 
+                color: #0f172a;
+                border-bottom: 2px solid #e2e8f0 !important;
+                padding: 1.25rem !important;
+                display: block !important; /* Ensure block display for header */
+            }
+
+            /* Fix "Action" Buttons for Touch Screens */
+            .action-cell {
+                background-color: #f8fafc;
+                padding: 1.25rem !important;
+                margin-top: 0;
+                width: 100% !important; /* Override the 1% width */
+                align-items: stretch !important; 
+            }
+
+            /* Make the button group fill the width */
+            .action-btn-group {
+                width: 100%;
+                min-width: unset; 
+            }
+
+            /* Make buttons big and easy to tap */
+            .action-btn-group .btn {
+                padding: 0.8rem; 
+                font-size: 1rem;
+                height: 50px;
+            }
+
+            /* Arrange Edit/Delete buttons side-by-side */
+            .action-row-bottom {
+                display: flex;
+                gap: 10px;
+                margin-top: 8px;
+            }
+            
+            .action-row-bottom .btn {
+                flex: 1; /* Both take equal width */
+            }
+
+            /* Adjust Winners Container for Mobile */
+            .winners-container {
+                width: 100%;
+            }
+            
+            .winner-item-line {
+                width: 100%; 
+                background: #f8fafc; 
+            }
+        }
     </style>';
 
     // Check if any events are assigned

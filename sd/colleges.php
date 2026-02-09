@@ -268,6 +268,295 @@ $pending_results_count = $conn->query("SELECT COUNT(*) FROM categories WHERE sta
         .sidebar-nav .nav-title { padding: 15px 25px 5px; font-size: 0.75rem; font-weight: 700; color: rgba(255, 255, 255, 0.4); text-transform: uppercase; letter-spacing: 1px; }
 
         .main-content { flex: 1 0 auto; padding: 30px; margin-top: var(--header-height); margin-left: var(--sidebar-width); transition: margin-left var(--transition); min-height: calc(100vh - var(--header-height)); }
+        
+        /* ========================================
+   PROFESSIONAL VIEW PROFILE BUTTON
+   ======================================== */
+.team-card .btn-outline-dark {
+    border: 2px solid #2c3e50;
+    color: #2c3e50;
+    background: white;
+    font-weight: 700;
+    letter-spacing: 0.5px;
+    transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+    position: relative;
+    overflow: hidden;
+}
+
+.team-card .btn-outline-dark::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: -100%;
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(135deg, #2c3e50 0%, var(--accent-color) 100%);
+    transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+    z-index: -1;
+}
+
+.team-card .btn-outline-dark:hover {
+    color: white;
+    border-color: var(--accent-color);
+    transform: translateY(-2px);
+    box-shadow: 0 8px 20px rgba(26, 188, 156, 0.3);
+}
+
+.team-card .btn-outline-dark:hover::before {
+    left: 0;
+}
+
+.team-card .btn-outline-dark:active {
+    transform: translateY(0px);
+}
+
+        /* The colored top banner using unit_color */
+        .team-banner {
+            height: 80px;
+            width: 100%;
+            position: relative;
+        }
+
+        /* Overlapping Logo */
+        .team-logo-wrapper {
+            width: 90px;
+            height: 90px;
+            margin: -45px auto 15px; /* Pulls logo up into banner */
+            position: relative;
+            z-index: 2;
+            background: #fff;
+            border-radius: 50%;
+            padding: 4px;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.1);
+        }
+
+        .team-logo-large {
+            width: 100%;
+            height: 100%;
+            object-fit: contain;
+            border-radius: 50%;
+            background: #f8f9fa;
+        }
+
+        /* Typography */
+        .team-name {
+            font-weight: 800;
+            font-size: 1.1rem;
+            color: #2c3e50;
+            margin-bottom: 5px;
+            font-family: 'Poppins', sans-serif;
+        }
+
+        .team-code-badge {
+            background: #2c3e50;
+            color: #fff;
+            padding: 4px 10px;
+            border-radius: 20px;
+            font-size: 0.75rem;
+            font-weight: 700;
+            letter-spacing: 0.5px;
+            text-transform: uppercase;
+        }
+
+        /* Action Buttons (Edit/Delete) floating top right */
+        .team-actions {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            z-index: 3;
+            opacity: 0; /* Hidden by default */
+            transition: opacity 0.2s ease;
+        }
+
+        .team-card:hover .team-actions {
+            opacity: 1; /* Show on hover */
+        }
+
+        .action-btn-circle {
+            width: 32px;
+            height: 32px;
+            border-radius: 50%;
+            background: rgba(255, 255, 255, 0.9);
+            border: none;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            color: #555;
+            margin-left: 5px;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+            transition: all 0.2s;
+        }
+
+        .action-btn-circle:hover { transform: scale(1.1); color: #000; background: #fff; }
+        .action-btn-circle.delete:hover { color: #dc3545; }
+        .action-btn-circle.edit:hover { color: #0d6efd; }
+
+        /* ========================================
+        ENHANCED PAGE HEADER
+        ======================================== */
+        .page-header {
+            position: relative;
+            margin-bottom: 2rem;
+        }
+
+        .page-header .section-title {
+            font-family: 'Poppins', sans-serif;
+            font-weight: 800;
+            font-size: 2.2rem;
+            color: #2c3e50;
+            margin-bottom: 0.5rem;
+            display: flex;
+            align-items: center;
+        }
+
+        .page-header .section-title i {
+            background: linear-gradient(135deg, var(--accent-color) 0%, #16a085 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+
+        /* ========================================
+        ENHANCED MODAL STYLING
+        ======================================== */
+        .modal-content {
+            border: none;
+            border-radius: 20px;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.15);
+            overflow: hidden;
+        }
+
+        .modal-header {
+            background: linear-gradient(135deg, #2c3e50 0%, #34495e 100%);
+            color: white;
+            padding: 1.5rem 2rem;
+            border-bottom: none;
+        }
+
+        .modal-header .modal-title {
+            font-family: 'Poppins', sans-serif;
+            font-weight: 700;
+            font-size: 1.4rem;
+        }
+
+        .modal-header .btn-close {
+            filter: brightness(0) invert(1);
+            opacity: 0.8;
+            transition: all 0.2s;
+        }
+
+        .modal-header .btn-close:hover {
+            opacity: 1;
+            transform: rotate(90deg);
+        }
+
+        .modal-body {
+            padding: 2rem;
+            background: #f8f9fa;
+        }
+
+        .modal-body .form-label {
+            font-weight: 600;
+            color: #2c3e50;
+            margin-bottom: 0.5rem;
+            font-size: 0.95rem;
+        }
+
+        .modal-body .form-control,
+        .modal-body .form-select {
+            border: 2px solid #e0e0e0;
+            border-radius: 10px;
+            padding: 0.75rem 1rem;
+            transition: all 0.3s ease;
+            background: white;
+        }
+
+        .modal-body .form-control:focus,
+        .modal-body .form-select:focus {
+            border-color: var(--accent-color);
+            box-shadow: 0 0 0 3px rgba(26, 188, 156, 0.1);
+            background: white;
+        }
+
+        .modal-body .form-control-color {
+            height: 45px;
+            border-radius: 10px 0 0 10px;
+            border: 2px solid #e0e0e0;
+        }
+
+        .modal-body .input-group .form-control {
+            border-radius: 0 10px 10px 0;
+        }
+
+        .modal-body .form-text {
+            font-size: 0.85rem;
+            color: #6c757d;
+            margin-top: 0.25rem;
+        }
+
+        .modal-footer {
+            padding: 1.25rem 2rem;
+            background: white;
+            border-top: 1px solid #e9ecef;
+        }
+
+        .modal-footer .btn {
+            padding: 0.65rem 2rem;
+            border-radius: 25px;
+            font-weight: 600;
+            transition: all 0.3s ease;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            font-size: 0.9rem;
+        }
+
+        .modal-footer .btn-primary {
+            background: linear-gradient(135deg, #1abc9c 0%, #16a085 100%);
+            border: none;
+            box-shadow: 0 4px 15px rgba(26, 188, 156, 0.3);
+        }
+
+        .modal-footer .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(26, 188, 156, 0.4);
+        }
+
+        .modal-footer .btn-danger {
+            background: linear-gradient(135deg, #e74c3c 0%, #c0392b 100%);
+            border: none;
+            box-shadow: 0 4px 15px rgba(231, 76, 60, 0.3);
+        }
+
+        .modal-footer .btn-danger:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(231, 76, 60, 0.4);
+        }
+
+        .modal-footer .btn-secondary {
+            background: #95a5a6;
+            border: none;
+        }
+
+        .modal-footer .btn-secondary:hover {
+            background: #7f8c8d;
+            transform: translateY(-2px);
+        }
+
+        /* Delete Modal Warning Styling */
+        #deleteCollegeModal .modal-body p.text-danger {
+            background: #fff5f5;
+            border-left: 4px solid #e74c3c;
+            padding: 1rem;
+            border-radius: 8px;
+            margin-top: 1rem;
+        }
+
+        #deleteCollegeModal .modal-body strong {
+            color: #2c3e50;
+            font-size: 1.1rem;
+        }
+
         /* Footer */
         footer {
             flex-shrink: 0;
@@ -401,7 +690,120 @@ $pending_results_count = $conn->query("SELECT COUNT(*) FROM categories WHERE sta
       }
     }
 
-    @media (max-width: 991px) {
+    /* =========================================
+   MOBILE OPTIMIZATION (Sports Director)
+   ========================================= */
+@media (max-width: 991.98px) {
+    
+    /* 1. COMPACT NAVBAR & LAYOUT */
+    .navbar {
+        padding: 0.5rem 1rem !important;
+        height: 60px !important; /* Fixed compact height */
+        display: flex !important;
+        flex-wrap: nowrap !important;
+        align-items: center !important;
+    }
+    
+    /* A. LEFT: Toggler Button */
+    .navbar-toggler {
+        order: 1 !important; /* First item */
+        border: 1px solid rgba(255,255,255,0.1);
+        padding: 4px 8px;
+        font-size: 1.2rem;
+        margin-right: 10px !important;
+    }
+    .navbar-toggler:focus { box-shadow: none; }
+
+    /* B. LEFT/CENTER: Brand Logo */
+    /* margin-right: auto PUSHES the Profile Icon to the far right */
+    .navbar-brand {
+        order: 2 !important; /* Second item */
+        margin-right: auto !important; /* THE KEY SPACER */
+        display: flex;
+        align-items: center;
+        max-width: 60%;
+    }
+    .navbar-brand img {
+        height: 30px !important;
+        width: 30px !important;
+        margin-right: 8px !important;
+    }
+    .navbar-brand strong {
+        font-size: 0.95rem !important;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
+    .navbar-brand small { display: none !important; }
+
+    /* C. RIGHT: Profile Menu Icon */
+    .user-dropdown {
+        order: 3 !important; /* Third item */
+        margin-left: 0 !important; 
+        position: relative;
+    }
+    .user-dropdown .user-name { display: none !important; } /* Hide Name */
+    
+    /* Icon Styling */
+    .user-dropdown .dropdown-toggle i { 
+        font-size: 26px !important; 
+        margin: 0 !important;
+        color: #fff; /* Ensure visibility */
+        cursor: pointer;
+    }
+
+    /* Order 3: Brand Logo */
+    .navbar-brand {
+        order: 3 !important;
+        display: flex;
+        align-items: center;
+        max-width: 55%; /* Adjust width to prevent overflow */
+        margin-right: 0 !important;
+    }
+    .navbar-brand img {
+        height: 30px !important;
+        width: 30px !important;
+        margin-right: 8px !important;
+    }
+    .navbar-brand strong {
+        font-size: 0.95rem !important;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
+    .navbar-brand small { display: none !important; }
+    
+    /* Compact Profile Menu */
+    .user-dropdown .user-name { display: none !important; }
+    .user-dropdown .dropdown-toggle i { font-size: 28px !important; margin: 0 !important; }
+
+    /* 2. SIDEBAR DRAWER (Fix Gap & Animation) */
+    .sidebar {
+        position: fixed !important;
+        top: 60px !important; /* Matches Navbar Height */
+        left: -260px !important; /* Hidden */
+        width: 260px !important;
+        height: calc(100vh - 60px) !important;
+        background-color: #2c3e50 !important;
+        box-shadow: 5px 0 15px rgba(0,0,0,0.3);
+        transition: left 0.3s ease-in-out !important;
+        z-index: 1045;
+        overflow-y: auto;
+    }
+    .sidebar.show { left: 0 !important; } /* Slide In */
+    
+    /* Prevent text cutoff in menu */
+    .sidebar-nav .nav-link { 
+        white-space: nowrap; 
+        font-size: 0.95rem;
+    }
+
+    /* 3. MAIN CONTENT ADJUSTMENTS */
+    .main-content {
+        padding: 15px !important;
+        margin-top: 60px !important;
+        margin-left: 0 !important;
+    }
             /* 1. Center text on smaller screens */
             .footer-main { 
                 text-align: center; 
@@ -422,6 +824,7 @@ $pending_results_count = $conn->query("SELECT COUNT(*) FROM categories WHERE sta
                 margin-bottom: 0;
             }
         }
+
     </style>
 </head>
 <body>
@@ -533,13 +936,10 @@ $pending_results_count = $conn->query("SELECT COUNT(*) FROM categories WHERE sta
               </ol>
             </nav>
 
-            <h1 class="section-title mb-4">Manage Teams</h1>
-
-            <div class="alert alert-info border-0 shadow-sm d-flex align-items-center" role="alert">
-                <i class="fas fa-info-circle fs-4 me-3"></i>
-                <div>
-                    <strong>Note:</strong> You can click on any <span class="fw-bold text-decoration-underline">Team Name</span> in the list below to view their full profile, roster, and medal history.
-                </div>
+            <div class="page-header mb-4">
+                <h1 class="section-title">
+                    </i>Manage Teams
+                </h1>
             </div>
 
             <?php if ($message): ?>
@@ -549,81 +949,93 @@ $pending_results_count = $conn->query("SELECT COUNT(*) FROM categories WHERE sta
             </div>
             <?php endif; ?>
 
-            <div class="card">
-                <div class="card-header d-flex justify-content-between align-items-center bg-white py-3">
-                    <h5 class="mb-0 fw-bold">All Teams</h5>
-                    <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#addCollegeModal">
+            <div class="d-flex flex-column flex-md-row justify-content-between align-items-center mb-4 gap-3">
+                <div class="position-relative w-100" style="max-width: 400px;">
+                        <i class="fas fa-search position-absolute top-50 start-0 translate-middle-y ms-3 text-muted"></i>
+                        <input type="text" id="teamSearch" class="form-control ps-5 rounded-pill border-0 shadow-sm" placeholder="Search teams, codes, or managers...">
+                    </div>
+                    <button class="btn btn-primary rounded-pill px-4 shadow-sm" data-bs-toggle="modal" data-bs-target="#addCollegeModal">
                         <i class="fas fa-plus me-2"></i>Add New Team
                     </button>
                 </div>
-                <div class="card-body">
-                    <div class="table-responsive">
-                        <table class="table table-hover align-middle">
-                            <thead class="table-light">
-                                <tr>
-                                    <th>Logo</th>
-                                    <th>Team Name</th>
-                                    <th>Code</th>
-                                    <th>Unit Color</th> 
-                                    <th>Team Manager</th>
-                                    <th>Slogan</th>
-                                    <th>Actions</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                <?php foreach ($colleges as $college): ?>
-                                <?php
-                                    $logo = (!empty($college['logo_url'])) ? $college['logo_url'] : $default_logo;
-                                    $unit_color = $college['unit_color'] ?? '#cccccc';
-                                ?>
-                                <tr>
-                                    <td>
-                                        <img src="../<?= htmlspecialchars($logo) ?>" alt="Logo" class="table-img" 
-                                            onerror="this.onerror=null; this.src='../<?= $default_logo ?>'">
-                                    </td>
-                                    <td>
-                                        <a href="team_profile.php?team_id=<?= $college['college_id'] ?>" 
-                                        class="team-name-link"
-                                        title="View Profile for <?= htmlspecialchars($college['college_name']) ?>">
-                                            <?= htmlspecialchars($college['college_name']) ?>
-                                        </a>
-                                    </td>
-                                    <td><span class="badge bg-light text-dark border"><?= htmlspecialchars($college['college_code'] ?? 'N/A') ?></span></td>
-                                    
-                                    <td>
-                                        <div class="d-flex align-items-center gap-2">
-                                            <span class="color-swatch" style="background-color: <?= htmlspecialchars($unit_color) ?>;"></span>
-                                            <small class="text-muted text-uppercase"><?= htmlspecialchars($unit_color) ?></small>
-                                        </div>
-                                    </td>
+                <div class="row g-4" id="teamGrid">
+                    <?php foreach ($colleges as $college): ?>
+                    <?php
+                        $logo = (!empty($college['logo_url'])) ? $college['logo_url'] : $default_logo;
+                        // Ensure we have a valid color, default to gray
+                        $color = !empty($college['unit_color']) ? $college['unit_color'] : '#cccccc';
+                    ?>
+                    <div class="col-xl-3 col-lg-4 col-md-6 team-item">
+                        <div class="card team-card h-100">
+                            
+                            <div class="team-banner" style="background-color: <?= htmlspecialchars($color) ?>;">
+                                <div class="team-actions">
+                                    <button class="action-btn-circle edit" 
+                                        data-bs-toggle="modal" data-bs-target="#editCollegeModal"
+                                        data-id="<?= $college['college_id'] ?>"
+                                        data-name="<?= htmlspecialchars($college['college_name']) ?>"
+                                        data-code="<?= htmlspecialchars($college['college_code'] ?? '') ?>" 
+                                        data-manager="<?= htmlspecialchars($college['team_manager'] ?? '') ?>"
+                                        data-slogan="<?= htmlspecialchars($college['slogan'] ?? '') ?>" 
+                                        data-logo="<?= htmlspecialchars($logo) ?>"
+                                        data-color="<?= htmlspecialchars($color) ?>"
+                                        title="Edit Team">
+                                        <i class="fas fa-pen fa-xs"></i>
+                                    </button>
+                                    <button class="action-btn-circle delete" 
+                                        data-bs-toggle="modal" data-bs-target="#deleteCollegeModal"
+                                        data-id="<?= $college['college_id'] ?>"
+                                        data-name="<?= htmlspecialchars($college['college_name']) ?>"
+                                        title="Delete Team">
+                                        <i class="fas fa-trash fa-xs"></i>
+                                    </button>
+                                </div>
+                            </div>
 
-                                    <td><?= htmlspecialchars($college['team_manager'] ?? 'N/A') ?></td>
-                                    <td class="text-muted fst-italic"><small><?= htmlspecialchars($college['slogan'] ?? '') ?></small></td>
-                                    <td>
-                                        <button class="btn btn-sm btn-outline-primary edit-btn me-1"
-                                            data-bs-toggle="modal" data-bs-target="#editCollegeModal"
-                                            data-id="<?= $college['college_id'] ?>"
-                                            data-name="<?= htmlspecialchars($college['college_name']) ?>"
-                                            data-code="<?= htmlspecialchars($college['college_code'] ?? '') ?>" 
-                                            data-manager="<?= htmlspecialchars($college['team_manager'] ?? '') ?>"
-                                            data-slogan="<?= htmlspecialchars($college['slogan'] ?? '') ?>" 
-                                            data-logo="<?= htmlspecialchars($logo) ?>"
-                                            data-color="<?= htmlspecialchars($unit_color) ?>">
-                                            <i class="fas fa-edit"></i>
-                                        </button>
-                                        <button class="btn btn-sm btn-outline-danger delete-btn"
-                                            data-bs-toggle="modal" data-bs-target="#deleteCollegeModal"
-                                            data-id="<?= $college['college_id'] ?>"
-                                            data-name="<?= htmlspecialchars($college['college_name']) ?>">
-                                            <i class="fas fa-trash"></i>
-                                        </button>
-                                    </td>
-                                </tr>
-                                <?php endforeach; ?>
-                            </tbody>
-                        </table>
+                            <div class="card-body text-center pt-0 d-flex flex-column">
+                                <div class="team-logo-wrapper">
+                                    <img src="../<?= htmlspecialchars($logo) ?>" alt="Logo" class="team-logo-large"
+                                        onerror="this.onerror=null; this.src='../<?= $default_logo ?>'">
+                                </div>
+                                
+                                <h5 class="team-name text-truncate" title="<?= htmlspecialchars($college['college_name']) ?>">
+                                    <?= htmlspecialchars($college['college_name']) ?>
+                                </h5>
+                                
+                                <div class="mb-3">
+                                    <span class="team-code-badge"><?= htmlspecialchars($college['college_code'] ?? 'N/A') ?></span>
+                                </div>
+
+                                <div class="mt-auto text-muted small">
+                                    <?php if(!empty($college['team_manager'])): ?>
+                                        <div class="mb-1"><i class="fas fa-user-tie me-1 text-primary"></i> <?= htmlspecialchars($college['team_manager']) ?></div>
+                                    <?php else: ?>
+                                        <div class="mb-1 fst-italic text-secondary">No Manager Assigned</div>
+                                    <?php endif; ?>
+                                    
+                                    <?php if(!empty($college['slogan'])): ?>
+                                        <div class="text-truncate fst-italic opacity-75" title="<?= htmlspecialchars($college['slogan']) ?>">
+                                            "<?= htmlspecialchars($college['slogan']) ?>"
+                                        </div>
+                                    <?php endif; ?>
+                                </div>
+                                
+                                <!-- NEW CODE: -->
+                                <a href="team_profile.php?team_id=<?= $college['college_id'] ?>" class="btn btn-outline-dark btn-sm rounded-pill mt-3 w-100 fw-bold">
+                                    </i>View Profile
+                                </a>
+                            </div>
+                        </div>
                     </div>
+                    <?php endforeach; ?>
                 </div>
+
+                <?php if (empty($colleges)): ?>
+                    <div class="text-center py-5">
+                        <img src="../images/no_data.svg" style="width: 150px; opacity: 0.5;">
+                        <p class="text-muted mt-3">No teams found. Click "Add New Team" to start.</p>
+                    </div>
+                <?php endif; ?>
             </div>
         </div>
 
@@ -800,6 +1212,24 @@ $pending_results_count = $conn->query("SELECT COUNT(*) FROM categories WHERE sta
     
     <script>
     document.addEventListener('DOMContentLoaded', function() {
+
+        // SEARCH FILTER FOR GRID
+        const searchInput = document.getElementById('teamSearch');
+        if (searchInput) {
+            searchInput.addEventListener('keyup', function() {
+                const filter = this.value.toLowerCase();
+                const items = document.querySelectorAll('.team-item');
+
+                items.forEach(function(item) {
+                    const text = item.textContent.toLowerCase();
+                    if (text.includes(filter)) {
+                        item.style.display = ''; // Show
+                    } else {
+                        item.style.display = 'none'; // Hide
+                    }
+                });
+            });
+        }
         
         // [NEW] Function to sync Color Picker and Text Input
         function setupColorSync(pickerId, textId) {

@@ -702,6 +702,345 @@ $status_options = [
     }
     .modal-header .btn-close { filter: brightness(0) invert(1); }
 
+    /* =========================================
+   MOBILE OPTIMIZATION (My Events Page)
+   ========================================= */
+@media (max-width: 991.98px) {
+
+    /* === 1. NAVBAR COMPACT === */
+    .navbar { 
+        padding: 0.5rem 1rem !important; 
+        height: 60px !important;
+        align-items: center;
+    }
+    
+    .navbar .container-fluid {
+        flex-wrap: nowrap !important;
+        gap: 8px;
+    }
+    
+    /* Brand Shrink */
+    .navbar-brand {
+        max-width: 60%;
+    }
+    .navbar-brand img { 
+        height: 30px !important; 
+        width: 30px !important;
+        margin-right: 6px !important;
+    }
+    .navbar-brand .brand-heading { 
+        font-size: 0.8rem !important;
+        line-height: 1.2;
+    }
+    .navbar-brand small { 
+        display: none !important;
+    }
+    
+    /* User Dropdown Compact */
+    .user-dropdown .user-name { 
+        display: none !important;
+    }
+    .user-dropdown .dropdown-toggle {
+        padding: 6px !important;
+    }
+
+    /* === 2. SIDEBAR === */
+    .sidebar { 
+        position: fixed !important;
+        left: -260px !important;
+        top: 60px !important;
+        width: 260px !important;
+        height: calc(100vh - 60px) !important;
+        background-color: #2c3e50 !important;
+        transition: left 0.3s ease-in-out !important;
+        z-index: 1045 !important;
+        box-shadow: 5px 0 15px rgba(0,0,0,0.3);
+        overflow-y: auto;
+    }
+    .sidebar.show { 
+        left: 0 !important; 
+    }
+
+    /* === 3. MAIN CONTENT === */
+    .main-content { 
+        padding: 12px !important;
+        margin-top: 60px !important;
+        margin-left: 0 !important;
+    }
+
+    /* === 4. PAGE HEADER MOBILE === */
+    .page-header {
+        padding: 16px !important;
+        margin-bottom: 16px !important;
+        flex-direction: column;
+        align-items: flex-start !important;
+        gap: 12px !important;
+    }
+    
+    /* Breadcrumb Compact */
+    .breadcrumb {
+        margin-bottom: 8px !important;
+        font-size: 0.75rem !important;
+    }
+    
+    .page-header h2 {
+        font-size: 1.35rem !important;
+        margin-bottom: 4px !important;
+    }
+    
+    .page-header p {
+        font-size: 0.8rem !important;
+        margin-bottom: 0 !important;
+    }
+    
+    /* Help Button Full Width */
+    .btn-guide {
+        width: 100%;
+        justify-content: center;
+        font-size: 0.85rem !important;
+        padding: 8px 16px !important;
+    }
+
+    /* === 5. EVENT CARDS MOBILE === */
+    .event-card-modern {
+        margin-bottom: 16px !important;
+        border-radius: 12px !important;
+    }
+    
+    .event-card-header {
+        padding: 14px !important;
+        flex-direction: column;
+        align-items: flex-start !important;
+        gap: 10px !important;
+    }
+    
+    /* Icon Box Smaller */
+    .event-icon-box {
+        width: 40px !important;
+        height: 40px !important;
+        font-size: 1.2rem !important;
+        margin-bottom: 8px;
+    }
+    
+    /* Event Title */
+    .event-card-header h5 {
+        font-size: 1rem !important;
+        margin: 0 !important;
+    }
+    
+    .event-card-header .text-muted {
+        font-size: 0.75rem !important;
+    }
+
+    /* === 6. CATEGORY ROWS MOBILE === */
+    .category-row {
+        padding: 12px 14px !important;
+        flex-direction: column !important;
+        align-items: flex-start !important;
+        gap: 10px;
+    }
+    
+    /* Category Info Section */
+    .category-row > div:first-child {
+        width: 100%;
+    }
+    
+    .category-row h6 {
+        font-size: 0.9rem !important;
+        margin-bottom: 6px !important;
+    }
+    
+    .category-row small {
+        font-size: 0.75rem !important;
+    }
+    
+    /* Badges Stack */
+    .category-row .badge-modern {
+        font-size: 0.7rem !important;
+        padding: 4px 10px !important;
+        margin-bottom: 6px;
+    }
+    
+    /* Action Buttons: Horizontal Scroll */
+    .category-row .btn-group,
+    .category-row > div:last-child {
+        width: 100%;
+        display: flex !important;
+        flex-wrap: nowrap !important;
+        gap: 6px;
+        overflow-x: auto;
+        -webkit-overflow-scrolling: touch;
+        padding-bottom: 4px;
+    }
+    
+    /* Compact Buttons */
+    .category-row .btn {
+        font-size: 0.75rem !important;
+        padding: 6px 10px !important;
+        white-space: nowrap;
+        flex-shrink: 0;
+    }
+    
+    /* Hide Button Text, Keep Icons Only */
+    .category-row .btn-sm span {
+        display: none !important;
+    }
+    
+    /* Make Icons Bigger When Text is Hidden */
+    .category-row .btn-sm i {
+        font-size: 1rem !important;
+        margin: 0 !important;
+    }
+    
+    /* Add Button Tooltips Hint (Optional Visual) */
+    .category-row .btn-sm[title]::after {
+        content: attr(title);
+        position: absolute;
+        bottom: -20px;
+        left: 50%;
+        transform: translateX(-50%);
+        background: rgba(0,0,0,0.8);
+        color: white;
+        padding: 2px 6px;
+        border-radius: 4px;
+        font-size: 0.65rem;
+        white-space: nowrap;
+        opacity: 0;
+        pointer-events: none;
+        transition: opacity 0.2s;
+    }
+    .category-row .btn-sm:hover::after {
+        opacity: 1;
+    }
+
+    /* === 7. EMPTY STATE === */
+    .alert {
+        font-size: 0.85rem !important;
+        padding: 12px !important;
+    }
+    
+    .text-center i.fa-5x {
+        font-size: 3rem !important;
+    }
+
+    /* === 8. MODALS MOBILE === */
+    .modal-dialog {
+        margin: 10px !important;
+    }
+    
+    .modal-content {
+        border-radius: 12px !important;
+    }
+    
+    .modal-header {
+        padding: 14px 16px !important;
+    }
+    
+    .modal-title {
+        font-size: 1rem !important;
+    }
+    
+    .modal-body {
+        padding: 16px !important;
+    }
+    
+    .modal-body .form-label {
+        font-size: 0.85rem !important;
+        margin-bottom: 6px !important;
+    }
+    
+    .modal-body .form-control,
+    .modal-body .form-select {
+        font-size: 0.9rem !important;
+        padding: 8px 12px !important;
+    }
+    
+    .modal-footer {
+        padding: 12px 16px !important;
+        gap: 8px;
+    }
+    
+    .modal-footer .btn {
+        font-size: 0.85rem !important;
+        padding: 8px 16px !important;
+    }
+
+    /* === 9. FOOTER === */
+    .footer-main {
+        padding: 2rem 0 1.5rem 0 !important;
+        padding-left: 0 !important;
+    }
+    
+    .footer-main .footer-logo-group img {
+        height: 35px !important;
+        width: 35px !important;
+    }
+    
+    .footer-main .footer-logo-group h5 {
+        font-size: 0.9rem !important;
+    }
+    
+    .footer-main p,
+    .footer-main .footer-links a {
+        font-size: 0.8rem !important;
+    }
+
+    /* === 10. HELP MODAL MOBILE === */
+    #helpModal .modal-lg {
+        max-width: 95% !important;
+    }
+    
+    #helpModal .modal-body {
+        padding: 16px !important;
+    }
+    
+    #helpModal .col-md-6 {
+        margin-bottom: 12px !important;
+    }
+    
+    #helpModal h6 {
+        font-size: 0.9rem !important;
+    }
+    
+    #helpModal p {
+        font-size: 0.8rem !important;
+    }
+}
+
+/* === EXTRA SMALL PHONES (< 576px) === */
+@media (max-width: 575.98px) {
+    
+    /* Ultra Compact Header */
+    .navbar-brand .brand-heading {
+        font-size: 0.7rem !important;
+    }
+    
+    .page-header h2 {
+        font-size: 1.1rem !important;
+    }
+    
+    /* Single Column Buttons */
+    .category-row .btn-group,
+    .category-row > div:last-child {
+        flex-direction: column !important;
+        overflow-x: visible;
+    }
+    
+    .category-row .btn {
+        width: 100% !important;
+    }
+    
+    /* Show Button Text Again on Tiny Screens */
+    .category-row .btn-sm span {
+        display: inline !important;
+    }
+    
+    .category-row .btn-sm i {
+        font-size: 0.85rem !important;
+        margin-right: 6px !important;
+    }
+}
+
 </style>
 </head>
 <body>
@@ -711,7 +1050,7 @@ $status_options = [
             <a class="navbar-brand d-flex align-items-center" href="event_manager_dashboard.php">
                 <img src="imageslogo.png" alt="Logo" class="me-2" style="height: 50px; width: 48px; object-fit: contain;">
                 <div class="d-flex flex-column lh-sm">
-                    <strong class="text-white brand-heading" style="font-size: 1.25rem;">PIT SPORTS TALLYING</strong>
+                    <strong class="text-white brand-heading" style="font-size: 1.25rem;">PIT SIGLAKAS MEDAL TALLY</strong>
                     <small class="text-light" style="font-size: 0.75rem;">Event Manager Panel</small>
                 </div>
             </a>

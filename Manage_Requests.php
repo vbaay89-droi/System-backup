@@ -243,10 +243,204 @@ $pending_results_count = $conn->query("SELECT COUNT(*) FROM categories WHERE sta
         .sidebar-nav .nav-link.active { color: white; background: rgba(255, 255, 255, 0.1); border-left-color: #3498db; font-weight: 600; }
         .sidebar-nav .nav-title { padding: 15px 25px 5px; font-size: 0.75rem; font-weight: 700; color: rgba(255, 255, 255, 0.4); text-transform: uppercase; letter-spacing: 1px; }
 
+       /* ========================================
+        ENHANCED PAGE HEADER
+        ======================================== */
+        .page-header {
+            position: relative;
+            margin-bottom: 2rem;
+        }
+
+        .page-header .section-title {
+            font-family: 'Poppins', sans-serif;
+            font-weight: 800;
+            font-size: 2.2rem;
+            color: #2c3e50;
+            margin-bottom: 0.5rem;
+            display: flex;
+            align-items: center;
+        }
+
+        .page-header .section-title i {
+            background: linear-gradient(135deg, var(--accent-color) 0%, #16a085 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+        
         /* Main Content */
         .main-content { flex: 1 0 auto; padding: 30px; margin-top: var(--header-height); margin-left: var(--sidebar-width); transition: margin-left var(--transition); min-height: calc(100vh - var(--header-height)); }
         .section-title { font-family: 'Poppins', sans-serif; font-weight: 600; color: #333; }
         .card { border: none; border-radius: 15px; box-shadow: var(--card-shadow); }
+
+        /* Enhanced Card System */
+.card {
+    border: none;
+    border-radius: 12px;
+    box-shadow: 0 2px 12px rgba(0, 0, 0, 0.06);
+    transition: var(--transition);
+    overflow: hidden;
+}
+
+.card:hover {
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
+}
+
+.card-header {
+    background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%) !important;
+    border-bottom: 2px solid #dee2e6 !important;
+    padding: 1.25rem 1.5rem !important;
+}
+
+.card-header h5 {
+    font-family: 'Poppins', sans-serif;
+    font-weight: 600;
+    font-size: 1.1rem;
+    margin: 0;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.card-header h5 i {
+    font-size: 1.2rem;
+}
+
+.card-body {
+    padding: 1.5rem;
+}
+
+/* Professional Table Styling */
+.table {
+    margin-bottom: 0;
+}
+
+.table thead th {
+    background-color: #f8f9fa;
+    color: #2c3e50;
+    font-weight: 600;
+    font-size: 0.875rem;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    border-bottom: 2px solid #dee2e6;
+    padding: 1rem 0.75rem;
+}
+
+.table tbody tr {
+    transition: var(--transition);
+    border-bottom: 1px solid #f0f0f0;
+}
+
+.table tbody tr:hover {
+    background-color: #f8f9fa;
+    transform: translateX(3px);
+}
+
+.table tbody td {
+    padding: 1rem 0.75rem;
+    vertical-align: middle;
+    color: #495057;
+    font-size: 0.9rem;
+}
+
+.table tbody tr:last-child {
+    border-bottom: none;
+}
+
+/* Modern Button Styling */
+.btn {
+    font-weight: 500;
+    padding: 0.5rem 1rem;
+    border-radius: 8px;
+    transition: all 0.2s ease;
+    font-size: 0.875rem;
+}
+
+.btn-success {
+    background: linear-gradient(135deg, #28a745 0%, #20c997 100%);
+    border: none;
+    box-shadow: 0 2px 8px rgba(40, 167, 69, 0.3);
+}
+
+.btn-success:hover {
+    background: linear-gradient(135deg, #218838 0%, #1aa179 100%);
+    box-shadow: 0 4px 12px rgba(40, 167, 69, 0.4);
+    transform: translateY(-2px);
+}
+
+.btn-danger {
+    background: linear-gradient(135deg, #dc3545 0%, #c82333 100%);
+    border: none;
+    box-shadow: 0 2px 8px rgba(220, 53, 69, 0.3);
+}
+
+.btn-danger:hover {
+    background: linear-gradient(135deg, #c82333 0%, #bd2130 100%);
+    box-shadow: 0 4px 12px rgba(220, 53, 69, 0.4);
+    transform: translateY(-2px);
+}
+
+.btn-outline-warning {
+    border: 2px solid #ffc107;
+    color: #ffc107;
+    font-weight: 600;
+}
+
+.btn-outline-warning:hover {
+    background: #ffc107;
+    color: #212529;
+    transform: translateY(-2px);
+}
+
+/* Modern Badge Design */
+.badge {
+    padding: 0.4rem 0.75rem;
+    font-weight: 600;
+    font-size: 0.75rem;
+    letter-spacing: 0.3px;
+}
+
+.badge.bg-success {
+    background: linear-gradient(135deg, #28a745 0%, #20c997 100%) !important;
+    box-shadow: 0 2px 6px rgba(40, 167, 69, 0.3);
+}
+
+.badge.bg-warning {
+    background: linear-gradient(135deg, #ffc107 0%, #ffb300 100%) !important;
+    box-shadow: 0 2px 6px rgba(255, 193, 7, 0.3);
+}
+
+.badge.bg-danger {
+    background: linear-gradient(135deg, #dc3545 0%, #c82333 100%) !important;
+    box-shadow: 0 2px 6px rgba(220, 53, 69, 0.3);
+}
+
+/* Professional Alert Styling */
+.alert {
+    border: none;
+    border-radius: 10px;
+    padding: 1rem 1.25rem;
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.08);
+    font-size: 0.95rem;
+}
+
+.alert-success {
+    background: linear-gradient(135deg, #d4edda 0%, #c3e6cb 100%);
+    color: #155724;
+    border-left: 4px solid #28a745;
+}
+
+.alert-warning {
+    background: linear-gradient(135deg, #fff3cd 0%, #ffe69c 100%);
+    color: #856404;
+    border-left: 4px solid #ffc107;
+}
+
+.alert-danger {
+    background: linear-gradient(135deg, #f8d7da 0%, #f5c6cb 100%);
+    color: #721c24;
+    border-left: 4px solid #dc3545;
+}
         
         /* Footer */
         footer {
@@ -259,11 +453,202 @@ $pending_results_count = $conn->query("SELECT COUNT(*) FROM categories WHERE sta
             z-index: 1041;
         }
 
-        @media (max-width: 992px) {
-            .sidebar { left: -260px; }
-            .sidebar.show { left: 0; }
-            .main-content, footer { margin-left: 0; }
-        }
+        /* =========================================
+   MOBILE OPTIMIZATION (Sports Director)
+   ========================================= */
+/* =========================================
+   MOBILE REQUESTS COMPACT LAYOUT
+   ========================================= */
+@media (max-width: 991.98px) {
+
+    /* 1. Tighten Table Container */
+    .table-responsive {
+        border: 1px solid #dee2e6;
+        border-radius: 8px;
+        margin-bottom: 15px;
+        /* Enable smooth scrolling */
+        overflow-x: auto !important; 
+        -webkit-overflow-scrolling: touch;
+    }
+
+    /* 2. Global Text Shrinking */
+    .table th, 
+    .table td {
+        font-size: 0.75rem !important; /* Smaller text */
+        padding: 8px 6px !important;    /* Tighter spacing */
+        vertical-align: middle;
+    }
+
+    /* 3. COLUMN 1: Full Name (Sticky & Wrappable) */
+    .table td:nth-child(1),
+    .table th:nth-child(1) {
+        position: sticky;
+        left: 0;
+        background-color: #fff;
+        z-index: 5;
+        border-right: 2px solid #f0f0f0; /* Visual separator */
+        font-weight: 700;
+        min-width: 100px;
+        max-width: 120px; /* Limit width */
+        white-space: normal; /* Allow name to wrap to 2 lines */
+        line-height: 1.2;
+    }
+    /* Fix sticky background colors */
+    .table thead th:nth-child(1) { background-color: #f8f9fa; z-index: 10; }
+    .table tbody tr:hover td:nth-child(1) { background-color: #f8f9fa; }
+
+    /* 4. COLUMN 2: Email (Truncate with Ellipsis) */
+    .table td:nth-child(2) {
+        max-width: 110px; /* Force narrow width */
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis; /* Shows "jayvee..." instead of full email */
+        color: #6c757d;
+    }
+
+    /* 5. COLUMN 3: Role (Compact) */
+    .table td:nth-child(3) {
+        white-space: normal;
+        min-width: 80px;
+        line-height: 1.1;
+    }
+
+    /* 6. COLUMN 4: Date (HIDE to save space) */
+    .table th:nth-child(4),
+    .table td:nth-child(4) {
+        display: none;
+    }
+
+    /* 7. COLUMN 5: Actions (Compact Buttons) */
+    .table td:last-child {
+        white-space: nowrap;
+        text-align: center;
+    }
+    
+    /* Shrink Buttons */
+    .table .btn {
+        padding: 4px 8px !important;
+        font-size: 0.7rem !important;
+        line-height: 1.2;
+    }
+    
+    /* On very small screens, hide button text and just show icons */
+    @media (max-width: 400px) {
+        .table .btn { font-size: 0 !important; } /* Hide text */
+        .table .btn i { font-size: 14px !important; margin: 0 !important; }
+    }
+}
+    
+    /* 1. COMPACT NAVBAR & LAYOUT */
+    .navbar {
+        padding: 0.5rem 1rem !important;
+        height: 60px !important; /* Fixed compact height */
+        display: flex !important;
+        flex-wrap: nowrap !important;
+        align-items: center !important;
+    }
+    
+    /* A. LEFT: Toggler Button */
+    .navbar-toggler {
+        order: 1 !important; /* First item */
+        border: 1px solid rgba(255,255,255,0.1);
+        padding: 4px 8px;
+        font-size: 1.2rem;
+        margin-right: 10px !important;
+    }
+    .navbar-toggler:focus { box-shadow: none; }
+
+    /* B. LEFT/CENTER: Brand Logo */
+    /* margin-right: auto PUSHES the Profile Icon to the far right */
+    .navbar-brand {
+        order: 2 !important; /* Second item */
+        margin-right: auto !important; /* THE KEY SPACER */
+        display: flex;
+        align-items: center;
+        max-width: 60%;
+    }
+    .navbar-brand img {
+        height: 30px !important;
+        width: 30px !important;
+        margin-right: 8px !important;
+    }
+    .navbar-brand strong {
+        font-size: 0.95rem !important;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
+    .navbar-brand small { display: none !important; }
+
+    /* C. RIGHT: Profile Menu Icon */
+    .user-dropdown {
+        order: 3 !important; /* Third item */
+        margin-left: 0 !important; 
+        position: relative;
+    }
+    .user-dropdown .user-name { display: none !important; } /* Hide Name */
+    
+    /* Icon Styling */
+    .user-dropdown .dropdown-toggle i { 
+        font-size: 26px !important; 
+        margin: 0 !important;
+        color: #fff; /* Ensure visibility */
+        cursor: pointer;
+    }
+
+    /* Order 3: Brand Logo */
+    .navbar-brand {
+        order: 3 !important;
+        display: flex;
+        align-items: center;
+        max-width: 55%; /* Adjust width to prevent overflow */
+        margin-right: 0 !important;
+    }
+    .navbar-brand img {
+        height: 30px !important;
+        width: 30px !important;
+        margin-right: 8px !important;
+    }
+    .navbar-brand strong {
+        font-size: 0.95rem !important;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
+    .navbar-brand small { display: none !important; }
+    
+    /* Compact Profile Menu */
+    .user-dropdown .user-name { display: none !important; }
+    .user-dropdown .dropdown-toggle i { font-size: 28px !important; margin: 0 !important; }
+
+    /* 2. SIDEBAR DRAWER (Fix Gap & Animation) */
+    .sidebar {
+        position: fixed !important;
+        top: 60px !important; /* Matches Navbar Height */
+        left: -260px !important; /* Hidden */
+        width: 260px !important;
+        height: calc(100vh - 60px) !important;
+        background-color: #2c3e50 !important;
+        box-shadow: 5px 0 15px rgba(0,0,0,0.3);
+        transition: left 0.3s ease-in-out !important;
+        z-index: 1045;
+        overflow-y: auto;
+    }
+    .sidebar.show { left: 0 !important; } /* Slide In */
+    
+    /* Prevent text cutoff in menu */
+    .sidebar-nav .nav-link { 
+        white-space: nowrap; 
+        font-size: 0.95rem;
+    }
+
+    /* 3. MAIN CONTENT ADJUSTMENTS */
+    .main-content {
+        padding: 15px !important;
+        margin-top: 60px !important;
+        margin-left: 0 !important;
+    }
+
 
         /* --- FOOTER STYLES (MATCHING HOME.PHP) --- */
     .footer-main {
@@ -489,7 +874,14 @@ $pending_results_count = $conn->query("SELECT COUNT(*) FROM categories WHERE sta
               </ol>
             </nav>
 
-            <h1 class="section-title mb-4">Manage Account Requests</h1>
+            
+                <div class="page-header">
+    <h1 class="section-title">
+        <i class="fas fa-user-plus"></i>
+        Manage Account Requests
+    </h1>
+    <p class="page-subtitle">Review and approve user registration requests</p>
+</div>
             
             <?php if ($message): ?>
             <div class="alert alert-<?php echo $message_type; ?> alert-dismissible fade show" role="alert">

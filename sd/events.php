@@ -464,6 +464,32 @@ $pending_results_count = $conn->query("SELECT COUNT(*) FROM categories WHERE sta
         color: #adb5bd;
     }
 
+    /* ========================================
+    ENHANCED PAGE HEADER
+    ======================================== */
+    .page-header {
+        position: relative;
+        margin-bottom: 2rem;
+    }
+
+    .page-header .section-title {
+        font-family: 'Poppins', sans-serif;
+        font-weight: 800;
+        font-size: 2.2rem;
+        color: #2c3e50;
+        margin-bottom: 0.5rem;
+        display: flex;
+        align-items: center;
+    }
+
+    .page-header .section-title i {
+        background: linear-gradient(135deg, var(--accent-color) 0%, #16a085 100%);
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+        background-clip: text;
+    }
+
+
     /* ============================================
        IMPROVED MODAL DESIGN
        ============================================ */
@@ -762,6 +788,215 @@ $pending_results_count = $conn->query("SELECT COUNT(*) FROM categories WHERE sta
     .modal-footer .btn-secondary:focus {
         outline-color: #95a5a6;
     }
+
+    /* =========================================
+   MOBILE OPTIMIZATION (Sports Director)
+   ========================================= */
+@media (max-width: 991.98px) {
+    
+    /* 1. COMPACT NAVBAR & LAYOUT */
+    .navbar {
+        padding: 0.5rem 1rem !important;
+        height: 60px !important; /* Fixed compact height */
+        display: flex !important;
+        flex-wrap: nowrap !important;
+        align-items: center !important;
+    }
+    
+    /* A. LEFT: Toggler Button */
+    .navbar-toggler {
+        order: 1 !important; /* First item */
+        border: 1px solid rgba(255,255,255,0.1);
+        padding: 4px 8px;
+        font-size: 1.2rem;
+        margin-right: 10px !important;
+    }
+    .navbar-toggler:focus { box-shadow: none; }
+
+    /* B. LEFT/CENTER: Brand Logo */
+    /* margin-right: auto PUSHES the Profile Icon to the far right */
+    .navbar-brand {
+        order: 2 !important; /* Second item */
+        margin-right: auto !important; /* THE KEY SPACER */
+        display: flex;
+        align-items: center;
+        max-width: 60%;
+    }
+    .navbar-brand img {
+        height: 30px !important;
+        width: 30px !important;
+        margin-right: 8px !important;
+    }
+    .navbar-brand strong {
+        font-size: 0.95rem !important;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
+    .navbar-brand small { display: none !important; }
+
+    /* C. RIGHT: Profile Menu Icon */
+    .user-dropdown {
+        order: 3 !important; /* Third item */
+        margin-left: 0 !important; 
+        position: relative;
+    }
+    .user-dropdown .user-name { display: none !important; } /* Hide Name */
+    
+    /* Icon Styling */
+    .user-dropdown .dropdown-toggle i { 
+        font-size: 26px !important; 
+        margin: 0 !important;
+        color: #fff; /* Ensure visibility */
+        cursor: pointer;
+    }
+
+    /* Order 3: Brand Logo */
+    .navbar-brand {
+        order: 3 !important;
+        display: flex;
+        align-items: center;
+        max-width: 55%; /* Adjust width to prevent overflow */
+        margin-right: 0 !important;
+    }
+    .navbar-brand img {
+        height: 30px !important;
+        width: 30px !important;
+        margin-right: 8px !important;
+    }
+    .navbar-brand strong {
+        font-size: 0.95rem !important;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
+    .navbar-brand small { display: none !important; }
+    
+    /* Compact Profile Menu */
+    .user-dropdown .user-name { display: none !important; }
+    .user-dropdown .dropdown-toggle i { font-size: 28px !important; margin: 0 !important; }
+
+    /* 2. SIDEBAR DRAWER (Fix Gap & Animation) */
+    .sidebar {
+        position: fixed !important;
+        top: 60px !important; /* Matches Navbar Height */
+        left: -260px !important; /* Hidden */
+        width: 260px !important;
+        height: calc(100vh - 60px) !important;
+        background-color: #2c3e50 !important;
+        box-shadow: 5px 0 15px rgba(0,0,0,0.3);
+        transition: left 0.3s ease-in-out !important;
+        z-index: 1045;
+        overflow-y: auto;
+    }
+    .sidebar.show { left: 0 !important; } /* Slide In */
+    
+    /* Prevent text cutoff in menu */
+    .sidebar-nav .nav-link { 
+        white-space: nowrap; 
+        font-size: 0.95rem;
+    }
+
+    /* 3. MAIN CONTENT ADJUSTMENTS */
+    .main-content {
+        padding: 15px !important;
+        margin-top: 60px !important;
+        margin-left: 0 !important;
+    }
+}/* 1. SWIPEABLE TABS (Like an App) */
+    .nav-pills-custom {
+        flex-wrap: nowrap !important;
+        overflow-x: auto !important;
+        overflow-y: hidden;
+        white-space: nowrap;
+        padding-bottom: 10px;
+        -webkit-overflow-scrolling: touch;
+        gap: 10px; /* Space between tabs */
+    }
+    .nav-pills-custom::-webkit-scrollbar { display: none; } /* Hide scrollbar */
+
+    /* 2. STACKED CONTROLS (Search + Add Button) */
+    .content-controls {
+        flex-direction: column !important;
+        align-items: stretch !important;
+        gap: 15px !important;
+    }
+    .content-controls .search-wrapper {
+        width: 100% !important;
+        margin-bottom: 0 !important;
+    }
+    .content-controls .btn {
+        width: 100% !important; /* Full width button for easy tapping */
+        padding: 12px !important;
+    }
+
+    /* 3. TRANSFORM TABLES TO CARDS (The Professional Look) */
+    .modern-table {
+        display: block;
+        width: 100%;
+    }
+    
+    .modern-table thead {
+        display: none; /* Hide headers on mobile */
+    }
+    
+    .modern-table tbody, 
+    .modern-table tr, 
+    .modern-table td {
+        display: block;
+        width: 100%;
+    }
+    
+    .modern-table tr {
+        margin-bottom: 20px;
+        border: 1px solid #e0e0e0;
+        border-radius: 12px;
+        background: #fff;
+        box-shadow: 0 4px 10px rgba(0,0,0,0.03);
+        overflow: hidden; /* Keeps borders rounded */
+    }
+
+    /* Cell Styles */
+    .modern-table td {
+        text-align: left;
+        padding: 12px 15px !important;
+        border-bottom: 1px solid #f0f0f0;
+        position: relative;
+    }
+
+    /* First Cell (Name/Title) - Make it look like a Card Header */
+    .modern-table td:first-child {
+        background-color: #f8f9fa;
+        font-weight: 700;
+        font-size: 1.1rem;
+        color: #2c3e50;
+        border-bottom: 2px solid #e9ecef;
+    }
+
+    /* Last Cell (Actions) - Align buttons nicely */
+    .modern-table td:last-child {
+        border-bottom: none;
+        background-color: #fff;
+        display: flex;
+        justify-content: flex-end; /* Float buttons right */
+        gap: 10px;
+        padding-top: 15px !important;
+        padding-bottom: 15px !important;
+    }
+    
+    /* Adjust specific text inside cells for mobile */
+    .modern-table td span.text-secondary {
+        display: block;
+        font-size: 0.85rem;
+        margin-top: 2px;
+    }
+    
+    /* Manager Badge Adjustment */
+    .manager-badge {
+        width: 100%;
+        justify-content: flex-start; /* Left align manager info */
+    }
+
 </style>
 </head>
 <body>
@@ -868,7 +1103,11 @@ $pending_results_count = $conn->query("SELECT COUNT(*) FROM categories WHERE sta
         
         <div class="d-flex justify-content-between align-items-center mb-4">
             <div>
-                <h2 class="fw-bold text-dark mb-1">Manage Events</h2>
+                <div class="page-header mb-4">
+                <h1 class="section-title">
+                    </i>Manage Events
+                </h1>
+            </div>
                 <p class="text-muted mb-0">Configure games, events, and assign managers.</p>
             </div>
             <?php if ($message): ?>

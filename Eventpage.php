@@ -186,50 +186,168 @@ $conn->close();
         
         /* --- NEW HERO & STATS STYLES --- */
         .hero-section {
-            /* Subtle gradient to make it feel premium, not just white */
             background: linear-gradient(135deg, #ffffff 0%, #f8fcf9 100%);
             border: 1px solid rgba(0,0,0,0.04);
-            border-radius: 16px;
-            padding: 40px;
-            box-shadow: 0 10px 30px rgba(0,0,0,0.03);
+            border-radius: 20px;
+            padding: 3rem 2.5rem;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.04);
+            position: relative;
+            overflow: hidden;
         }
 
-        .stat-card {
+        .hero-section::before {
+            content: '';
+            position: absolute;
+            top: -50%;
+            right: -10%;
+            width: 500px;
+            height: 500px;
+            background: radial-gradient(circle, rgba(76, 175, 80, 0.08) 0%, transparent 70%);
+            border-radius: 50%;
+            pointer-events: none;
+        }
+
+        /* Enhanced Hero Title */
+        .hero-title-wrapper {
+            display: flex;
+            align-items: center;
+            gap: 1.25rem;
+            margin-bottom: 1.25rem;
+        }
+
+        .hero-icon-circle {
+            width: 70px;
+            height: 70px;
+            min-width: 70px;
+            background: linear-gradient(135deg, #4CAF50 0%, #2E7D32 100%);
+            border-radius: 18px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            box-shadow: 0 8px 20px rgba(76, 175, 80, 0.25);
+            transform: rotate(-5deg);
+            transition: transform 0.3s ease;
+        }
+
+        .hero-icon-circle:hover {
+            transform: rotate(0deg) scale(1.05);
+        }
+
+        .hero-icon-circle img {
+            width: 45px;
+            height: 45px;
+            object-fit: contain;
+            filter: drop-shadow(0 2px 4px rgba(255,255,255,0.3)); /* Subtle white glow */
+        }
+
+        .hero-title-text h1 {
+            font-family: 'Poppins', sans-serif;
+            font-weight: 800;
+            font-size: 2.75rem;
+            color: #1a1a1a;
+            margin: 0;
+            line-height: 1.1;
+            letter-spacing: -1.5px;
+        }
+
+        .hero-subtitle-badge {
+            display: inline-block;
+            background: linear-gradient(135deg, #4CAF50 0%, #2E7D32 100%);
+            color: white;
+            padding: 0.4rem 1rem;
+            border-radius: 20px;
+            font-size: 0.75rem;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            box-shadow: 0 4px 12px rgba(76, 175, 80, 0.3);
+        }
+
+        .hero-description {
+            font-size: 1.05rem;
+            line-height: 1.8;
+            color: #5a6c7d;
+            margin: 0;
+            max-width: 600px;
+        }
+
+                .stat-card {
             background: white;
-            border-radius: 12px;
-            padding: 20px;
+            border-radius: 16px;
+            padding: 1.75rem 1.5rem;
             border: 1px solid rgba(0,0,0,0.06);
-            box-shadow: 0 4px 12px rgba(0,0,0,0.02);
+            box-shadow: 0 4px 16px rgba(0,0,0,0.04);
             transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
             height: 100%;
-            
-            /* FIX: Flex row for professional "Widget" look */
             display: flex;
-            align-items: center; 
-            text-align: left; /* Reset text alignment */
+            align-items: center;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .stat-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 4px;
+            height: 100%;
+            background: linear-gradient(180deg, #4CAF50 0%, #2E7D32 100%);
+            opacity: 0;
+            transition: opacity 0.3s ease;
         }
 
         .stat-card:hover {
-            transform: translateY(-5px);
-            box-shadow: 0 15px 30px rgba(0,0,0,0.08);
-            border-color: rgba(25, 135, 84, 0.3); /* Green glow on hover */
+            transform: translateY(-8px);
+            box-shadow: 0 12px 32px rgba(0,0,0,0.1);
+            border-color: rgba(76, 175, 80, 0.3);
         }
 
-        /* Stat Icon Circle (Matches your Event Cards!) */
+        .stat-card:hover::before {
+            opacity: 1;
+        }
+
         .stat-icon-circle {
             width: 64px;
             height: 64px;
             min-width: 64px;
-            border-radius: 50%;
+            border-radius: 16px;
             display: flex;
             align-items: center;
             justify-content: center;
             margin-right: 1.25rem;
             transition: transform 0.3s ease;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.08);
         }
 
         .stat-card:hover .stat-icon-circle {
-            transform: scale(1.1); /* Subtle pop effect */
+            transform: scale(1.1) rotate(5deg);
+        }
+
+        .stat-theme-total { 
+            background: linear-gradient(135deg, #f1f3f5 0%, #e9ecef 100%);
+        }
+
+        .stat-theme-completed { 
+            background: linear-gradient(135deg, #e3f2fd 0%, #bbdefb 100%);
+        }
+
+        .stat-theme-ongoing { 
+            background: linear-gradient(135deg, #e8f5e9 0%, #c8e6c9 100%);
+        }
+
+        .stat-content .display-6 {
+            font-size: 2.5rem;
+            font-weight: 800;
+            line-height: 1;
+            margin-bottom: 0.25rem;
+        }
+
+        .stat-content small {
+            font-size: 0.7rem;
+            text-transform: uppercase;
+            letter-spacing: 1.2px;
+            font-weight: 700;
         }
 
         /* Color Themes for Stats */
@@ -237,27 +355,52 @@ $conn->close();
         .stat-theme-completed { background: rgba(13, 110, 253, 0.1); } /* Blue */
         .stat-theme-ongoing { background: rgba(25, 135, 84, 0.1); }    /* Green */
 
-        /* --- LIVE BADGE ANIMATION (GREEN) --- */
-        .animation-blink {
-            animation: blink-green 2s infinite;
+        /* Premium LIVE Badge */
+        .live-badge-wrapper {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+            background: linear-gradient(135deg, #28a745 0%, #20c997 100%);
+            padding: 0.5rem 1.25rem;
+            border-radius: 25px;
+            box-shadow: 0 4px 16px rgba(40, 167, 69, 0.4);
+            animation: pulse-live 2s infinite;
+            position: relative;
         }
 
-        @keyframes blink-green {
-            0% {
-                /* Start with a strong green glow */
-                box-shadow: 0 0 0 0 rgba(25, 135, 84, 0.7); 
-                transform: scale(1);
-            }
-            50% {
-                /* Expands outward */
-                transform: scale(1.05); 
-                /* Fades into a ripple */
-                box-shadow: 0 0 0 10px rgba(25, 135, 84, 0); 
-            }
-            100% {
-                transform: scale(1);
-                box-shadow: 0 0 0 0 rgba(25, 135, 84, 0);
-            }
+        .live-badge-wrapper::before {
+            content: '';
+            position: absolute;
+            inset: -2px;
+            border-radius: 25px;
+            background: linear-gradient(135deg, #28a745, #20c997);
+            z-index: -1;
+            filter: blur(8px);
+            opacity: 0.6;
+            animation: pulse-glow 2s infinite;
+        }
+
+        .live-indicator-dot {
+            width: 10px;
+            height: 10px;
+            background: white;
+            border-radius: 50%;
+            animation: blink-dot 1.5s infinite;
+        }
+
+        @keyframes pulse-live {
+            0%, 100% { transform: scale(1); }
+            50% { transform: scale(1.05); }
+        }
+
+        @keyframes pulse-glow {
+            0%, 100% { opacity: 0.6; }
+            50% { opacity: 0.8; }
+        }
+
+        @keyframes blink-dot {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.3; }
         }
         
         .events-nav-tabs {
@@ -835,27 +978,143 @@ $conn->close();
             font-size: 0.85rem;
         }
 
-        @media (max-width: 991px) {
-            /* 1. Center text on smaller screens */
-            .footer-main { 
-                text-align: center; 
-            }
-            
-            /* 2. Center the logo group (Image + Text) */
-            .footer-main .footer-logo-group { 
-                justify-content: center; 
-            }
-            
-            /* 3. Add spacing between columns so they don't look cramped */
-            .footer-main .row > div { 
-                margin-bottom: 2rem; 
-            }
-            
-            /* 4. Ensure the last column doesn't have extra margin */
-            .footer-main .row > div:last-child {
-                margin-bottom: 0;
-            }
-        }
+       /* =========================================
+   MOBILE OPTIMIZATION (Eventpage.php)
+   ========================================= */
+
+/* --- 1. COMPACT NAVBAR (Horizontal Layout) --- */
+@media (max-width: 991px) {
+    /* Reduce Header Height */
+    .navbar {
+        padding: 0.5rem 1rem !important;
+        min-height: 60px;
+    }
+
+    /* Shrink Logo & Text */
+    .brand-logo {
+        height: 36px !important;
+        width: 36px !important;
+    }
+    .brand-heading {
+        font-size: 1rem !important;
+    }
+    .brand-subheading {
+        font-size: 0.65rem !important;
+    }
+
+    /* Force Horizontal Menu (Side-by-Side) */
+    .navbar-collapse {
+        margin-top: 0;
+        padding-bottom: 0;
+        border-top: none;
+    }
+
+    .navbar-nav {
+        flex-direction: row !important; /* Forces horizontal row */
+        align-items: center !important;
+        justify-content: flex-end;      /* Aligns items to the right */
+        gap: 10px;                      /* Spacing between items */
+        width: 100%;
+        padding: 5px 0;
+    }
+
+    /* Compact Links */
+    .nav-link {
+        padding: 0.4rem 0.6rem !important;
+        font-size: 0.85rem !important;
+    }
+
+    /* Compact Login Button (Placed Beside Links) */
+    .nav-item .btn {
+        margin: 0 !important;
+        padding: 0.3rem 0.8rem !important;
+        font-size: 0.8rem !important;
+        line-height: 1.2;
+    }
+}
+
+/* --- 2. COMPACT HERO SECTION (Mobile Phones Only) --- */
+@media (max-width: 767.98px) {
+    /* Shrink Hero Container */
+    .hero-section {
+        padding: 1.25rem !important;
+        margin-bottom: 1.5rem !important;
+        border-radius: 12px;
+    }
+
+    /* Compact Title Area */
+    .hero-title-wrapper {
+        gap: 10px;
+        margin-bottom: 0.5rem;
+    }
+
+    .hero-icon-circle {
+        width: 45px;
+        height: 45px;
+        min-width: 45px;
+        border-radius: 12px;
+    }
+    .hero-icon-circle img {
+        width: 24px;
+        height: 24px;
+    }
+
+    /* Shrink Title Fonts */
+    .hero-title-text h1 {
+        font-size: 1.5rem !important;
+        margin-bottom: 0;
+        line-height: 1.2;
+    }
+    .hero-subtitle-badge {
+        font-size: 0.6rem;
+        padding: 0.2rem 0.6rem;
+        margin-top: 2px;
+    }
+
+    /* Clamp Description (Max 2 lines) */
+    .hero-description {
+        font-size: 0.85rem;
+        line-height: 1.4;
+        margin-bottom: 1.25rem;
+        display: -webkit-box;
+        -webkit-line-clamp: 2;
+        -webkit-box-orient: vertical;
+        overflow: hidden;
+    }
+
+    /* Compact Stat Cards (Widgets) */
+    .stat-card {
+        padding: 12px 15px;
+        min-height: auto;
+    }
+
+    /* Shrink Widget Icons */
+    .stat-icon-circle {
+        width: 40px;
+        height: 40px;
+        min-width: 40px;
+        margin-right: 12px;
+    }
+    .stat-icon-circle img {
+        width: 20px !important;
+        height: 20px !important;
+    }
+
+    /* Smaller Numbers */
+    .stat-card .display-6 {
+        font-size: 1.5rem !important;
+        margin-bottom: 0;
+    }
+    .stat-card small {
+        font-size: 0.65rem;
+    }
+
+    /* Adjust 'LIVE NOW' Badge */
+    .stat-card .badge {
+        padding: 0.25em 0.6em !important;
+        font-size: 0.6rem !important;
+    }
+}
 
         /* --- MOBILE ORGANIZATION: COMPACT 3-COLUMN GRID --- */
         @media (max-width: 767px) {
@@ -901,11 +1160,11 @@ $conn->close();
 <body>
     
     <nav class="navbar navbar-expand-lg navbar-dark bg-dark fixed-top">
-        <div class="container-fluid d-flex align-items: center justify-content-between">
+        <div class="container-fluid d-flex align-items-center justify-content-between">
             <a class="navbar-brand d-flex align-items: center interactive-brand" href="home.php" style="cursor: pointer;">
                 <img src="imageslogo.png" alt="Logo" class="me-2 brand-logo" style="height: 50px; width: 48px; object-fit: contain; transition: filter 0.2s;">
                 <div class="d-flex flex-column lh-sm">
-                    <strong class="text-white brand-heading" style="font-size: 1.25rem; transition: color 0.2s;">PIT SPORTS TALLYING</strong>
+                    <strong class="text-white brand-heading" style="font-size: 1.25rem; transition: color 0.2s;">PIT SIGLAKAS MEDAL TALLY</strong>
                     <small class="text-light brand-subheading" style="font-size: 0.75rem; transition: color 0.2s;">Official College Tournament System</small>
                 </div>
             </a>
@@ -943,16 +1202,21 @@ $conn->close();
             <div class="overall-card">
 
                 <div class="hero-section mb-5">
-                    <div class="row align-items-center">
-                        <div class="col-lg-6 mb-4 mb-lg-0">
-                            <h1 class="display-5 fw-bold mb-3 text-dark" style="letter-spacing: -1px;">
-                                <img src="images/SiglakaseventIcon.png" alt="Events Icon" class="me-3" style="width: 4rem; height: 4rem; object-fit: contain; filter: drop-shadow(0 4px 6px rgba(0,0,0,0.1));">
-                                Siglakas Events
-                            </h1>
-                            <p class="lead text-muted" style="font-size: 1.1rem; line-height: 1.8;">
-                                Your centralized hub for the Siglakas Tournament. Track live results, view official schedules, and check the latest medal standings in real-time.
-                            </p>
-                        </div>
+                        <div class="row align-items-center">
+                            <div class="col-lg-6 mb-4 mb-lg-0">
+                                <div class="hero-title-wrapper">
+                                    <div class="hero-icon-circle">
+                                        <img src="images/EventpageIcon.png" alt="Events Icon">
+                                    </div>
+                                    <div class="hero-title-text">
+                                        <h1>Siglakas Events</h1>
+                                        <span class="hero-subtitle-badge">Live Tournament Hub</span>
+                                    </div>
+                                </div>
+                                <p class="hero-description">
+                                    Your centralized hub for the Siglakas Tournament. Track live results, view official schedules, and check the latest medal standings in real-time.
+                                </p>
+                            </div>
 
                         <div class="col-lg-6">
                             <div class="row g-3">
@@ -971,7 +1235,7 @@ $conn->close();
                                 <div class="col-md-6 col-12">
                                     <div class="stat-card">
                                         <div class="stat-icon-circle stat-theme-completed">
-                                            <img src="images/CompleteIcon.png" alt="Completed" style="width: 32px; height: 32px;">
+                                            <img src="images/completeEvent-ezgif.gif" alt="Completed" style="width: 70px; height: 70px;">
                                         </div>
                                         <div>
                                             <div class="fw-bold text-primary display-6 mb-0" id="stat-completed" style="line-height: 1;"><?= $completed_events ?></div>
@@ -980,13 +1244,14 @@ $conn->close();
                                     </div>
                                 </div>
 
-                                <div class="col-12"> <div class="stat-card">
+                                <div class="col-12">
+                                    <div class="stat-card">
                                         <div class="stat-icon-circle stat-theme-ongoing">
-                                            <img src="images/OngoingIcon.png" alt="Ongoing" style="width: 32px; height: 32px;">
+                                            <img src="images/versus-ezgif.gif" alt="Ongoing" style="width: 70px; height: 70px;">
                                         </div>
-                                        <div>
-                                            <div class="d-flex align-items-center">
-                                                <div class="fw-bold text-success display-6 mb-0 me-3" id="stat-ongoing" style="line-height: 1;"><?= $ongoing_events ?></div>
+                                        <div class="stat-content flex-grow-1">
+                                            <div class="d-flex align-items-center justify-content-between">
+                                                <div class="fw-bold text-success display-6 mb-0" id="stat-ongoing" style="line-height: 1;"><?= $ongoing_events ?></div>
                                                 <span class="badge bg-success text-white px-3 py-2 rounded-pill shadow-sm d-flex align-items-center animation-blink" style="font-size: 0.75rem; letter-spacing: 1px;">
                                                     <i class="fas fa-circle me-2 text-white" style="font-size: 8px;"></i> LIVE NOW
                                                 </span>

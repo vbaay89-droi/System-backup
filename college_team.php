@@ -225,45 +225,170 @@ function truncate_text($text, $length = 100, $suffix = '...') {
 
 .stat-card-widget {
     background: white;
-    border-radius: 12px;
-    padding: 20px;
+    border-radius: 16px;
+    padding: 1.75rem 1.5rem;
     border: 1px solid rgba(0,0,0,0.06);
-    box-shadow: 0 4px 12px rgba(0,0,0,0.02);
+    box-shadow: 0 4px 16px rgba(0,0,0,0.04);
     transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
     height: 100%;
     display: flex;
-    align-items: center; 
-    text-align: left;
+    align-items: center;
+    position: relative;
+    overflow: hidden;
+}
+
+.stat-card-widget::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 4px;
+    height: 100%;
+    background: linear-gradient(180deg, #0d6efd 0%, #0a58ca 100%);
+    opacity: 0;
+    transition: opacity 0.3s ease;
 }
 
 .stat-card-widget:hover {
-    transform: translateY(-5px);
-    box-shadow: 0 15px 30px rgba(0,0,0,0.08);
-    border-color: rgba(13, 110, 253, 0.3); /* Blue glow on hover */
+    transform: translateY(-8px);
+    box-shadow: 0 12px 32px rgba(0,0,0,0.1);
+    border-color: rgba(13, 110, 253, 0.3);
 }
 
-/* Icon Circle Container */
+.stat-card-widget:hover::before {
+    opacity: 1;
+}
+
 .stat-icon-circle {
     width: 64px;
     height: 64px;
     min-width: 64px;
-    border-radius: 50%;
+    border-radius: 16px;
     display: flex;
     align-items: center;
     justify-content: center;
     margin-right: 1.25rem;
     transition: transform 0.3s ease;
-    font-size: 1.75rem; /* Icon size */
+    box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+    font-size: 1.75rem;
 }
 
 .stat-card-widget:hover .stat-icon-circle {
-    transform: scale(1.1);
+    transform: scale(1.1) rotate(5deg);
+}
+
+/* Theme Colors */
+.stat-theme-teams { 
+    background: linear-gradient(135deg, #e3f2fd 0%, #bbdefb 100%);
+    color: #0d6efd;
+}
+
+.stat-theme-performers { 
+    background: linear-gradient(135deg, #e8f5e9 0%, #c8e6c9 100%);
+    color: #198754;
+}
+
+.stat-theme-medals { 
+    background: linear-gradient(135deg, #fff9e6 0%, #ffe69c 100%);
+    color: #ffc107;
+}
+
+.stat-content .display-6 {
+    font-size: 2.5rem;
+    font-weight: 800;
+    line-height: 1;
+    margin-bottom: 0.25rem;
+}
+
+.stat-content small {
+    font-size: 0.7rem;
+    text-transform: uppercase;
+    letter-spacing: 1.2px;
+    font-weight: 700;
+}
+
+/* Gold Official Tally Badge */
+.live-badge-wrapper-gold {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    background: linear-gradient(135deg, #ffc107 0%, #ffb300 100%);
+    padding: 0.5rem 1rem;
+    border-radius: 25px;
+    box-shadow: 0 4px 16px rgba(255, 193, 7, 0.4);
+    color: #000;
 }
 
 /* Theme Colors */
 .stat-theme-teams { background: rgba(13, 110, 253, 0.1); color: #0d6efd; }       /* Blue */
 .stat-theme-performers { background: rgba(25, 135, 84, 0.1); color: #198754; }   /* Green */
 .stat-theme-medals { background: rgba(255, 193, 7, 0.1); color: #ffc107; }       /* Gold */
+
+/* Hero Title Components */
+.hero-title-wrapper {
+    display: flex;
+    align-items: center;
+    gap: 1.25rem;
+    margin-bottom: 1.25rem;
+}
+
+.hero-icon-circle {
+    width: 70px;
+    height: 70px;
+    min-width: 70px;
+    background: linear-gradient(135deg, #0d6efd 0%, #0a58ca 100%);
+    border-radius: 18px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: 0 8px 20px rgba(13, 110, 253, 0.25);
+    transform: rotate(-5deg);
+    transition: transform 0.3s ease;
+    color: white;
+    font-size: 2rem;
+}
+
+.hero-icon-circle:hover {
+    transform: rotate(0deg) scale(1.05);
+}
+
+.hero-title-text h1 {
+    font-family: 'Poppins', sans-serif;
+    font-weight: 800;
+    font-size: 2.75rem;
+    color: #1a1a1a;
+    margin: 0;
+    line-height: 1.1;
+    letter-spacing: -1.5px;
+}
+
+.hero-subtitle-badge {
+    display: inline-block;
+    background: linear-gradient(135deg, #0d6efd 0%, #0a58ca 100%);
+    color: white;
+    padding: 0.4rem 1rem;
+    border-radius: 20px;
+    font-size: 0.75rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    box-shadow: 0 4px 12px rgba(13, 110, 253, 0.3);
+}
+
+.hero-description {
+    font-size: 1.05rem;
+    line-height: 1.8;
+    color: #5a6c7d;
+    margin: 0;
+    max-width: 600px;
+}
+
+.hero-icon-circle img {
+    width: 45px;
+    height: 45px;
+    object-fit: contain;
+    /* Removed filter to preserve original icon colors */
+}
         
         /* COLLEGE CARD */
         .college-card { background-color: var(--bg-light); border-radius: 12px; box-shadow: var(--shadow-sm); transition: var(--transition); height: 100%; padding: 24px; position: relative; overflow: hidden; border: 1px solid rgba(0,0,0,0.05); display: flex; flex-direction: column; --team-color: var(--primary-green); }
@@ -278,7 +403,47 @@ function truncate_text($text, $length = 100, $suffix = '...') {
         .college-name-link:hover { color: var(--team-color); }
         .truncate-text { display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; font-size: 0.95rem; color: var(--text-dark); flex-grow: 1; }
         .btn-full-width { width: 100%; }
-        .filter-bar { background-color: var(--bg-white); padding: 1.5rem; border-radius: 12px; box-shadow: var(--shadow-sm); margin-bottom: 2rem; }
+        .filter-bar {
+    background: linear-gradient(135deg, #ffffff 0%, #f8f9fa 100%);
+    padding: 1.75rem;
+    border-radius: 16px;
+    box-shadow: 0 4px 16px rgba(0,0,0,0.04);
+    margin-bottom: 2rem;
+    border: 1px solid rgba(0,0,0,0.06);
+}
+
+.filter-bar label {
+    font-size: 0.875rem;
+    color: #495057;
+    font-weight: 600;
+}
+
+.filter-bar .input-group {
+    border-radius: 10px;
+    overflow: hidden;
+    border: 2px solid #e9ecef;
+    transition: all 0.3s ease;
+}
+
+.filter-bar .input-group:focus-within {
+    border-color: #0d6efd;
+    box-shadow: 0 0 0 3px rgba(13, 110, 253, 0.1) !important;
+}
+
+.filter-bar .form-control,
+.filter-bar .form-select {
+    border: 2px solid #e9ecef;
+    border-radius: 10px;
+    padding: 0.75rem 1rem;
+    transition: all 0.3s ease;
+    font-size: 0.95rem;
+}
+
+.filter-bar .form-control:focus,
+.filter-bar .form-select:focus {
+    border-color: #0d6efd;
+    box-shadow: 0 0 0 3px rgba(13, 110, 253, 0.1);
+}
         
         /* MODAL & TABS */
         .modal-header { border-bottom: 1px solid #dee2e6; }
@@ -482,33 +647,91 @@ function truncate_text($text, $length = 100, $suffix = '...') {
             transform: scale(1.15) rotate(5deg);
         }
 
+/* --- MOBILE OPTIMIZATION: HERO & NAVBAR --- */
+
+/* 1. Compact Navbar (Horizontal Layout) */
 @media (max-width: 991px) {
-            /* 1. Center text on smaller screens */
-            .footer-main { 
-                text-align: center; 
-            }
-            
-            /* 2. Center the logo group (Image + Text) */
-            .footer-main .footer-logo-group { 
-                justify-content: center; 
-            }
-            
-            /* 3. Add spacing between columns so they don't look cramped */
-            .footer-main .row > div { 
-                margin-bottom: 2rem; 
-            }
-            
-            /* 4. Ensure the last column doesn't have extra margin */
-            .footer-main .row > div:last-child {
-                margin-bottom: 0;
-            }
-        }
+    /* Reduce Header Height */
+    .navbar {
+        padding: 0.5rem 1rem !important;
+        min-height: 60px;
+    }
+
+    /* Shrink Logo & Text */
+    .brand-logo { height: 36px !important; width: 36px !important; }
+    .brand-heading { font-size: 1rem !important; }
+    .brand-subheading { font-size: 0.65rem !important; }
+
+    /* Force Horizontal Menu (Side-by-Side) */
+    .navbar-collapse {
+        margin-top: 0;
+        padding-bottom: 0;
+        border-top: none;
+    }
+
+    .navbar-nav {
+        flex-direction: row !important; /* Forces horizontal row */
+        align-items: center !important;
+        justify-content: flex-end;      /* Aligns items to the right */
+        gap: 10px;                      /* Spacing between items */
+        width: 100%;
+        padding: 5px 0;
+    }
+
+    /* Compact Links */
+    .nav-link {
+        padding: 0.4rem 0.6rem !important;
+        font-size: 0.85rem !important;
+    }
+
+    /* Compact Button */
+    .nav-item .btn {
+        margin: 0 !important;
+        padding: 0.3rem 0.8rem !important;
+        font-size: 0.8rem !important;
+        line-height: 1.2;
+    }
+}
+
+/* 2. Compact Hero Section (From previous request) */
+@media (max-width: 767.98px) {
+    .hero-section {
+        padding: 1.25rem !important;
+        margin-bottom: 1.5rem !important;
+    }
+    .hero-title-wrapper { gap: 10px; margin-bottom: 0.5rem; }
+    .hero-icon-circle { width: 45px; height: 45px; min-width: 45px; }
+    .hero-icon-circle img { width: 24px; height: 24px; }
+    .hero-title-text h1 { font-size: 1.4rem; margin-bottom: 0; }
+    .hero-subtitle-badge { font-size: 0.6rem; padding: 0.2rem 0.6rem; }
+    
+    /* Clamp Description to 2 lines */
+    .hero-description {
+        font-size: 0.85rem;
+        display: -webkit-box;
+        -webkit-line-clamp: 2;
+        -webkit-box-orient: vertical;
+        overflow: hidden;
+        margin-bottom: 1.25rem;
+    }
+
+    /* Smaller Widgets */
+    .stat-card-widget { padding: 12px 15px; }
+    .stat-icon-circle { width: 40px; height: 40px; min-width: 40px; margin-right: 12px; }
+    .stat-content .display-6 { font-size: 1.5rem; margin-bottom: 0; }
+    .stat-content small { font-size: 0.65rem; }
+    
+    /* Smaller 'Official Tally' Badge */
+    .live-badge-wrapper-gold { padding: 0.2rem 0.5rem; gap: 4px; }
+    .live-badge-wrapper-gold i { font-size: 0.7rem; }
+    .live-badge-wrapper-gold span { font-size: 0.55rem !important; }
+}
     </style>
 </head>
 <body>
     
     <nav class="navbar navbar-expand-lg navbar-dark bg-dark fixed-top">
-        <div class="container-fluid d-flex align-items: center justify-content-between">
+        <div class="container-fluid d-flex align-items center justify-content-between">
             <a class="navbar-brand d-flex align-items-center interactive-brand" href="home.php" style="cursor: pointer;">
                 <img src="imageslogo.png" alt="Logo" class="me-2 brand-logo" style="height: 50px; width: 48px; object-fit: contain;">
                 <div class="d-flex flex-column lh-sm">
@@ -540,102 +763,106 @@ function truncate_text($text, $length = 100, $suffix = '...') {
         <div class="container">
             
             <div class="hero-section mb-5">
-                <div class="row align-items-center">
-                    
-                    <div class="col-lg-6 mb-4 mb-lg-0">
-                        <h1 class="display-5 fw-bold mb-3 text-dark" style="letter-spacing: -1px;">
-                            <i class="fas fa-users-cog me-3 text-primary" style="font-size: 3.5rem; vertical-align: middle;"></i>
-                            Participating Teams
-                        </h1>
-                        <p class="lead text-muted" style="font-size: 1.1rem; line-height: 1.8;">
-                            A comprehensive look at all teams competing in the Siglakas. Track rosters, view medal history, and see the top performing colleges.
-                        </p>
-                    </div>
-
-                    <div class="col-lg-6">
-                        <div class="row g-3">
-                            
-                            <div class="col-md-6 col-12">
-                                <div class="stat-card-widget">
-                                    <div class="stat-icon-circle stat-theme-teams">
-                                        <i class="fas fa-flag"></i>
-                                    </div>
-                                    <div>
-                                        <div class="fw-bold text-dark display-6 mb-0" id="hero-total-teams" style="line-height: 1;">
-                                            <?= $total_teams ?>
-                                        </div>
-                                        <small class="text-uppercase text-primary fw-bold opacity-75" style="font-size: 0.7rem; letter-spacing: 1px;">
-                                            Total Teams
-                                        </small>
-                                    </div>
-                                </div>
-                            </div>
-
-                            <div class="col-md-6 col-12">
-                                <div class="stat-card-widget">
-                                    <div class="stat-icon-circle stat-theme-performers">
-                                        <i class="fas fa-star"></i>
-                                    </div>
-                                    <div>
-                                        <div class="fw-bold text-dark display-6 mb-0" id="hero-top-performers" style="line-height: 1;">
-                                            <?= $topPerformersCount ?>
-                                        </div>
-                                        <small class="text-uppercase text-success fw-bold opacity-75" style="font-size: 0.7rem; letter-spacing: 1px;">
-                                            Top Performers
-                                        </small>
-                                    </div>
-                                </div>
-                            </div>
-
-                            <div class="col-12">
-                                <div class="stat-card-widget">
-                                    <div class="stat-icon-circle stat-theme-medals">
-                                        <i class="fas fa-medal"></i>
-                                    </div>
-                                    <div>
-                                        <div class="d-flex align-items-center">
-                                            <div class="fw-bold text-dark display-6 mb-0 me-3" id="hero-total-medals" style="line-height: 1;">
-                                                <?= $total_medals ?>
-                                            </div>
-                                            <span class="badge bg-warning text-dark px-3 py-2 rounded-pill shadow-sm" style="font-size: 0.7rem;">
-                                                <i class="fas fa-chart-line me-1"></i> OFFICIAL TALLY
-                                            </span>
-                                        </div>
-                                        <small class="text-uppercase text-warning fw-bold opacity-75 mt-1 d-block" style="font-size: 0.7rem; letter-spacing: 1px;">
-                                            Medals Awarded
-                                        </small>
-                                    </div>
-                                </div>
-                            </div>
-
-                        </div>
-                    </div>
-
+    <div class="row align-items-center">
+        
+        <div class="col-lg-6 mb-4 mb-lg-0">
+            <div class="hero-title-wrapper">
+                <div class="hero-icon-circle">
+                    <img src="images/teamRoster.png" alt="Team Icon">
+                </div>
+                <div class="hero-title-text">
+                    <h1>Participating Teams</h1>
+                    <span class="hero-subtitle-badge">Competition Roster</span>
                 </div>
             </div>
+            <p class="hero-description">
+                A comprehensive look at all teams competing in the Siglakas. Track rosters, view medal history, and see the top performing colleges.
+            </p>
+        </div>
+
+        <div class="col-lg-6">
+            <div class="row g-3">
+                
+                <!-- Total Teams -->
+                <div class="col-md-6 col-12">
+                    <div class="stat-card-widget">
+                        <div class="stat-icon-circle stat-theme-teams">
+                            <img src="images/teamIcon.png" alt="Team Icon" style="width: 50px; height: 50px; object-fit: contain;">
+                        </div>
+                        <div class="stat-content">
+                            <div class="fw-bold text-dark display-6" id="hero-total-teams"><?= $total_teams ?></div>
+                            <small class="text-primary">Total Teams</small>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Top Performers -->
+                <div class="col-md-6 col-12">
+                    <div class="stat-card-widget">
+                        <div class="stat-icon-circle stat-theme-performers">
+                            <i class="fas fa-star"></i>
+                        </div>
+                        <div class="stat-content">
+                            <div class="fw-bold text-dark display-6" id="hero-top-performers"><?= $topPerformersCount ?></div>
+                            <small class="text-success">Top Performers</small>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Medals Awarded -->
+                <div class="col-12">
+                    <div class="stat-card-widget">
+                        <div class="stat-icon-circle stat-theme-medals">
+                            <i class="fas fa-medal"></i>
+                        </div>
+                        <div class="stat-content flex-grow-1">
+                            <div class="d-flex align-items-center justify-content-between">
+                                <div class="fw-bold text-dark display-6" id="hero-total-medals"><?= $total_medals ?></div>
+                                <div class="live-badge-wrapper-gold">
+                                    <i class="fas fa-trophy me-2"></i>
+                                    <span class="text-dark fw-bold" style="font-size: 0.7rem; letter-spacing: 1px;">OFFICIAL TALLY</span>
+                                </div>
+                            </div>
+                            <small class="text-warning">Medals Awarded</small>
+                        </div>
+                    </div>
+                </div>
+
+            </div>
+        </div>
+
+    </div>
+</div>
             
             <div class="team-container">
                 <div class="filter-bar">
-                    <div class="row g-3">
-                        <div class="col-md-8">
-                            <label for="searchInput" class="form-label fw-bold">Search Team</label>
-                            <div class="input-group">
-                                <span class="input-group-text"><i class="fas fa-search"></i></span>
-                                <input type="text" id="searchInput" class="form-control" placeholder="Search by name or code (e.g., COTE)...">
-                            </div>
-                        </div>
-                        <div class="col-md-4">
-                            <label for="sortSelect" class="form-label fw-bold">Sort By</label>
-                            <select id="sortSelect" class="form-select">
-                                <option value="rank">Medal Rank (Default)</option>
-                                <option value="name-asc">Name (A-Z)</option>
-                                <option value="name-desc">Name (Z-A)</option>
-                                <option value="medals-desc">Total Medals (High-Low)</option>
-                                <option value="medals-asc">Total Medals (Low-High)</option>
-                            </select>
-                        </div>
-                    </div>
-                </div>
+    <div class="row g-3 align-items-end">
+        <div class="col-md-8">
+            <label for="searchInput" class="form-label fw-bold text-dark mb-2">
+                <i class="fas fa-search me-2 text-primary"></i>Search Team
+            </label>
+            <div class="input-group shadow-sm">
+                <span class="input-group-text bg-white border-end-0">
+                    <i class="fas fa-search text-muted"></i>
+                </span>
+                <input type="text" id="searchInput" class="form-control border-start-0 ps-0" 
+                       placeholder="Search by name or code (e.g., COTE)...">
+            </div>
+        </div>
+        <div class="col-md-4">
+            <label for="sortSelect" class="form-label fw-bold text-dark mb-2">
+                <i class="fas fa-sort me-2 text-primary"></i>Sort By
+            </label>
+            <select id="sortSelect" class="form-select shadow-sm">
+                <option value="rank">Medal Rank (Default)</option>
+                <option value="name-asc">Name (A-Z)</option>
+                <option value="name-desc">Name (Z-A)</option>
+                <option value="medals-desc">Total Medals (High-Low)</option>
+                <option value="medals-asc">Total Medals (Low-High)</option>
+            </select>
+        </div>
+    </div>
+</div>
 
                 <div id="college-roster-grid" class="row g-4">
                     <?php if (empty($colleges_data)): ?>

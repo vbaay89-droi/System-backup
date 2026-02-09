@@ -542,6 +542,208 @@ if ($log_res) {
         .footer-main .row > div { margin-bottom: 2rem; }
         .footer-main .row > div:last-child { margin-bottom: 0; }
     }
+
+
+    /* =========================================
+   MOBILE OPTIMIZATION (Sports Director)
+   ========================================= */
+@media (max-width: 991.98px) {
+    
+    /* 1. COMPACT NAVBAR & LAYOUT */
+    .navbar {
+        padding: 0.5rem 1rem !important;
+        height: 60px !important; /* Fixed compact height */
+        display: flex !important;
+        flex-wrap: nowrap !important;
+        align-items: center !important;
+    }
+    
+    /* A. LEFT: Toggler Button */
+    .navbar-toggler {
+        order: 1 !important; /* First item */
+        border: 1px solid rgba(255,255,255,0.1);
+        padding: 4px 8px;
+        font-size: 1.2rem;
+        margin-right: 10px !important;
+    }
+    .navbar-toggler:focus { box-shadow: none; }
+
+    /* B. LEFT/CENTER: Brand Logo */
+    /* margin-right: auto PUSHES the Profile Icon to the far right */
+    .navbar-brand {
+        order: 2 !important; /* Second item */
+        margin-right: auto !important; /* THE KEY SPACER */
+        display: flex;
+        align-items: center;
+        max-width: 60%;
+    }
+    .navbar-brand img {
+        height: 30px !important;
+        width: 30px !important;
+        margin-right: 8px !important;
+    }
+    .navbar-brand strong {
+        font-size: 0.95rem !important;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
+    .navbar-brand small { display: none !important; }
+
+    /* C. RIGHT: Profile Menu Icon */
+    .user-dropdown {
+        order: 3 !important; /* Third item */
+        margin-left: 0 !important; 
+        position: relative;
+    }
+    .user-dropdown .user-name { display: none !important; } /* Hide Name */
+    
+    /* Icon Styling */
+    .user-dropdown .dropdown-toggle i { 
+        font-size: 26px !important; 
+        margin: 0 !important;
+        color: #fff; /* Ensure visibility */
+        cursor: pointer;
+    }
+
+    /* Order 3: Brand Logo */
+    .navbar-brand {
+        order: 3 !important;
+        display: flex;
+        align-items: center;
+        max-width: 55%; /* Adjust width to prevent overflow */
+        margin-right: 0 !important;
+    }
+    .navbar-brand img {
+        height: 30px !important;
+        width: 30px !important;
+        margin-right: 8px !important;
+    }
+    .navbar-brand strong {
+        font-size: 0.95rem !important;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
+    .navbar-brand small { display: none !important; }
+    
+    /* Compact Profile Menu */
+    .user-dropdown .user-name { display: none !important; }
+    .user-dropdown .dropdown-toggle i { font-size: 28px !important; margin: 0 !important; }
+
+    /* 2. SIDEBAR DRAWER (Fix Gap & Animation) */
+    .sidebar {
+        position: fixed !important;
+        top: 60px !important; /* Matches Navbar Height */
+        left: -260px !important; /* Hidden */
+        width: 260px !important;
+        height: calc(100vh - 60px) !important;
+        background-color: #2c3e50 !important;
+        box-shadow: 5px 0 15px rgba(0,0,0,0.3);
+        transition: left 0.3s ease-in-out !important;
+        z-index: 1045;
+        overflow-y: auto;
+    }
+    .sidebar.show { left: 0 !important; } /* Slide In */
+    
+    /* Prevent text cutoff in menu */
+    .sidebar-nav .nav-link { 
+        white-space: nowrap; 
+        font-size: 0.95rem;
+    }
+
+    /* 3. MAIN CONTENT ADJUSTMENTS */
+    .main-content {
+        padding: 15px !important;
+        margin-top: 60px !important;
+        margin-left: 0 !important;
+    }
+
+    /* 4. COMPACT HERO SECTION */
+    .hero-section {
+        padding: 1.5rem !important;
+        margin-bottom: 1.5rem !important;
+        border-radius: 12px;
+        text-align: left;
+    }
+    .hero-section h1 { font-size: 1.5rem !important; margin-bottom: 5px; }
+    .hero-section h5 { font-size: 0.85rem !important; margin-bottom: 10px; }
+    .hero-section hr { margin: 10px 0 !important; width: 100% !important; }
+    
+    /* Hide Extra Elements */
+    .hero-section .col-lg-3, /* Big Icon */
+    .welcome-badge { display: none !important; }
+    
+    /* Truncate Description to 2 lines */
+    .hero-section p.lead {
+        font-size: 0.85rem !important;
+        line-height: 1.4 !important;
+        display: -webkit-box;
+        -webkit-line-clamp: 2;
+        -webkit-box-orient: vertical;
+        overflow: hidden;
+        margin-bottom: 0 !important;
+    }
+
+    /* 5. STATS GRID: 2 Columns Layout */
+    /* This forces the 4 main stats to sit 2x2 */
+    .col-md-6.col-lg-3 {
+        width: 50% !important; /* Force 50% width */
+        flex: 0 0 50%;
+        padding: 6px !important; /* Tighter spacing */
+    }
+    
+    /* Compact Stat Card */
+    .dashboard-card {
+        padding: 12px !important;
+        display: flex;
+        flex-direction: column; /* Stack Icon top, Text bottom */
+        align-items: center;
+        text-align: center;
+        justify-content: center;
+        min-height: 110px;
+    }
+    
+    /* Smaller Icons */
+    .icon-square {
+        width: 40px !important;
+        height: 40px !important;
+        font-size: 1.1rem !important;
+        margin-right: 0 !important;
+        margin-bottom: 8px;
+    }
+    
+    /* Smaller Text */
+    .stat-value { font-size: 1.4rem !important; margin-bottom: 0 !important; }
+    .stat-label { font-size: 0.65rem !important; letter-spacing: 0; }
+
+    /* 6. ACTION CENTER (Result Approvals / Requests) */
+    /* Keep these full width (stack vertically) as they need detail */
+    .col-lg-6 {
+        width: 100% !important;
+        margin-bottom: 15px;
+    }
+    
+    /* Compact Action Card */
+    .action-card { padding: 15px !important; }
+    .action-header { margin-bottom: 10px !important; }
+    .action-header h6 { font-size: 0.95rem; }
+    
+    /* Adjust Button & Badge */
+    .btn-action-soft {
+        padding: 8px 12px !important;
+        font-size: 0.85rem !important;
+    }
+    .badge {
+        font-size: 0.7rem !important;
+        padding: 4px 8px !important;
+    }
+
+    /* 7. FOOTER COMPACT */
+    .footer-main { padding: 2rem 1rem !important; text-align: center; }
+    .footer-main .footer-logo-group { justify-content: center; }
+}
+
 </style>
 </head>
 <body>

@@ -405,6 +405,421 @@ $pending_results_count = $conn->query("SELECT COUNT(*) FROM categories WHERE sta
                 margin-bottom: 0;
             }
         }
+
+        /* ========================================
+        ENHANCED PAGE HEADER
+        ======================================== */
+        .page-header {
+            position: relative;
+            margin-bottom: 2rem;
+        }
+
+        .page-header .section-title {
+            font-family: 'Poppins', sans-serif;
+            font-weight: 800;
+            font-size: 2.2rem;
+            color: #2c3e50;
+            margin-bottom: 0.5rem;
+            display: flex;
+            align-items: center;
+        }
+
+        .page-header .section-title i {
+            background: linear-gradient(135deg, var(--accent-color) 0%, #16a085 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .page-header .page-subtitle {
+            color: #7f8c8d;
+            font-size: 0.95rem;
+            margin: 0;
+            font-weight: 400;
+        }
+
+        /* Professional Alert Styling */
+        .alert {
+            border: none;
+            border-radius: 10px;
+            padding: 1rem 1.25rem;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.08);
+            font-size: 0.95rem;
+            border-left: 4px solid transparent;
+        }
+
+        .alert-success {
+            background: linear-gradient(135deg, #d4edda 0%, #c3e6cb 100%);
+            color: #155724;
+            border-left-color: #28a745;
+        }
+
+        .alert-warning {
+            background: linear-gradient(135deg, #fff3cd 0%, #ffe69c 100%);
+            color: #856404;
+            border-left-color: #ffc107;
+        }
+
+        .alert-danger {
+            background: linear-gradient(135deg, #f8d7da 0%, #f5c6cb 100%);
+            color: #721c24;
+            border-left-color: #dc3545;
+        }
+
+        /* Enhanced Card Header */
+        .card-header .btn-primary {
+            background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
+            border: none;
+            box-shadow: 0 2px 8px rgba(59, 130, 246, 0.3);
+            font-weight: 500;
+            padding: 0.5rem 1rem;
+            border-radius: 8px;
+            transition: all 0.2s ease;
+        }
+
+        .card-header .btn-primary:hover {
+            background: linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%);
+            box-shadow: 0 4px 12px rgba(59, 130, 246, 0.4);
+            transform: translateY(-2px);
+        }
+
+        /* Modern Badge Design */
+        .badge {
+            padding: 0.4rem 0.75rem;
+            font-weight: 600;
+            font-size: 0.75rem;
+            letter-spacing: 0.3px;
+            border-radius: 6px;
+        }
+
+        .badge.bg-success {
+            background: linear-gradient(135deg, #10b981 0%, #059669 100%) !important;
+            box-shadow: 0 2px 6px rgba(16, 185, 129, 0.3);
+        }
+
+        .badge.bg-warning {
+            background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%) !important;
+            box-shadow: 0 2px 6px rgba(245, 158, 11, 0.3);
+        }
+
+        .badge.bg-secondary {
+            background: linear-gradient(135deg, #6b7280 0%, #4b5563 100%) !important;
+            box-shadow: 0 2px 6px rgba(107, 114, 128, 0.3);
+        }
+
+        /* Empty State Styling */
+        .empty-state {
+            padding: 2rem 0;
+        }
+
+        .empty-state i {
+            opacity: 0.5;
+        }
+
+        .empty-state p {
+            font-weight: 500;
+            color: #64748b;
+        }
+
+        .empty-state small {
+            color: #94a3b8;
+            font-size: 0.875rem;
+        }
+
+        /* Enhanced Modal Design */
+        .modal-content {
+            border-radius: 12px;
+            border: none;
+            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.15);
+        }
+
+        .modal-header {
+            border-top-left-radius: 12px;
+            border-top-right-radius: 12px;
+            padding: 1.25rem 1.5rem;
+            border-bottom: 2px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .modal-header.bg-primary {
+            background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%) !important;
+        }
+
+        .modal-header.bg-danger {
+            background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%) !important;
+        }
+
+        .modal-body {
+            padding: 1.5rem;
+        }
+
+        .modal-footer {
+            padding: 1rem 1.5rem;
+            border-top: 1px solid #e5e7eb;
+        }
+
+        .modal-footer .btn-secondary {
+            background-color: #6b7280;
+            border: none;
+        }
+
+        .modal-footer .btn-secondary:hover {
+            background-color: #4b5563;
+        }
+
+        .modal-footer .btn-primary {
+            background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
+            border: none;
+        }
+
+        .modal-footer .btn-danger {
+            background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
+            border: none;
+        }
+
+        /* Modern Form Controls */
+        .form-label {
+            font-weight: 600;
+            color: #374151;
+            font-size: 0.875rem;
+            margin-bottom: 0.5rem;
+        }
+
+        .form-control, .form-select {
+            border: 2px solid #e5e7eb;
+            border-radius: 8px;
+            padding: 0.625rem 0.875rem;
+            transition: all 0.2s ease;
+            font-size: 0.9375rem;
+        }
+
+        .form-control:focus, .form-select:focus {
+            border-color: #3b82f6;
+            box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+        }
+
+        .alert-light {
+            background-color: #f8f9fa;
+            border: 1px solid #e9ecef;
+            border-radius: 8px;
+        }
+
+        /* =========================================
+   MOBILE OPTIMIZATION (Sports Director)
+   ========================================= */
+/* =========================================
+   MOBILE OPTIMIZATION (Manage Users)
+   ========================================= */
+@media (max-width: 991.98px) {
+    
+    /* 1. NAVBAR & LAYOUT (Standard Drawer) */
+    .navbar {
+        padding: 0.5rem 1rem !important;
+        height: 60px !important;
+        display: flex !important;
+        flex-wrap: nowrap !important;
+        align-items: center !important;
+    }
+    
+    .navbar-toggler {
+        order: 1 !important;
+        border: 1px solid rgba(255,255,255,0.1);
+        padding: 4px 8px;
+        font-size: 1.2rem;
+        margin-right: 10px !important;
+    }
+    .navbar-toggler:focus { box-shadow: none; }
+
+    .navbar-brand {
+        order: 2 !important;
+        margin-right: auto !important;
+        display: flex;
+        align-items: center;
+        max-width: 60%;
+    }
+    .navbar-brand img { height: 30px !important; width: 30px !important; margin-right: 8px !important; }
+    .navbar-brand strong { font-size: 0.95rem !important; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .navbar-brand small { display: none !important; }
+
+    .user-dropdown {
+        order: 3 !important;
+        margin-left: 0 !important;
+    }
+    .user-dropdown .user-name { display: none !important; }
+    .user-dropdown .dropdown-toggle i { font-size: 26px !important; margin: 0 !important; color: #fff; }
+
+    /* 2. SIDEBAR DRAWER */
+    .sidebar {
+        position: fixed !important;
+        top: 60px !important;
+        left: -260px !important;
+        width: 260px !important;
+        height: calc(100vh - 60px) !important;
+        background-color: #2c3e50 !important;
+        box-shadow: 5px 0 15px rgba(0,0,0,0.3);
+        transition: left 0.3s ease-in-out !important;
+        z-index: 1045;
+        overflow-y: auto;
+    }
+    .sidebar.show { left: 0 !important; }
+    .sidebar-nav .nav-link { white-space: nowrap; font-size: 0.95rem; }
+
+    /* 3. MAIN CONTENT */
+    .main-content {
+        padding: 15px !important;
+        margin-top: 60px !important;
+        margin-left: 0 !important;
+    }
+
+    /* 4. RESPONSIVE TABLE (Scrollable) */
+    .results-table-container {
+        width: 100%;
+        overflow-x: auto; /* Enables horizontal scrolling */
+        -webkit-overflow-scrolling: touch; /* Smooth scroll on iOS */
+        margin-bottom: 15px;
+        border-radius: 12px;
+        border: 1px solid #e9ecef;
+    }
+
+    .results-table {
+        margin-bottom: 0;
+        width: 100%;
+        min-width: 800px; /* Force table to be wide enough to look good */
+    }
+
+    /* Keep text on one line for readability */
+    .results-table th, 
+    .results-table td {
+        white-space: nowrap; 
+        vertical-align: middle;
+        padding: 12px 15px; /* Comfortable touch padding */
+        font-size: 0.9rem;
+    }
+
+    /* Sticky Action Column (Optional: Keeps buttons visible while scrolling) */
+    /* Remove this block if you want the actions to scroll away with the table */
+    .results-table td:last-child, 
+    .results-table th:last-child {
+        position: sticky;
+        right: 0;
+        background: #fff; /* Opaque background to cover scrolling content */
+        border-left: 1px solid #e9ecef;
+        box-shadow: -2px 0 5px rgba(0,0,0,0.05);
+        z-index: 5;
+    }
+    .results-table th:last-child { background: #f8f9fa; } /* Match header background */
+
+    
+    
+    /* 1. COMPACT NAVBAR & LAYOUT */
+    .navbar {
+        padding: 0.5rem 1rem !important;
+        height: 60px !important; /* Fixed compact height */
+        display: flex !important;
+        flex-wrap: nowrap !important;
+        align-items: center !important;
+    }
+    
+    /* A. LEFT: Toggler Button */
+    .navbar-toggler {
+        order: 1 !important; /* First item */
+        border: 1px solid rgba(255,255,255,0.1);
+        padding: 4px 8px;
+        font-size: 1.2rem;
+        margin-right: 10px !important;
+    }
+    .navbar-toggler:focus { box-shadow: none; }
+
+    /* B. LEFT/CENTER: Brand Logo */
+    /* margin-right: auto PUSHES the Profile Icon to the far right */
+    .navbar-brand {
+        order: 2 !important; /* Second item */
+        margin-right: auto !important; /* THE KEY SPACER */
+        display: flex;
+        align-items: center;
+        max-width: 60%;
+    }
+    .navbar-brand img {
+        height: 30px !important;
+        width: 30px !important;
+        margin-right: 8px !important;
+    }
+    .navbar-brand strong {
+        font-size: 0.95rem !important;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
+    .navbar-brand small { display: none !important; }
+
+    /* C. RIGHT: Profile Menu Icon */
+    .user-dropdown {
+        order: 3 !important; /* Third item */
+        margin-left: 0 !important; 
+        position: relative;
+    }
+    .user-dropdown .user-name { display: none !important; } /* Hide Name */
+    
+    /* Icon Styling */
+    .user-dropdown .dropdown-toggle i { 
+        font-size: 26px !important; 
+        margin: 0 !important;
+        color: #fff; /* Ensure visibility */
+        cursor: pointer;
+    }
+
+    /* Order 3: Brand Logo */
+    .navbar-brand {
+        order: 3 !important;
+        display: flex;
+        align-items: center;
+        max-width: 55%; /* Adjust width to prevent overflow */
+        margin-right: 0 !important;
+    }
+    .navbar-brand img {
+        height: 30px !important;
+        width: 30px !important;
+        margin-right: 8px !important;
+    }
+    .navbar-brand strong {
+        font-size: 0.95rem !important;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
+    .navbar-brand small { display: none !important; }
+    
+    /* Compact Profile Menu */
+    .user-dropdown .user-name { display: none !important; }
+    .user-dropdown .dropdown-toggle i { font-size: 28px !important; margin: 0 !important; }
+
+    /* 2. SIDEBAR DRAWER (Fix Gap & Animation) */
+    .sidebar {
+        position: fixed !important;
+        top: 60px !important; /* Matches Navbar Height */
+        left: -260px !important; /* Hidden */
+        width: 260px !important;
+        height: calc(100vh - 60px) !important;
+        background-color: #2c3e50 !important;
+        box-shadow: 5px 0 15px rgba(0,0,0,0.3);
+        transition: left 0.3s ease-in-out !important;
+        z-index: 1045;
+        overflow-y: auto;
+    }
+    .sidebar.show { left: 0 !important; } /* Slide In */
+    
+    /* Prevent text cutoff in menu */
+    .sidebar-nav .nav-link { 
+        white-space: nowrap; 
+        font-size: 0.95rem;
+    }
+
+    /* 3. MAIN CONTENT ADJUSTMENTS */
+    .main-content {
+        padding: 15px !important;
+        margin-top: 60px !important;
+        margin-left: 0 !important;
+    }
+}
     </style>
 </head>
 <body>
@@ -518,7 +933,13 @@ $pending_results_count = $conn->query("SELECT COUNT(*) FROM categories WHERE sta
               </ol>
             </nav>
 
-            <h1 class="section-title mb-4">Manage System Users</h1>
+            <div class="page-header">
+    <h1 class="section-title">
+        <i class="fas fa-users-cog"></i>
+        Manage Users
+    </h1>
+    <p class="page-subtitle">Create, edit, and manage system user accounts</p>
+</div>
             
             <?php if ($message): ?>
             <div class="alert alert-<?php echo $message_type; ?> alert-dismissible fade show shadow-sm" role="alert">
@@ -559,15 +980,18 @@ $pending_results_count = $conn->query("SELECT COUNT(*) FROM categories WHERE sta
                                         <div class="text-muted small"><i class="fas fa-envelope me-1"></i> <?= htmlspecialchars($user['username']) ?></div>
                                     </td> 
                                     <td>
-                                        <!-- MODIFIED: Removed background color badges, used plain styled text -->
-                                        <?php 
-                                            if ($user['role'] === 'Sports Director') {
-                                                echo '<span class="fw-bold text-dark">Sports Director</span>';
-                                            } else {
-                                                echo '<span class="fw-bold text-secondary">Event Manager</span>';
-                                            }
-                                        ?>
-                                    </td>
+    <?php 
+        if ($user['role'] === 'Sports Director') {
+            echo '<span class="fw-bold text-primary" style="font-size: 0.9rem;">
+                    <i class="fas fa-user-shield me-1"></i>Sports Director
+                  </span>';
+        } else {
+            echo '<span class="fw-bold text-secondary" style="font-size: 0.9rem;">
+                    <i class="fas fa-user-tie me-1"></i>Event Manager
+                  </span>';
+        }
+    ?>
+</td>
                                     <td>
                                         <?php if ($user['status'] == 'active'): ?>
                                             <span class="badge bg-success rounded-pill">Active</span>
@@ -606,11 +1030,14 @@ $pending_results_count = $conn->query("SELECT COUNT(*) FROM categories WHERE sta
                                 <?php endforeach; ?>
                                 <?php if (empty($users)): ?>
                                 <tr>
-                                    <td colspan="7" class="text-center text-muted p-5">
-                                        <i class="fas fa-users-slash fa-3x mb-3 text-secondary"></i>
-                                        <p class="mb-0">No users found.</p>
-                                    </td> 
-                                </tr>
+    <td colspan="7" class="text-center py-5">
+        <div class="empty-state">
+            <i class="fas fa-users-slash fa-4x mb-3" style="color: #cbd5e1;"></i>
+            <p class="text-muted mb-0 fs-5">No users found</p>
+            <small class="text-muted">Click "Add New User" to create your first user account</small>
+        </div>
+    </td>
+</tr>
                                 <?php endif; ?>
                             </tbody>
                         </table>
@@ -774,10 +1201,13 @@ $pending_results_count = $conn->query("SELECT COUNT(*) FROM categories WHERE sta
                     <div class="modal-body">
                         <p>Are you sure you want to permanently delete this user?</p>
                         <h5 class="text-center fw-bold my-3 text-danger" id="delete_user_name"></h5>
-                        <div class="alert alert-warning d-flex align-items-center">
-                            <i class="fas fa-exclamation-triangle me-2"></i> 
-                            <div>This action cannot be undone.</div>
-                        </div>
+                        <div class="alert alert-warning d-flex align-items-start mb-0" style="border-left: 4px solid #f59e0b;">
+    <i class="fas fa-exclamation-triangle me-3 mt-1" style="font-size: 1.25rem;"></i>
+    <div>
+        <strong>Warning!</strong><br>
+        <small>This action cannot be undone. All data associated with this user will be permanently deleted.</small>
+    </div>
+</div>
                     </div>
                     <div class="modal-footer">
                         <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>

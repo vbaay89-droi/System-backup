@@ -113,6 +113,32 @@ $pending_results_count = $conn->query("SELECT COUNT(*) FROM categories WHERE sta
             --primary-gradient: linear-gradient(135deg, #2c3e50 0%, #4ca1af 100%);
             --accent-color: #1abc9c;
         }
+
+        /* ========================================
+        ENHANCED PAGE HEADER
+        ======================================== */
+        .page-header {
+            position: relative;
+            margin-bottom: 2rem;
+        }
+
+        .page-header .section-title {
+            font-family: 'Poppins', sans-serif;
+            font-weight: 800;
+            font-size: 2.2rem;
+            color: #2c3e50;
+            margin-bottom: 0.5rem;
+            display: flex;
+            align-items: center;
+        }
+
+        .page-header .section-title i {
+            background: linear-gradient(135deg, var(--accent-color) 0%, #16a085 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+        
         body { background-color: var(--bg-light); margin: 0; padding: 0; min-height: 100vh; font-family: 'Inter', sans-serif; display: flex; flex-direction: column; }
         
         /* Navbar */
@@ -430,7 +456,11 @@ $pending_results_count = $conn->query("SELECT COUNT(*) FROM categories WHERE sta
             </nav>
 
             <div class="d-flex justify-content-between align-items-center mb-4">
-                <h1 class="section-title mb-0">Official Medal Standings</h1>
+                    <div class="page-header mb-4">
+                        <h1 class="section-title">
+                            </i>Manage System Users
+                        </h1>
+                    </div>
                 <button class="btn btn-secondary" onclick="window.print()">
                     <i class="fas fa-print me-2"></i> Print Report
                 </button>
@@ -627,39 +657,39 @@ $pending_results_count = $conn->query("SELECT COUNT(*) FROM categories WHERE sta
             }
 
                  // ==========================================
-        // 2. REAL-TIME BADGE UPDATER
-        // ==========================================
-        function updateSidebarBadges() {
-            fetch('../api_notifications.php?t=' + new Date().getTime())
-                .then(response => response.json())
-                .then(data => {
-                    if (data.success) {
-                        // Update "Approve Results" (Yellow)
-                        updateSingleBadge('results.php', data.pending_results, 'bg-warning text-dark');
+                // 2. REAL-TIME BADGE UPDATER
+                // ==========================================
+                function updateSidebarBadges() {
+                    fetch('../api_notifications.php?t=' + new Date().getTime())
+                        .then(response => response.json())
+                        .then(data => {
+                            if (data.success) {
+                                // Update "Approve Results" (Yellow)
+                                updateSingleBadge('results.php', data.pending_results, 'bg-warning text-dark');
 
-                        // Update "Account Requests" (Red)
-                        updateSingleBadge('Manage_Requests.php', data.pending_requests, 'bg-danger');
-                    }
-                })
-                .catch(err => console.error('Badge update error:', err));
-        }
-
-        function updateSingleBadge(hrefKeyword, count, colorClasses) {
-            const link = document.querySelector(`.sidebar-nav .nav-link[href*="${hrefKeyword}"]`);
-            if (link) {
-                let badge = link.querySelector('.badge');
-                if (count > 0) {
-                    if (!badge) {
-                        badge = document.createElement('span');
-                        link.appendChild(badge);
-                    }
-                    badge.className = `badge ${colorClasses} ms-auto rounded-pill`;
-                    badge.textContent = count;
-                } else {
-                    if (badge) badge.remove();
+                                // Update "Account Requests" (Red)
+                                updateSingleBadge('Manage_Requests.php', data.pending_requests, 'bg-danger');
+                            }
+                        })
+                        .catch(err => console.error('Badge update error:', err));
                 }
-            }
-        }
+
+                function updateSingleBadge(hrefKeyword, count, colorClasses) {
+                    const link = document.querySelector(`.sidebar-nav .nav-link[href*="${hrefKeyword}"]`);
+                    if (link) {
+                        let badge = link.querySelector('.badge');
+                        if (count > 0) {
+                            if (!badge) {
+                                badge = document.createElement('span');
+                                link.appendChild(badge);
+                            }
+                            badge.className = `badge ${colorClasses} ms-auto rounded-pill`;
+                            badge.textContent = count;
+                        } else {
+                            if (badge) badge.remove();
+                        }
+                    }
+                }
 
         // Run Badges
         updateSidebarBadges();
