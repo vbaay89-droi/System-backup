@@ -634,7 +634,138 @@ function getStatusBadge($status) {
             .footer-main .row > div:last-child {
                 margin-bottom: 0;
             }
-        }
+        /* =========================================
+   MOBILE REPORTS OPTIMIZATION
+   ========================================= */
+@media (max-width: 991.98px) {
+
+    /* 1. Header & Controls Stacking */
+    .d-flex.justify-content-between.align-items-center.mb-4 {
+        flex-direction: column;
+        align-items: stretch !important;
+        gap: 15px;
+    }
+    
+    /* Make the Sort Dropdown and Print Button full width for easy tapping */
+    .card-header .d-flex,
+    .page-header + button {
+        width: 100%;
+    }
+    
+    .form-select, .btn {
+        width: 100%;
+        padding: 10px;
+    }
+
+    /* 2. Swipeable Navigation Tabs */
+    .nav-tabs {
+        flex-wrap: nowrap;
+        overflow-x: auto;
+        overflow-y: hidden;
+        white-space: nowrap;
+        -webkit-overflow-scrolling: touch;
+        padding-bottom: 5px;
+        border-bottom: 1px solid #dee2e6;
+    }
+    .nav-tabs .nav-link {
+        font-size: 0.9rem;
+        padding: 10px 15px;
+    }
+
+    /* 3. RESPONSIVE TABLES (Horizontal Scroll + Sticky First Column) */
+    
+    /* Allow scrolling */
+    .report-table-container {
+        overflow-x: auto !important;
+        -webkit-overflow-scrolling: touch;
+        border: 1px solid #f0f0f0;
+    }
+
+    /* Force table width so it doesn't squish */
+    .report-table {
+        min-width: 700px; 
+    }
+
+    /* Standardize Cell Padding */
+    .report-table th, 
+    .report-table td {
+        padding: 12px 10px !important;
+        white-space: nowrap; /* Keep rows single line */
+    }
+
+    /* --- MEDAL TABLE SPECIFICS --- */
+    
+    /* Hide Rank Column on very small screens to save space */
+    .report-table th:first-child, 
+    .report-table td:first-child {
+        display: none; 
+    }
+
+    /* Make Team Name (Column 2) Sticky */
+    .report-table td:nth-child(2),
+    .report-table th:nth-child(2) {
+        position: sticky;
+        left: 0;
+        background-color: #fff;
+        z-index: 5;
+        border-right: 2px solid #f0f0f0;
+        min-width: 160px;
+        max-width: 180px;
+        white-space: normal; /* Allow team name to wrap */
+        line-height: 1.2;
+    }
+    
+    /* Fix header background for sticky column */
+    .report-table thead th:nth-child(2) { 
+        background: #f8f9fa; 
+        z-index: 10; 
+    }
+    /* Fix row hover background */
+    .report-table tbody tr:hover td:nth-child(2) { 
+        background: #f8f9fa; 
+    }
+
+    /* Center Medal Numbers */
+    .winner-text {
+        font-size: 1rem;
+        font-weight: 700;
+    }
+
+    /* --- EVENT RESULTS TABLE SPECIFICS --- */
+    
+    /* Sticky Event Name Column */
+    #eventResultsTable td:first-child,
+    #eventResultsTable th:first-child {
+        position: sticky;
+        left: 0;
+        background: #fff;
+        z-index: 5;
+        border-right: 2px solid #f0f0f0;
+        max-width: 150px;
+        white-space: normal; /* Allow text wrapping */
+        line-height: 1.2;
+    }
+    
+    #eventResultsTable thead th:first-child { background: #f8f9fa; z-index: 10; }
+    #eventResultsTable tbody tr:hover td:first-child { background: #f8f9fa; }
+
+    /* Hide Date Column on Mobile (Less Critical) */
+    #eventResultsTable th:nth-child(2),
+    #eventResultsTable td:nth-child(2) {
+        display: none;
+    }
+
+    /* 4. VISUAL REPORTS (Charts) */
+    .chart-wrapper {
+        height: 300px !important; /* Smaller height for mobile */
+        padding: 10px;
+    }
+    
+    /* Stack Chart Cards */
+    .row.g-4 > .col-12 {
+        margin-bottom: 15px;
+    }
+}
     </style>
 </head>
 <body>
@@ -790,7 +921,7 @@ function getStatusBadge($status) {
                                     <option value="total" <?= ($sort_key == 'total') ? 'selected' : '' ?>>Sort by Total Medals</option>
                                     <option value="silver" <?= ($sort_key == 'silver') ? 'selected' : '' ?>>Sort by Silver</option>
                                     <option value="bronze" <?= ($sort_key == 'bronze') ? 'selected' : '' ?>>Sort by Bronze</option>
-                                </select>>
+                                </select>
                             </div>
                         </div>
                         <div class="card-body p-0">

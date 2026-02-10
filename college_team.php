@@ -735,7 +735,7 @@ function truncate_text($text, $length = 100, $suffix = '...') {
             <a class="navbar-brand d-flex align-items-center interactive-brand" href="home.php" style="cursor: pointer;">
                 <img src="imageslogo.png" alt="Logo" class="me-2 brand-logo" style="height: 50px; width: 48px; object-fit: contain;">
                 <div class="d-flex flex-column lh-sm">
-                    <strong class="text-white brand-heading" style="font-size: 1.25rem;">PIT SPORTS TALLYING</strong>
+                    <strong class="text-white brand-heading" style="font-size: 1.25rem;">PIT SIGLAKAS MEDAL TALLY</strong>
                     <small class="text-light brand-subheading" style="font-size: 0.75rem;">Official College Tournament System</small>
                 </div>
             </a>

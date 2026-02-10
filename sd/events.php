@@ -701,6 +701,179 @@ $pending_results_count = $conn->query("SELECT COUNT(*) FROM categories WHERE sta
         font-size: 0.9rem;
     }
 
+    /* ==========================================
+   COMPACT CARD LAYOUTS (Professional Grid)
+   ========================================== */
+
+/* Games (L1) - Compact Grid Cards */
+.game-card-compact {
+    background: white;
+    border: 1px solid #e9ecef;
+    border-radius: 12px;
+    padding: 20px;
+    transition: all 0.3s ease;
+    height: 100%;
+    position: relative;
+    overflow: hidden;
+}
+
+.game-card-compact::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 4px;
+    height: 100%;
+    background: #e9ecef;
+    transition: 0.3s;
+}
+
+.game-card-compact:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 8px 20px rgba(0,0,0,0.08);
+    border-color: var(--accent-color);
+}
+
+.game-card-compact:hover::before {
+    background: var(--accent-color);
+}
+
+.game-icon-compact {
+    width: 45px;
+    height: 45px;
+    border-radius: 10px;
+    background: rgba(26, 188, 156, 0.1);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+}
+
+.game-icon-compact img {
+    width: 24px;
+    height: 24px;
+    object-fit: contain;
+}
+
+/* Events (L2) - Medium Cards */
+.event-card-compact {
+    background: white;
+    border: 1px solid #e9ecef;
+    border-radius: 12px;
+    padding: 18px;
+    transition: all 0.3s ease;
+    height: 100%;
+}
+
+.event-card-compact:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 16px rgba(0,0,0,0.06);
+    border-color: #3498db;
+}
+
+/* Categories (L3) - List-Style Cards */
+.category-card-compact {
+    background: white;
+    border: 1px solid #e9ecef;
+    border-radius: 10px;
+    padding: 16px 20px;
+    transition: all 0.2s ease;
+}
+
+.category-card-compact:hover {
+    border-color: #dee2e6;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.04);
+}
+
+/* Compact Manager Badges */
+.manager-badge-sm {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 4px 10px;
+    background: #f8f9fa;
+    border-radius: 20px;
+    border: 1px solid #e9ecef;
+    font-size: 0.85rem;
+}
+
+.manager-avatar-sm {
+    width: 24px;
+    height: 24px;
+    background: #2c3e50;
+    color: white;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.7rem;
+    font-weight: bold;
+}
+
+.manager-badge-sm.manager-unassigned {
+    background: #fff3cd;
+    color: #856404;
+    border-color: #ffeeba;
+}
+
+/* Compact Action Buttons */
+.btn-group-compact {
+    display: flex;
+    gap: 6px;
+}
+
+.btn-icon-sm {
+    width: 28px;
+    height: 28px;
+    border-radius: 6px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    border: none;
+    background: #f1f3f5;
+    color: #495057;
+    font-size: 0.8rem;
+    transition: 0.2s;
+    cursor: pointer;
+}
+
+.btn-icon-sm:hover {
+    background: #e9ecef;
+    transform: scale(1.1);
+}
+
+.btn-icon-sm.edit:hover {
+    background: rgba(13, 202, 240, 0.15);
+    color: #0dcaf0;
+}
+
+.btn-icon-sm.delete:hover {
+    background: rgba(220, 53, 69, 0.15);
+    color: #dc3545;
+}
+
+.btn-icon-sm.assign:hover {
+    background: rgba(25, 135, 84, 0.15);
+    color: #198754;
+}
+
+/* Mobile Optimization for New Cards */
+@media (max-width: 767.98px) {
+    .game-card-compact,
+    .event-card-compact {
+        padding: 15px;
+    }
+    
+    .category-card-compact {
+        padding: 12px 15px;
+    }
+    
+    .btn-group-compact {
+        flex-wrap: wrap;
+        justify-content: flex-end;
+    }
+}
+
     .modal-body p.text-danger i {
         color: #e74c3c;
         margin-right: 8px;
@@ -1147,48 +1320,44 @@ $pending_results_count = $conn->query("SELECT COUNT(*) FROM categories WHERE sta
                     </button>
                 </div>
 
-                <div class="table-responsive">
-                    <table class="modern-table align-middle">
-                        <thead>
-                            <tr>
-                                <th class="sortable" data-sort-dir="asc" style="width: 70%;">Game Category Name <i class="fas fa-sort"></i></th>
-                                <th class="text-end">Actions</th>
-                            </tr>
-                        </thead>
-                        <tbody id="gamesTableBody">
-                            <?php if (empty($games)): ?>
-                                <tr><td colspan="2" class="text-center text-muted py-4">No game categories found.</td></tr>
-                            <?php else: ?>
-                                <?php foreach ($games as $game): ?>
-                                <tr>
-                                    <td>
-                                        <div class="d-flex align-items-center">
-                                            <div class="bg-light rounded p-2 me-3 d-flex align-items-center justify-content-center" style="width: 40px; height: 40px;">
-                                                <img src="../images/trophy1.svg" alt="Game Icon" style="width: 24px; height: 24px; object-fit: contain;">
-                                            </div>
-                                            <div>
-                                                <span class="fw-bold text-dark d-block"><?= htmlspecialchars($game['game_name']) ?></span>
-                                                <small class="text-muted text-uppercase" style="font-size: 0.7rem;">High-level Category</small>
-                                            </div>
-                                        </div>
-                                    </td>
-                                    
-                                    <td class="text-end">
-                                        <button class="btn-icon edit" data-bs-toggle="modal" data-bs-target="#editGameModal"
-                                            data-game-id="<?= $game['game_id'] ?>" data-game-name="<?= htmlspecialchars($game['game_name']) ?>" title="Edit">
-                                            <i class="fas fa-pen"></i>
-                                        </button>
-                                        <button class="btn-icon delete" data-bs-toggle="modal" data-bs-target="#deleteGameModal"
-                                            data-game-id="<?= $game['game_id'] ?>" data-game-name="<?= htmlspecialchars($game['game_name']) ?>" title="Delete">
-                                            <i class="fas fa-trash"></i>
-                                        </button>
-                                    </td>
-                                </tr>
-                                <?php endforeach; ?>
-                            <?php endif; ?>
-                        </tbody>
-                    </table>
+                <div class="row g-3" id="gamesGrid">
+    <?php if (empty($games)): ?>
+        <div class="col-12">
+            <div class="text-center text-muted py-5">
+                <i class="fas fa-layer-group fa-3x mb-3 opacity-25"></i>
+                <p class="mb-0">No game categories found.</p>
+            </div>
+        </div>
+    <?php else: ?>
+        <?php foreach ($games as $game): ?>
+        <div class="col-lg-4 col-md-6 col-12">
+            <div class="game-card-compact">
+                <div class="d-flex align-items-start justify-content-between mb-3">
+                    <div class="d-flex align-items-center flex-grow-1">
+                        <div class="game-icon-compact me-3">
+                            <img src="../images/trophy1.svg" alt="Game Icon">
+                        </div>
+                        <div>
+                            <h6 class="mb-0 fw-bold text-dark"><?= htmlspecialchars($game['game_name']) ?></h6>
+                            <small class="text-muted">Level 1 Category</small>
+                        </div>
+                    </div>
+                    <div class="btn-group-compact">
+                        <button class="btn-icon-sm edit" data-bs-toggle="modal" data-bs-target="#editGameModal"
+                            data-game-id="<?= $game['game_id'] ?>" data-game-name="<?= htmlspecialchars($game['game_name']) ?>" title="Edit">
+                            <i class="fas fa-pen"></i>
+                        </button>
+                        <button class="btn-icon-sm delete" data-bs-toggle="modal" data-bs-target="#deleteGameModal"
+                            data-game-id="<?= $game['game_id'] ?>" data-game-name="<?= htmlspecialchars($game['game_name']) ?>" title="Delete">
+                            <i class="fas fa-trash"></i>
+                        </button>
+                    </div>
                 </div>
+            </div>
+        </div>
+        <?php endforeach; ?>
+    <?php endif; ?>
+</div>
             </div>
 
             <div class="tab-pane fade" id="events" role="tabpanel">
@@ -1202,74 +1371,98 @@ $pending_results_count = $conn->query("SELECT COUNT(*) FROM categories WHERE sta
                     </button>
                 </div>
 
-                <div class="table-responsive">
-                    <table class="modern-table align-middle">
-                        <thead>
-                            <tr>
-                                <th class="sortable" data-sort-dir="asc">Event Name <i class="fas fa-sort"></i></th>
-                                <th class="sortable" data-sort-dir="asc">Game Category <i class="fas fa-sort"></i></th>
-                                <th class="sortable" data-sort-dir="asc">Manager <i class="fas fa-sort"></i></th>
-                                <th class="text-end">Actions</th>
-                            </tr>
-                        </thead>
-                        <tbody id="eventsTableBody">
-                            <?php if (empty($events_with_managers)): ?>
-                                <tr>
-                                    <td colspan="4" class="p-4 text-center">
-                                        <div>
-                                            <p class="mb-0 small text-muted">No events yet. These are the actual events (e.g., "Basketball") that belong to a Game Category.</p>
-                                        </div>
-                                    </td>
-                                </tr>
-                            <?php else: ?>
-                                <?php foreach ($events_with_managers as $event): ?>
-                            <tr>
-                                <td>
-                                    <div class="d-flex align-items-center">
-                                        <span class="fw-bold text-dark"><?= htmlspecialchars($event['event_name']) ?></span>
-                                    </div>
-                                </td>
-                                
-                                <td>
-                                    <span class="text-secondary fw-medium">
+                <div class="card shadow-sm border-0 rounded-3">
+    <div class="card-body p-0">
+        <div class="table-responsive">
+            <table class="table table-hover align-middle mb-0">
+                <thead class="bg-light text-secondary">
+                    <tr>
+                        <th class="ps-4 py-3" style="width: 40%;">Event Name</th>
+                        <th class="py-3" style="width: 35%;">Assigned Manager</th>
+                        <th class="text-end pe-4 py-3" style="width: 25%;">Actions</th>
+                    </tr>
+                </thead>
+                <tbody id="eventsGrid">
+                    <?php if (empty($events_with_managers)): ?>
+                        <tr class="event-row">
+                        <tr>
+                            <td colspan="3" class="text-center py-5 text-muted">
+                                <i class="fas fa-calendar-day fa-3x mb-3 opacity-25"></i>
+                                <p class="mb-0">No events found.</p>
+                            </td>
+                        </tr>
+                    <?php else: ?>
+                        <?php foreach ($events_with_managers as $event): ?>
+                        <tr>
+                            <tr class="event-row"> <td class="ps-4 py-3">
+                                <div class="d-flex flex-column">
+                                    <span class="fw-bold text-dark fs-6"><?= htmlspecialchars($event['event_name']) ?></span>
+                                    <small class="text-muted mt-1">
+                                        <i class="fas fa-tag me-1 text-primary opacity-50"></i>
                                         <?= htmlspecialchars($event['game_name']) ?>
+                                    </small>
+                                </div>
+                            </td>
+
+                            <td class="py-3">
+                                <?php if($event['manager_name']): ?>
+                                    <div class="d-flex align-items-center">
+                                        <div class="manager-avatar-table text-white d-flex align-items-center justify-content-center me-2 shadow-sm" 
+                                             style="width: 32px; height: 32px; background-color: #2c3e50; border-radius: 50%; font-size: 12px; font-weight: bold;">
+                                            <?= strtoupper(substr($event['manager_name'], 0, 1)) ?>
+                                        </div>
+                                        <div>
+                                            <span class="d-block text-dark fw-medium small"><?= htmlspecialchars($event['manager_name']) ?></span>
+                                            <span class="d-block text-muted" style="font-size: 11px;">Event Manager</span>
+                                        </div>
+                                    </div>
+                                <?php else: ?>
+                                    <span class="badge bg-warning text-dark bg-opacity-25 border border-warning border-opacity-25 px-3 py-2 rounded-pill fw-normal">
+                                        <i class="fas fa-user-slash me-1"></i> Unassigned
                                     </span>
-                                </td>
-                                
-                                <td>
-                                    <?php if($event['manager_name']): ?>
-                                        <div class="manager-badge">
-                                            <div class="manager-avatar"><?= substr($event['manager_name'], 0, 1) ?></div>
-                                            <span class="small fw-bold text-dark"><?= htmlspecialchars($event['manager_name']) ?></span>
-                                        </div>
-                                    <?php else: ?>
-                                        <div class="manager-badge manager-unassigned">
-                                            <i class="fas fa-exclamation-circle me-2"></i> Unassigned
-                                        </div>
-                                    <?php endif; ?>
-                                </td>
-                                <td class="text-end">
-                                    <button class="btn-icon assign" data-bs-toggle="modal" data-bs-target="#assignManagerModal"
-                                        data-event-id="<?= $event['event_id'] ?>" data-event-name="<?= htmlspecialchars($event['event_name']) ?>"
-                                        data-user-id="<?= $event['user_id'] ?? '' ?>" title="Assign Manager">
+                                <?php endif; ?>
+                            </td>
+
+                            <td class="text-end pe-4 py-3">
+                                <div class="btn-group">
+                                    <button class="btn btn-sm btn-light text-primary border me-1" 
+                                            data-bs-toggle="modal" 
+                                            data-bs-target="#assignManagerModal"
+                                            data-event-id="<?= $event['event_id'] ?>" 
+                                            data-event-name="<?= htmlspecialchars($event['event_name']) ?>"
+                                            data-user-id="<?= $event['user_id'] ?? '' ?>" 
+                                            title="Assign Manager">
                                         <i class="fas fa-user-plus"></i>
                                     </button>
-                                    <button class="btn-icon edit" data-bs-toggle="modal" data-bs-target="#editEventModal"
-                                        data-event-id="<?= $event['event_id'] ?>" data-event-name="<?= htmlspecialchars($event['event_name']) ?>"
-                                        data-game-id="<?= $event['game_id'] ?>" title="Edit">
+
+                                    <button class="btn btn-sm btn-light text-secondary border me-1" 
+                                            data-bs-toggle="modal" 
+                                            data-bs-target="#editEventModal"
+                                            data-event-id="<?= $event['event_id'] ?>" 
+                                            data-event-name="<?= htmlspecialchars($event['event_name']) ?>"
+                                            data-game-id="<?= $event['game_id'] ?>" 
+                                            title="Edit">
                                         <i class="fas fa-pen"></i>
                                     </button>
-                                    <button class="btn-icon delete" data-bs-toggle="modal" data-bs-target="#deleteEventModal"
-                                        data-event-id="<?= $event['event_id'] ?>" data-event-name="<?= htmlspecialchars($event['event_name']) ?>" title="Delete">
+
+                                    <button class="btn btn-sm btn-light text-danger border" 
+                                            data-bs-toggle="modal" 
+                                            data-bs-target="#deleteEventModal"
+                                            data-event-id="<?= $event['event_id'] ?>" 
+                                            data-event-name="<?= htmlspecialchars($event['event_name']) ?>" 
+                                            title="Delete">
                                         <i class="fas fa-trash"></i>
                                     </button>
-                                </td>
-                            </tr>
-                            <?php endforeach; ?>
-                            <?php endif; ?>
-                        </tbody>
-                    </table>
-                </div>
+                                </div>
+                            </td>
+                        </tr>
+                        <?php endforeach; ?>
+                    <?php endif; ?>
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
             </div>
 
             <div class="tab-pane fade" id="categories" role="tabpanel">
@@ -1283,71 +1476,68 @@ $pending_results_count = $conn->query("SELECT COUNT(*) FROM categories WHERE sta
                     </button>
                 </div>
                 
-                <div class="table-responsive">
-                    <table class="modern-table align-middle">
-                        <thead>
-                            <tr>
-                                <th class="sortable" data-sort-dir="asc">Division / Category (L3) <i class="fas fa-sort"></i></th>
-                                <th class="sortable" data-sort-dir="asc">Event Context <i class="fas fa-sort"></i></th>
-                                <th class="sortable" data-sort-dir="asc">Manager <i class="fas fa-sort"></i></th>
-                                <th class="text-end">Actions</th>
-                            </tr>
-                        </thead>
-                        <tbody id="categoriesTableBody">
-                            <?php if (empty($categories)): ?>
-                                <tr>
-                                    <td colspan="4" class="p-4 text-center">
-                                        <div>
-                                            <p class="mb-0 small text-muted">No categories yet. These are specific divisions where medals are awarded (e.g., "Men's Division").</p>
-                                        </div>
-                                    </td>
-                                </tr>
-                            <?php else: ?>
-                                <?php foreach ($categories as $category): ?>
-                                <tr>
-                                    <td>
-                                        <?php 
-                                            $catName = $category['category_name'];
-                                            $isDefault = ($catName === 'Single Division' || $catName === 'Open Division');
-                                            $style = $isDefault ? 'text-muted fst-italic' : 'fw-bold text-dark';
-                                        ?>
-                                        <span class="<?= $style ?>"><?= htmlspecialchars($catName) ?></span>
-                                    </td>
-                                    <td>
-                                        <small class="text-muted d-block text-uppercase" style="font-size: 0.65rem;">
-                                            <?= htmlspecialchars($category['game_name']) ?>
-                                        </small>
-                                        <span class="fw-bold text-secondary"><?= htmlspecialchars($category['event_name']) ?></span>
-                                    </td>
-                                    <td>
-                                        <?php if($category['manager_name']): ?>
-                                            <div class="manager-badge">
-                                                <div class="manager-avatar"><?= substr($category['manager_name'], 0, 1) ?></div>
-                                                <span class="small fw-bold text-dark"><?= htmlspecialchars($category['manager_name']) ?></span>
-                                            </div>
-                                        <?php else: ?>
-                                            <div class="manager-badge manager-unassigned">
-                                                <i class="fas fa-exclamation-circle me-2"></i> Unassigned
-                                            </div>
-                                        <?php endif; ?>
-                                    </td>
-                                    <td class="text-end">
-                                        <button class="btn-icon edit" data-bs-toggle="modal" data-bs-target="#editCategoryModal"
-                                            data-category-id="<?= $category['category_id'] ?>" data-category-name="<?= htmlspecialchars($category['category_name']) ?>"
-                                            data-event-id="<?= $category['event_id'] ?>">
-                                            <i class="fas fa-pen"></i>
-                                        </button>
-                                        <button class="btn-icon delete" data-bs-toggle="modal" data-bs-target="#deleteCategoryModal"
-                                            data-category-id="<?= $category['category_id'] ?>" data-category-name="<?= htmlspecialchars($category['category_name']) ?>">
-                                            <i class="fas fa-trash"></i>
-                                        </button>
-                                    </td>
-                                </tr>
-                                <?php endforeach; ?>
-                            <?php endif; ?>
-                        </tbody>
-                    </table>
+                <div class="row g-3" id="categoriesGrid">
+    <?php if (empty($categories)): ?>
+        <div class="col-12">
+            <div class="text-center text-muted py-5">
+                <i class="fas fa-tags fa-3x mb-3 opacity-25"></i>
+                <p class="mb-0">No categories yet. These are specific divisions where medals are awarded (e.g., "Men's Division").</p>
+            </div>
+        </div>
+    <?php else: ?>
+        <?php foreach ($categories as $category): ?>
+        <div class="col-12 category-item">
+            <div class="category-card-compact">
+                <div class="row align-items-center">
+                    <div class="col-lg-4 col-md-6 mb-2 mb-lg-0">
+                        <?php 
+                            $catName = $category['category_name'];
+                            $isDefault = ($catName === 'Single Division' || $catName === 'Open Division');
+                            $style = $isDefault ? 'text-muted fst-italic' : 'fw-bold text-dark';
+                        ?>
+                        <h6 class="mb-0 <?= $style ?>"><?= htmlspecialchars($catName) ?></h6>
+                        <small class="text-muted">Level 3 Division</small>
+                    </div>
+                    
+                    <div class="col-lg-4 col-md-6 mb-2 mb-lg-0">
+                        <small class="text-muted d-block text-uppercase" style="font-size: 0.7rem; letter-spacing: 0.5px;">
+                            <?= htmlspecialchars($category['game_name']) ?>
+                        </small>
+                        <span class="fw-semibold text-secondary"><?= htmlspecialchars($category['event_name']) ?></span>
+                    </div>
+                    
+                    <div class="col-lg-3 col-6 mb-2 mb-lg-0">
+                        <?php if($category['manager_name']): ?>
+                            <div class="manager-badge-sm">
+                                <div class="manager-avatar-sm"><?= substr($category['manager_name'], 0, 1) ?></div>
+                                <span class="small"><?= htmlspecialchars($category['manager_name']) ?></span>
+                            </div>
+                        <?php else: ?>
+                            <div class="manager-badge-sm manager-unassigned">
+                                <i class="fas fa-user-slash me-1"></i> Unassigned
+                            </div>
+                        <?php endif; ?>
+                    </div>
+                    
+                    <div class="col-lg-1 col-6 text-end">
+                        <div class="btn-group-compact">
+                            <button class="btn-icon-sm edit" data-bs-toggle="modal" data-bs-target="#editCategoryModal"
+                                data-category-id="<?= $category['category_id'] ?>" data-category-name="<?= htmlspecialchars($category['category_name']) ?>"
+                                data-event-id="<?= $category['event_id'] ?>">
+                                <i class="fas fa-pen"></i>
+                            </button>
+                            <button class="btn-icon-sm delete" data-bs-toggle="modal" data-bs-target="#deleteCategoryModal"
+                                data-category-id="<?= $category['category_id'] ?>" data-category-name="<?= htmlspecialchars($category['category_name']) ?>">
+                                <i class="fas fa-trash"></i>
+                            </button>
+                        </div>
+                    </div>
                 </div>
+            </div>
+        </div>
+        <?php endforeach; ?>
+    <?php endif; ?>
+</div>
             </div>
         </div>
     </div>
@@ -1691,24 +1881,56 @@ $pending_results_count = $conn->query("SELECT COUNT(*) FROM categories WHERE sta
         
         // --- JS FEATURES ---
         
-        // Feature 1: Search Functionality
-        function setupTableSearch(inputId, tableBodyId) {
-            const searchInput = document.getElementById(inputId);
-            const tableBody = document.getElementById(tableBodyId);
-            if (!searchInput || !tableBody) return;
-            
-            searchInput.addEventListener('keyup', function() {
-                const searchTerm = this.value.toLowerCase();
-                const rows = tableBody.getElementsByTagName('tr');
-                
-                Array.from(rows).forEach(row => {
-                    const rowText = row.textContent.toLowerCase();
-                    row.style.display = rowText.includes(searchTerm) ? '' : 'none';
-                });
-            });
+        // Updated Search for Grid Cards
+function setupGridSearch(inputId, gridId, itemClass) {
+    const searchInput = document.getElementById(inputId);
+    const grid = document.getElementById(gridId);
+    
+    if (!searchInput || !grid) return;
+
+    // Create a "No Results" row dynamically for tables
+    let noResultsRow = document.createElement('tr');
+    noResultsRow.innerHTML = '<td colspan="100%" class="text-center py-4 text-muted">No matches found</td>';
+    noResultsRow.style.display = 'none';
+    noResultsRow.id = gridId + '-no-results';
+    
+    // Only append if it's a table body
+    if (grid.tagName === 'TBODY') {
+        grid.appendChild(noResultsRow);
+    }
+
+    searchInput.addEventListener('keyup', function() {
+        const searchTerm = this.value.toLowerCase();
+        // Default to 'tr' if it's a table, otherwise use the class provided
+        const selector = itemClass || (grid.tagName === 'TBODY' ? 'tr:not([id*="-no-results"])' : '[class*="-item"]');
+        const items = grid.querySelectorAll(selector);
+        
+        let hasVisibleItems = false;
+
+        items.forEach(item => {
+            const itemText = item.textContent.toLowerCase();
+            if (itemText.includes(searchTerm)) {
+                item.style.display = ''; // Show
+                hasVisibleItems = true;
+            } else {
+                item.style.display = 'none'; // Hide
+            }
+        });
+
+        // Toggle "No Results" message
+        if (grid.tagName === 'TBODY') {
+            noResultsRow.style.display = hasVisibleItems ? 'none' : 'table-row';
         }
-        setupTableSearch('searchEvents', 'eventsTableBody');
-        setupTableSearch('searchCategories', 'categoriesTableBody');
+    });
+}
+
+// === UPDATE YOUR CALLS HERE ===
+
+// 1. For the new Table (Target the specific class we added)
+setupGridSearch('searchEvents', 'eventsGrid', '.event-row');
+
+// 2. Keep these the same (Assuming they are still Grid/Cards)
+setupGridSearch('searchCategories', 'categoriesGrid', '.category-item');
 
         // JS for Assign Manager Modal
         const assignModal = document.getElementById('assignManagerModal');

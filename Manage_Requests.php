@@ -453,179 +453,124 @@ $pending_results_count = $conn->query("SELECT COUNT(*) FROM categories WHERE sta
             z-index: 1041;
         }
 
-        /* =========================================
-   MOBILE OPTIMIZATION (Sports Director)
-   ========================================= */
-/* =========================================
-   MOBILE REQUESTS COMPACT LAYOUT
-   ========================================= */
+       /* ==========================================================================
+   PART 1: MOBILE OPTIMIZATIONS (Only applies to screens < 992px)
+   ========================================================================== */
 @media (max-width: 991.98px) {
 
-    /* 1. Tighten Table Container */
+    /* --- A. TABLE & REQUESTS LAYOUT --- */
     .table-responsive {
         border: 1px solid #dee2e6;
         border-radius: 8px;
         margin-bottom: 15px;
-        /* Enable smooth scrolling */
         overflow-x: auto !important; 
         -webkit-overflow-scrolling: touch;
     }
 
-    /* 2. Global Text Shrinking */
-    .table th, 
-    .table td {
-        font-size: 0.75rem !important; /* Smaller text */
-        padding: 8px 6px !important;    /* Tighter spacing */
+    /* Shrink Text & Spacing */
+    .table th, .table td {
+        font-size: 0.75rem !important;
+        padding: 8px 6px !important;
         vertical-align: middle;
     }
 
-    /* 3. COLUMN 1: Full Name (Sticky & Wrappable) */
-    .table td:nth-child(1),
-    .table th:nth-child(1) {
+    /* Sticky First Column (Full Name) */
+    .table td:nth-child(1), .table th:nth-child(1) {
         position: sticky;
         left: 0;
         background-color: #fff;
         z-index: 5;
-        border-right: 2px solid #f0f0f0; /* Visual separator */
-        font-weight: 700;
+        border-right: 2px solid #f0f0f0;
         min-width: 100px;
-        max-width: 120px; /* Limit width */
-        white-space: normal; /* Allow name to wrap to 2 lines */
+        max-width: 120px;
+        white-space: normal;
         line-height: 1.2;
     }
-    /* Fix sticky background colors */
     .table thead th:nth-child(1) { background-color: #f8f9fa; z-index: 10; }
     .table tbody tr:hover td:nth-child(1) { background-color: #f8f9fa; }
 
-    /* 4. COLUMN 2: Email (Truncate with Ellipsis) */
+    /* Truncate Email */
     .table td:nth-child(2) {
-        max-width: 110px; /* Force narrow width */
+        max-width: 110px;
         white-space: nowrap;
         overflow: hidden;
-        text-overflow: ellipsis; /* Shows "jayvee..." instead of full email */
+        text-overflow: ellipsis;
         color: #6c757d;
     }
 
-    /* 5. COLUMN 3: Role (Compact) */
+    /* Compact Role */
     .table td:nth-child(3) {
         white-space: normal;
         min-width: 80px;
         line-height: 1.1;
     }
 
-    /* 6. COLUMN 4: Date (HIDE to save space) */
-    .table th:nth-child(4),
-    .table td:nth-child(4) {
+    /* Hide Date Column */
+    .table th:nth-child(4), .table td:nth-child(4) {
         display: none;
     }
 
-    /* 7. COLUMN 5: Actions (Compact Buttons) */
+    /* Compact Action Buttons */
     .table td:last-child {
         white-space: nowrap;
         text-align: center;
     }
-    
-    /* Shrink Buttons */
     .table .btn {
         padding: 4px 8px !important;
         font-size: 0.7rem !important;
         line-height: 1.2;
     }
-    
-    /* On very small screens, hide button text and just show icons */
+
+    /* Extra Small Screens (Phone) Button Tweaks */
     @media (max-width: 400px) {
-        .table .btn { font-size: 0 !important; } /* Hide text */
+        .table .btn { font-size: 0 !important; } /* Hide text, show icon only */
         .table .btn i { font-size: 14px !important; margin: 0 !important; }
     }
-}
-    
-    /* 1. COMPACT NAVBAR & LAYOUT */
+
+    /* --- B. COMPACT NAVBAR & LAYOUT --- */
     .navbar {
         padding: 0.5rem 1rem !important;
-        height: 60px !important; /* Fixed compact height */
+        height: 60px !important;
         display: flex !important;
         flex-wrap: nowrap !important;
         align-items: center !important;
     }
-    
-    /* A. LEFT: Toggler Button */
+
+    /* 1. Toggler (Visible on Mobile) */
     .navbar-toggler {
-        order: 1 !important; /* First item */
+        display: block !important;
+        order: 1 !important;
         border: 1px solid rgba(255,255,255,0.1);
         padding: 4px 8px;
         font-size: 1.2rem;
         margin-right: 10px !important;
     }
-    .navbar-toggler:focus { box-shadow: none; }
 
-    /* B. LEFT/CENTER: Brand Logo */
-    /* margin-right: auto PUSHES the Profile Icon to the far right */
+    /* 2. Brand/Logo (Center-ish) */
     .navbar-brand {
-        order: 2 !important; /* Second item */
-        margin-right: auto !important; /* THE KEY SPACER */
+        order: 2 !important;
+        margin-right: auto !important;
         display: flex;
         align-items: center;
         max-width: 60%;
     }
-    .navbar-brand img {
-        height: 30px !important;
-        width: 30px !important;
-        margin-right: 8px !important;
-    }
-    .navbar-brand strong {
-        font-size: 0.95rem !important;
-        white-space: nowrap;
-        overflow: hidden;
-        text-overflow: ellipsis;
-    }
+    .navbar-brand img { height: 30px !important; width: 30px !important; margin-right: 8px !important; }
+    .navbar-brand strong { font-size: 0.95rem !important; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
     .navbar-brand small { display: none !important; }
 
-    /* C. RIGHT: Profile Menu Icon */
+    /* 3. User Icon (Right) */
     .user-dropdown {
-        order: 3 !important; /* Third item */
-        margin-left: 0 !important; 
-        position: relative;
-    }
-    .user-dropdown .user-name { display: none !important; } /* Hide Name */
-    
-    /* Icon Styling */
-    .user-dropdown .dropdown-toggle i { 
-        font-size: 26px !important; 
-        margin: 0 !important;
-        color: #fff; /* Ensure visibility */
-        cursor: pointer;
-    }
-
-    /* Order 3: Brand Logo */
-    .navbar-brand {
         order: 3 !important;
-        display: flex;
-        align-items: center;
-        max-width: 55%; /* Adjust width to prevent overflow */
-        margin-right: 0 !important;
+        margin-left: 0 !important;
     }
-    .navbar-brand img {
-        height: 30px !important;
-        width: 30px !important;
-        margin-right: 8px !important;
-    }
-    .navbar-brand strong {
-        font-size: 0.95rem !important;
-        white-space: nowrap;
-        overflow: hidden;
-        text-overflow: ellipsis;
-    }
-    .navbar-brand small { display: none !important; }
-    
-    /* Compact Profile Menu */
     .user-dropdown .user-name { display: none !important; }
-    .user-dropdown .dropdown-toggle i { font-size: 28px !important; margin: 0 !important; }
+    .user-dropdown .dropdown-toggle i { font-size: 26px !important; margin: 0 !important; color: #fff; }
 
-    /* 2. SIDEBAR DRAWER (Fix Gap & Animation) */
+    /* --- C. SIDEBAR DRAWER (Hidden by default on Mobile) --- */
     .sidebar {
         position: fixed !important;
-        top: 60px !important; /* Matches Navbar Height */
-        left: -260px !important; /* Hidden */
+        top: 60px !important;
+        left: -260px !important; /* Hides sidebar off-screen */
         width: 260px !important;
         height: calc(100vh - 60px) !important;
         background-color: #2c3e50 !important;
@@ -634,133 +579,108 @@ $pending_results_count = $conn->query("SELECT COUNT(*) FROM categories WHERE sta
         z-index: 1045;
         overflow-y: auto;
     }
-    .sidebar.show { left: 0 !important; } /* Slide In */
     
-    /* Prevent text cutoff in menu */
-    .sidebar-nav .nav-link { 
-        white-space: nowrap; 
-        font-size: 0.95rem;
+    /* The class added by JS to show the sidebar */
+    .sidebar.show { 
+        left: 0 !important; 
     }
 
-    /* 3. MAIN CONTENT ADJUSTMENTS */
+    .sidebar-nav .nav-link { 
+        white-space: nowrap; 
+        font-size: 0.95rem; 
+    }
+
+    /* --- D. MAIN CONTENT & FOOTER MOBILE TWEAKS --- */
     .main-content {
         padding: 15px !important;
         margin-top: 60px !important;
-        margin-left: 0 !important;
+        margin-left: 0 !important; /* No left margin on mobile */
     }
 
-
-        /* --- FOOTER STYLES (MATCHING HOME.PHP) --- */
-    .footer-main {
-        flex-shrink: 0;
-        background: linear-gradient(135deg, #1a1a1a 0%, #2d2d2d 100%);
-        color: rgba(255,255,255,0.7);
-        padding: 3rem 0 2rem 0;
-        box-shadow: 0 -4px 20px rgba(0,0,0,0.15);
-        position: relative;
-        z-index: 1;
+    /* Center Footer Text on Mobile */
+    .footer-main { 
+        text-align: center; 
+        padding-left: 0 !important; /* Remove desktop sidebar padding */
     }
+    .footer-main .footer-logo-group { justify-content: center; }
+    .footer-main .row > div { margin-bottom: 2rem; }
+    .footer-main .row > div:last-child { margin-bottom: 0; }
 
-    .footer-main .footer-logo-group {
-        display: flex;
-        align-items: center;
-        gap: 12px;
-        margin-bottom: 1rem;
-    }
+} /* <--- CRITICAL: This bracket closes the Mobile Media Query */
 
-    .footer-main .footer-logo-group img {
-        height: 50px !important;
-        width: 50px !important;
-        object-fit: contain;
-    }
 
-    .footer-main .footer-logo-group h5 {
-        margin: 0;
-        font-size: 1.1rem;
-        font-weight: 700;
-        color: #fff;
-        line-height: 1.2;
-    }
+/* ==========================================================================
+   PART 2: GLOBAL FOOTER STYLES (Applies to Desktop & Mobile)
+   ========================================================================== */
+.footer-main {
+    flex-shrink: 0;
+    background: linear-gradient(135deg, #1a1a1a 0%, #2d2d2d 100%);
+    color: rgba(255,255,255,0.7);
+    padding: 3rem 0 2rem 0;
+    box-shadow: 0 -4px 20px rgba(0,0,0,0.15);
+    position: relative;
+    z-index: 1;
+    /* Desktop sidebar transition */
+    padding-left: var(--sidebar-width); 
+    transition: padding-left var(--transition);
+}
 
-    .footer-main p {
-        font-size: 0.9rem;
-        max-width: 400px;
-    }
+.footer-main .footer-logo-group {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 1rem;
+}
 
-    .footer-main h6 {
-        font-family: 'Poppins', sans-serif;
-        color: #fff;
-        font-weight: 600;
-        margin-bottom: 1rem;
-        text-transform: uppercase;
-        letter-spacing: 0.5px;
-    }
+.footer-main .footer-logo-group img {
+    height: 50px !important;
+    width: 50px !important;
+    object-fit: contain;
+}
 
-    .footer-main .footer-links {
-        list-style: none;
-        padding: 0;
-    }
+.footer-main .footer-logo-group h5 {
+    margin: 0;
+    font-size: 1.1rem;
+    font-weight: 700;
+    color: #fff;
+    line-height: 1.2;
+}
 
-    .footer-main .footer-links li {
-        margin-bottom: 0.5rem;
-    }
+.footer-main p { font-size: 0.9rem; max-width: 400px; }
 
-    .footer-main .footer-links a {
-        text-decoration: none;
-        color: rgba(255,255,255,0.7);
-        transition: var(--transition);
-    }
+.footer-main h6 {
+    font-family: 'Poppins', sans-serif;
+    color: #fff;
+    font-weight: 600;
+    margin-bottom: 1rem;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
 
-    .footer-main .footer-links a:hover {
-        color: #fff;
-        padding-left: 5px;
-    }
+.footer-main .footer-links { list-style: none; padding: 0; }
+.footer-main .footer-links li { margin-bottom: 0.5rem; }
+.footer-main .footer-links a {
+    text-decoration: none;
+    color: rgba(255,255,255,0.7);
+    transition: var(--transition);
+}
+.footer-main .footer-links a:hover { color: #fff; padding-left: 5px; }
 
-    .footer-bottom {
-        border-top: 1px solid rgba(255,255,255,0.1);
-        padding-top: 1.5rem;
-        margin-top: 2rem;
-        text-align: center;
-        font-size: 0.85rem;
-    }
+.footer-bottom {
+    border-top: 1px solid rgba(255,255,255,0.1);
+    padding-top: 1.5rem;
+    margin-top: 2rem;
+    text-align: center;
+    font-size: 0.85rem;
+}
 
-    @media (max-width: 767.98px) {
-      .logo-container {
-        gap: 1rem;
-      }
-      .main-logo {
-        width: 80px;
-        height: 80px;
-      }
-      .brand-title {
-        font-size: 1.5rem;
-      }
-      .login-container h2 {
-        font-size: 1.5rem;
-      }
-    }
-
-    @media (max-width: 991px) {
-            /* 1. Center text on smaller screens */
-            .footer-main { 
-                text-align: center; 
-            }
-            
-            /* 2. Center the logo group (Image + Text) */
-            .footer-main .footer-logo-group { 
-                justify-content: center; 
-            }
-            
-            /* 3. Add spacing between columns so they don't look cramped */
-            .footer-main .row > div { 
-                margin-bottom: 2rem; 
-            }
-            
-            /* 4. Ensure the last column doesn't have extra margin */
-            .footer-main .row > div:last-child {
-                margin-bottom: 0;
-            }
-        }
+/* Extra small devices (phones, 600px and down) */
+@media (max-width: 767.98px) {
+  .logo-container { gap: 1rem; }
+  .main-logo { width: 80px; height: 80px; }
+  .brand-title { font-size: 1.5rem; }
+  .login-container h2 { font-size: 1.5rem; }
+}
     </style>
 </head>
 <body>
@@ -877,7 +797,7 @@ $pending_results_count = $conn->query("SELECT COUNT(*) FROM categories WHERE sta
             
                 <div class="page-header">
     <h1 class="section-title">
-        <i class="fas fa-user-plus"></i>
+        </i>
         Manage Account Requests
     </h1>
     <p class="page-subtitle">Review and approve user registration requests</p>

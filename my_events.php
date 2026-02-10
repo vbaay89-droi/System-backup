@@ -1056,7 +1056,7 @@ $status_options = [
             </a>
             <div class="dropdown user-dropdown ms-auto me-2 me-lg-0">
                 <a href="#" class="dropdown-toggle" id="userDropdown" data-bs-toggle="dropdown" aria-expanded="false">
-                    <i class="fas fa-user-circle navbar-profile-icon"></i>
+                    <i class="fas fa-user-circle" style="font-size: 36px; margin-right: 10px;"></i>
                     <span class="user-name d-none d-lg-inline"><?= htmlspecialchars($display_name); ?></span>
                 </a>
                 <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="userDropdown">

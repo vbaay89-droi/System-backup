@@ -531,9 +531,9 @@ function formatDateTime($date, $time) {
             <div class="lh-header">
                 <img src="imageslogo.png" alt="Institution Logo" class="lh-logo">
                 <div class="lh-text">
-                    <h3>Palompon Institute of Technology</h3>
+                    <h1>Palompon Institute of Technology</h1>                   
+                    <h2>Official Siglakas Results</h2>
                     <p>Palompon, Leyte</p>
-                    <h4>Office of the Sports Director</h4>
                 </div>
                 <img src="images/COTE.png" alt="Event Logo" class="lh-logo">
             </div>
@@ -622,8 +622,8 @@ function formatDateTime($date, $time) {
             <div class="lh-header">
                 <img src="imageslogo.png" alt="Institution Logo" class="lh-logo">
                 <div class="lh-text">
-                    <h3>Palompon Institute of Technology</h3>
-                    <h4>Office of the Sports Director</h4>
+                    <h1>Palompon Institute of Technology</h1>                   
+                    <h2>Official Siglakas Results</h2>
                     <p>Palompon, Leyte</p>
                 </div>
                 <img src="images/COTE.png" alt="Event Logo" class="lh-logo">

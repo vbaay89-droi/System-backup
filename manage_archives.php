@@ -708,27 +708,633 @@ $pending_results_count = $conn->query("SELECT COUNT(*) FROM categories WHERE sta
       }
     }
 
-    @media (max-width: 991px) {
-            /* 1. Center text on smaller screens */
-            .footer-main { 
-                text-align: center; 
-            }
-            
-            /* 2. Center the logo group (Image + Text) */
-            .footer-main .footer-logo-group { 
-                justify-content: center; 
-            }
-            
-            /* 3. Add spacing between columns so they don't look cramped */
-            .footer-main .row > div { 
-                margin-bottom: 2rem; 
-            }
-            
-            /* 4. Ensure the last column doesn't have extra margin */
-            .footer-main .row > div:last-child {
-                margin-bottom: 0;
-            }
+    /* ==========================================================================
+       MOBILE OPTIMIZATION - COMPREHENSIVE RESPONSIVE DESIGN
+       ========================================================================== */
+    @media (max-width: 991.98px) {
+        
+        /* ===== 1. NAVBAR MOBILE OPTIMIZATION ===== */
+        .navbar {
+            padding: 0.5rem 1rem !important;
+            height: 60px !important;
+            display: flex !important;
+            flex-wrap: nowrap !important;
+            align-items: center !important;
         }
+        
+        /* A. Hamburger Menu */
+        .navbar-toggler {
+            order: 1;
+            border: 1px solid rgba(255,255,255,0.1);
+            padding: 4px 8px;
+            font-size: 1.2rem;
+            margin-right: 10px;
+        }
+        .navbar-toggler:focus { box-shadow: none; }
+
+        /* B. Brand Logo */
+        .navbar-brand {
+            order: 2;
+            margin-right: auto !important;
+            display: flex;
+            align-items: center;
+            max-width: 60%;
+        }
+        .navbar-brand img {
+            height: 30px !important;
+            width: 30px !important;
+            margin-right: 8px !important;
+        }
+        .navbar-brand strong {
+            font-size: 0.95rem !important;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+        .navbar-brand small { display: none !important; }
+
+        /* C. Profile Menu Icon */
+        .user-dropdown {
+            order: 3;
+            margin-left: 0 !important;
+        }
+        .user-dropdown .user-name { display: none !important; }
+        .user-dropdown .dropdown-toggle i { 
+            font-size: 26px !important; 
+            margin: 0 !important;
+            color: #fff;
+        }
+
+        /* ===== 2. SIDEBAR DRAWER ===== */
+        .sidebar {
+            position: fixed !important;
+            top: 60px !important;
+            left: -260px !important;
+            width: 260px !important;
+            height: calc(100vh - 60px) !important;
+            background-color: #2c3e50 !important;
+            box-shadow: 5px 0 15px rgba(0,0,0,0.3);
+            transition: left 0.3s ease-in-out !important;
+            z-index: 1045;
+            overflow-y: auto;
+        }
+        .sidebar.show { left: 0 !important; }
+        .sidebar-nav .nav-link { 
+            white-space: nowrap; 
+            font-size: 0.95rem;
+        }
+
+        /* ===== 3. MAIN CONTENT ===== */
+        .main-content {
+            padding: 15px !important;
+            margin-top: 60px !important;
+            margin-left: 0 !important;
+        }
+
+        /* ===== 4. PAGE HEADER ===== */
+        .page-header {
+            padding: 1.5rem !important;
+            margin-bottom: 1.5rem !important;
+        }
+        
+        .page-header .section-title {
+            font-size: 1.5rem !important;
+        }
+        
+        .page-header .subtitle {
+            font-size: 0.85rem;
+        }
+
+        /* ===== 5. NAV TABS (ARCHIVE SECTIONS) ===== */
+        .nav-tabs {
+            flex-direction: column;
+            gap: 0.5rem;
+            padding: 0.75rem;
+        }
+        
+        .nav-tabs .nav-link {
+            padding: 0.75rem 1rem;
+            font-size: 0.9rem;
+            justify-content: center;
+        }
+
+        /* ===== 6. ARCHIVE CARDS ===== */
+        .archive-card {
+            margin-bottom: 1rem;
+        }
+        
+        .archive-card-header {
+            padding: 1rem;
+        }
+        
+        .archive-card-body {
+            padding: 1rem;
+        }
+        
+        .season-title {
+            font-size: 1.1rem;
+        }
+        
+        .champion-badge {
+            padding: 0.75rem;
+        }
+        
+        .champion-badge .value {
+            font-size: 0.9rem;
+        }
+        
+        .champion-badge img {
+            width: 35px !important;
+            height: 35px !important;
+        }
+        
+        .stats-grid {
+            gap: 0.5rem;
+            margin: 1rem 0;
+        }
+        
+        .stat-box {
+            padding: 0.75rem;
+        }
+        
+        .stat-box .number {
+            font-size: 1.5rem;
+        }
+
+        /* ===== 7. ACTION CARDS ===== */
+        .action-card {
+            padding: 2rem 1.5rem;
+            margin-bottom: 1.5rem;
+        }
+        
+        .action-icon {
+            font-size: 3rem;
+            margin-bottom: 1rem;
+        }
+        
+        .action-card h3 {
+            font-size: 1.25rem;
+        }
+        
+        .action-card p {
+            font-size: 0.9rem;
+        }
+
+        /* ===== 8. FULL REPORT MODAL - COMPLETE MOBILE TRANSFORMATION ===== */
+        
+        /* A. Modal Layout - Stack Vertically */
+        #fullReportModal .modal-body {
+            height: calc(100vh - 60px);
+            padding: 0;
+        }
+        
+        .report-layout {
+            flex-direction: column !important;
+            height: 100%;
+        }
+
+        /* B. Navigation - Horizontal Sticky Swipeable Nav */
+        .report-sidebar {
+            width: 100% !important;
+            height: auto !important;
+            flex-shrink: 0;
+            border-right: none;
+            border-bottom: 2px solid #e9ecef;
+            padding: 0;
+            position: sticky;
+            top: 0;
+            z-index: 100;
+            background: #fff;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+        }
+
+        /* Hide "NAVIGATION" Label */
+        .report-sidebar .text-muted {
+            display: none !important;
+        }
+
+        /* Horizontal Scrollable Nav */
+        .report-sidebar .nav {
+            flex-direction: row !important;
+            flex-wrap: nowrap !important;
+            overflow-x: auto !important;
+            overflow-y: hidden;
+            -webkit-overflow-scrolling: touch;
+            width: 100%;
+            display: flex !important;
+            padding: 8px 0;
+            background: #fff;
+        }
+
+        /* Hide Scrollbar */
+        .report-sidebar .nav::-webkit-scrollbar {
+            display: none;
+        }
+
+        /* Nav Link Styling for Mobile */
+        .report-nav-link {
+            flex: 0 0 auto !important;
+            width: auto !important;
+            display: flex !important;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: 10px 18px !important;
+            font-size: 0.7rem !important;
+            text-align: center;
+            border-left: none !important;
+            border-bottom: 3px solid transparent;
+            color: #6c757d;
+            white-space: nowrap;
+            min-width: 80px;
+        }
+
+        /* Active State */
+        .report-nav-link.active {
+            background-color: transparent !important;
+            color: #0d6efd !important;
+            border-bottom-color: #0d6efd !important;
+            border-left-color: transparent !important;
+        }
+
+        /* Icons */
+        .report-nav-link i {
+            font-size: 1.1rem !important;
+            margin-right: 0 !important;
+            margin-bottom: 4px;
+            width: auto;
+        }
+
+        /* C. Report Content */
+        .report-content {
+            padding: 1rem !important;
+            height: 100%;
+            overflow-y: auto;
+            padding-bottom: 60px !important;
+        }
+
+        /* D. Report Sections */
+        .report-section {
+            padding: 1.25rem !important;
+            margin-bottom: 1.25rem !important;
+            border-radius: 8px;
+        }
+
+        .report-section-title {
+            font-size: 1.15rem !important;
+            margin-bottom: 1rem !important;
+            padding-bottom: 0.75rem !important;
+        }
+        
+        .report-section-title i {
+            font-size: 1rem;
+            margin-right: 8px;
+        }
+
+        /* E. Tables - Card-Based Mobile View */
+        .report-section .table-responsive {
+            border: none;
+            border-radius: 0;
+        }
+
+        /* Hide Desktop Table Headers */
+        .report-section table thead {
+            display: none;
+        }
+
+        /* Transform Rows into Cards */
+        .report-section table tbody,
+        .report-section table tr,
+        .report-section table td {
+            display: block;
+            width: 100%;
+        }
+
+        .report-section table tr {
+            background: #fff;
+            border: 1px solid #e9ecef;
+            border-radius: 10px;
+            margin-bottom: 12px;
+            box-shadow: 0 2px 6px rgba(0,0,0,0.04);
+            overflow: hidden;
+        }
+
+        /* Cell Styling */
+        .report-section table td {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            text-align: right;
+            padding: 10px 12px;
+            border-bottom: 1px solid #f8f9fa;
+            font-size: 0.85rem;
+        }
+
+        .report-section table tr td:last-child {
+            border-bottom: none;
+        }
+
+        /* Data Labels (::before pseudo-element) */
+        .report-section table td::before {
+            content: attr(data-label);
+            font-weight: 700;
+            color: #6c757d;
+            text-transform: uppercase;
+            font-size: 0.7rem;
+            text-align: left;
+            margin-right: 10px;
+            letter-spacing: 0.3px;
+        }
+
+        /* ===== F. SPECIFIC TABLE CUSTOMIZATIONS ===== */
+
+        /* --- Medal Table (#tableMedals) --- */
+        
+        /* Rank & Team Name Header */
+        #tableMedals td:nth-child(1),
+        #tableMedals td:nth-child(2) {
+            text-align: left !important;
+            justify-content: flex-start !important;
+            background: #f8f9fa;
+            border-bottom: none !important;
+        }
+
+        #tableMedals td:nth-child(1) { 
+            font-size: 1.3rem !important; 
+            padding-bottom: 5px !important;
+        }
+        
+        #tableMedals td:nth-child(2) { 
+            padding-top: 5px !important; 
+            padding-bottom: 12px !important; 
+            border-bottom: 2px solid #e9ecef !important;
+        }
+
+        #tableMedals td:nth-child(1)::before,
+        #tableMedals td:nth-child(2)::before {
+            display: none;
+        }
+
+        /* Medal Labels & Values */
+        #tableMedals td:nth-child(3)::before { content: "🥇 Gold"; color: #f59e0b; }
+        #tableMedals td:nth-child(4)::before { content: "🥈 Silver"; color: #64748b; }
+        #tableMedals td:nth-child(5)::before { content: "🥉 Bronze"; color: #ea580c; }
+        #tableMedals td:nth-child(6)::before { content: "Total"; color: #2c3e50; }
+        
+        #tableMedals td:nth-child(3),
+        #tableMedals td:nth-child(4),
+        #tableMedals td:nth-child(5),
+        #tableMedals td:nth-child(6) {
+            font-weight: 700;
+            font-size: 1.1rem;
+        }
+
+        /* --- Event Results (#tableEvents) --- */
+        
+        /* Event Name Header */
+        #tableEvents td:nth-child(1) {
+            flex-direction: column !important;
+            align-items: flex-start !important;
+            text-align: left !important;
+            background: #f8f9fa;
+            border-bottom: 2px solid #e9ecef !important;
+            padding: 12px !important;
+        }
+        
+        #tableEvents td:nth-child(1)::before { 
+            display: none; 
+        }
+        
+        #tableEvents td:nth-child(1) .fw-bold {
+            font-size: 0.95rem;
+            margin-bottom: 3px;
+        }
+        
+        #tableEvents td:nth-child(1) .small {
+            font-size: 0.75rem;
+        }
+
+        /* Winner Labels */
+        #tableEvents td:nth-child(2)::before { content: "🥇 Gold"; color: #f59e0b; }
+        #tableEvents td:nth-child(3)::before { content: "🥈 Silver"; color: #64748b; }
+        #tableEvents td:nth-child(4)::before { content: "🥉 Bronze"; color: #ea580c; }
+
+        /* --- Teams Table (#tableTeams) --- */
+        
+        /* Logo */
+        #tableTeams td:nth-child(1) { 
+            justify-content: center !important; 
+            background: #f8f9fa; 
+            padding: 12px !important; 
+            border-bottom: none !important;
+        }
+        #tableTeams td:nth-child(1)::before { display: none; }
+        
+        /* Team Name */
+        #tableTeams td:nth-child(2) { 
+            justify-content: center !important; 
+            background: #f8f9fa; 
+            font-weight: 700; 
+            font-size: 1rem;
+            padding-top: 5px !important;
+            padding-bottom: 12px !important;
+            border-bottom: 2px solid #e9ecef !important;
+        }
+        #tableTeams td:nth-child(2)::before { display: none; }
+
+        /* Details Labels */
+        #tableTeams td:nth-child(3)::before { content: "Code"; }
+        #tableTeams td:nth-child(4)::before { content: "Manager"; }
+        #tableTeams td:nth-child(5)::before { content: "Slogan"; }
+
+        /* --- Officials Table (#tableOfficials) --- */
+        
+        #tableOfficials td:nth-child(1) { 
+            background: #f8f9fa; 
+            font-weight: 700; 
+            justify-content: flex-start !important;
+            font-size: 0.95rem;
+        }
+        #tableOfficials td:nth-child(1)::before { content: "Name"; }
+        #tableOfficials td:nth-child(2)::before { content: "Role"; }
+        #tableOfficials td:nth-child(3)::before { content: "Email"; }
+
+        /* ===== G. CHARTS MOBILE OPTIMIZATION ===== */
+        .chart-container {
+            height: 280px !important;
+            margin: 1rem 0 !important;
+        }
+        
+        #sec-charts .row {
+            margin: 0;
+        }
+        
+        #sec-charts .col-lg-6 {
+            padding: 0;
+            margin-bottom: 1.5rem;
+        }
+        
+        #sec-charts .card {
+            border-radius: 8px;
+        }
+        
+        #sec-charts .card-header {
+            font-size: 0.9rem;
+            padding: 0.75rem 1rem;
+        }
+        
+        #sec-charts .card-body {
+            padding: 1rem;
+        }
+
+        /* ===== 9. MODAL HEADER ===== */
+        #fullReportModal .modal-header {
+            padding: 0.75rem 1rem;
+            height: 60px;
+        }
+        
+        #fullReportModal .modal-title {
+            font-size: 0.95rem;
+        }
+        
+        #fullReportModal .modal-title .badge {
+            font-size: 0.65rem;
+            padding: 0.25rem 0.5rem;
+        }
+        
+        #fullReportModal .btn-sm {
+            font-size: 0.75rem;
+            padding: 0.35rem 0.65rem;
+        }
+
+        /* ===== 10. FOOTER MOBILE ===== */
+        footer {
+            padding-left: 0 !important;
+        }
+        
+        .footer-main {
+            padding: 2rem 0 1.5rem 0;
+        }
+        
+        .footer-main .footer-logo-group img {
+            height: 40px !important;
+            width: 40px !important;
+        }
+        
+        .footer-main h5 {
+            font-size: 0.95rem;
+        }
+        
+        .footer-main h6 {
+            font-size: 0.9rem;
+            margin-top: 1.5rem;
+        }
+
+        /* ===== 11. EMPTY STATES ===== */
+        .empty-state {
+            padding: 2rem 1rem;
+        }
+        
+        .empty-state i {
+            font-size: 3rem;
+        }
+        
+        .empty-state h5 {
+            font-size: 1.1rem;
+        }
+        
+        .empty-state p {
+            font-size: 0.85rem;
+        }
+    }
+
+    /* ===== EXTRA SMALL DEVICES (< 576px) ===== */
+    @media (max-width: 575.98px) {
+        .page-header .section-title {
+            font-size: 1.25rem !important;
+        }
+        
+        .nav-tabs .nav-link {
+            font-size: 0.85rem;
+            padding: 0.65rem 0.85rem;
+        }
+        
+        .champion-badge img {
+            width: 30px !important;
+            height: 30px !important;
+        }
+        
+        .stat-box .number {
+            font-size: 1.25rem;
+        }
+        
+        .stat-box .label {
+            font-size: 0.65rem;
+        }
+        
+        .action-card {
+            padding: 1.5rem 1rem;
+        }
+        
+        .action-icon {
+            font-size: 2.5rem;
+        }
+        
+        #fullReportModal .modal-title {
+            font-size: 0.85rem;
+        }
+        
+        .report-nav-link {
+            min-width: 70px;
+            padding: 8px 12px !important;
+            font-size: 0.65rem !important;
+        }
+        
+        .report-nav-link i {
+            font-size: 1rem !important;
+        }
+        
+        .report-section {
+            padding: 1rem !important;
+        }
+        
+        .report-section-title {
+            font-size: 1rem !important;
+        }
+        
+        .chart-container {
+            height: 240px !important;
+        }
+    }
+
+    /* ===== LANDSCAPE ORIENTATION ON MOBILE ===== */
+    @media (max-width: 991.98px) and (orientation: landscape) {
+        .navbar {
+            height: 50px !important;
+        }
+        
+        .sidebar {
+            top: 50px !important;
+            height: calc(100vh - 50px) !important;
+        }
+        
+        .main-content {
+            margin-top: 50px !important;
+        }
+        
+        #fullReportModal .modal-body {
+            height: calc(100vh - 50px);
+        }
+        
+        #fullReportModal .modal-header {
+            height: 50px;
+            padding: 0.5rem 1rem;
+        }
+        
+        .chart-container {
+            height: 200px !important;
+        }
+    }
     </style>
 </head>
 <body>

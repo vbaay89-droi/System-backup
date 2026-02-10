@@ -600,6 +600,311 @@ elseif (stripos($row['game_name'], 'Other') !== false) {
       }
     }
 
+    /* =========================================
+   MOBILE OPTIMIZATION (Sports Director)
+   ========================================= */
+@media (max-width: 991.98px) {
+    
+    /* 1. COMPACT NAVBAR & LAYOUT */
+    .navbar {
+        padding: 0.5rem 1rem !important;
+        height: 60px !important; /* Fixed compact height */
+        display: flex !important;
+        flex-wrap: nowrap !important;
+        align-items: center !important;
+    }
+    
+    /* A. LEFT: Toggler Button */
+    .navbar-toggler {
+        order: 1 !important; /* First item */
+        border: 1px solid rgba(255,255,255,0.1);
+        padding: 4px 8px;
+        font-size: 1.2rem;
+        margin-right: 10px !important;
+    }
+    .navbar-toggler:focus { box-shadow: none; }
+
+    /* B. LEFT/CENTER: Brand Logo */
+    /* margin-right: auto PUSHES the Profile Icon to the far right */
+    .navbar-brand {
+        order: 2 !important; /* Second item */
+        margin-right: auto !important; /* THE KEY SPACER */
+        display: flex;
+        align-items: center;
+        max-width: 60%;
+    }
+    .navbar-brand img {
+        height: 30px !important;
+        width: 30px !important;
+        margin-right: 8px !important;
+    }
+    .navbar-brand strong {
+        font-size: 0.95rem !important;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
+    .navbar-brand small { display: none !important; }
+
+    /* C. RIGHT: Profile Menu Icon */
+    .user-dropdown {
+        order: 3 !important; /* Third item */
+        margin-left: 0 !important; 
+        position: relative;
+    }
+    .user-dropdown .user-name { display: none !important; } /* Hide Name */
+    
+    /* Icon Styling */
+    .user-dropdown .dropdown-toggle i { 
+        font-size: 26px !important; 
+        margin: 0 !important;
+        color: #fff; /* Ensure visibility */
+        cursor: pointer;
+    }
+
+    /* Order 3: Brand Logo */
+    .navbar-brand {
+        order: 3 !important;
+        display: flex;
+        align-items: center;
+        max-width: 55%; /* Adjust width to prevent overflow */
+        margin-right: 0 !important;
+    }
+    .navbar-brand img {
+        height: 30px !important;
+        width: 30px !important;
+        margin-right: 8px !important;
+    }
+    .navbar-brand strong {
+        font-size: 0.95rem !important;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
+    .navbar-brand small { display: none !important; }
+    
+    /* Compact Profile Menu */
+    .user-dropdown .user-name { display: none !important; }
+    .user-dropdown .dropdown-toggle i { font-size: 28px !important; margin: 0 !important; }
+
+    /* 2. SIDEBAR DRAWER (Fix Gap & Animation) */
+    .sidebar {
+        position: fixed !important;
+        top: 60px !important; /* Matches Navbar Height */
+        left: -260px !important; /* Hidden */
+        width: 260px !important;
+        height: calc(100vh - 60px) !important;
+        background-color: #2c3e50 !important;
+        box-shadow: 5px 0 15px rgba(0,0,0,0.3);
+        transition: left 0.3s ease-in-out !important;
+        z-index: 1045;
+        overflow-y: auto;
+    }
+    .sidebar.show { left: 0 !important; } /* Slide In */
+    
+    /* Prevent text cutoff in menu */
+    .sidebar-nav .nav-link { 
+        white-space: nowrap; 
+        font-size: 0.95rem;
+    }
+
+    /* 3. MAIN CONTENT ADJUSTMENTS */
+    .main-content {
+        padding: 15px !important;
+        margin-top: 60px !important;
+        margin-left: 0 !important;
+    }
+}
+
+/* =========================================
+   MOBILE VERIFICATION & RESULTS OPTIMIZATION
+   ========================================= */
+@media (max-width: 991.98px) {
+
+    /* --- 1. GENERAL LAYOUT --- */
+    .container-fluid {
+        padding-left: 15px;
+        padding-right: 15px;
+    }
+    
+    /* Header Stacking */
+    .d-flex.justify-content-between.align-items-center.mb-4 {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 10px;
+    }
+
+    /* --- 2. PENDING REQUEST CARDS (The Complex Part) --- */
+    
+    /* Target the Card Body inside the pending loop */
+    #pending .card-body {
+        flex-direction: column !important; /* Stack everything vertically */
+        align-items: center !important;
+        text-align: center;
+        padding: 1.5rem !important;
+    }
+
+    /* Icon & Title Section */
+    #pending .card-body > div:first-child {
+        flex-direction: column; /* Stack Icon above Text */
+        width: 100%;
+        margin-bottom: 15px;
+    }
+
+    /* Icon Circle */
+    #pending .card-body .bg-success.rounded-circle {
+        margin-right: 0 !important; /* Remove side margin */
+        margin-bottom: 10px; /* Add bottom margin */
+        width: 70px !important;
+        height: 70px !important;
+    }
+
+    /* Text Alignment */
+    #pending .card-body h6, 
+    #pending .card-body h5, 
+    #pending .card-body small {
+        text-align: center;
+        width: 100%;
+    }
+
+    /* Submitted By & Button Section */
+    #pending .card-body > div:last-child {
+        width: 100%;
+        flex-direction: column; /* Stack "Submitted By" above "Button" */
+        gap: 15px !important;
+    }
+
+    /* "Submitted By" Text */
+    #pending .card-body .text-end {
+        text-align: center !important; /* Center align instead of right */
+        margin-right: 0 !important;
+    }
+    #pending .card-body .text-end .fw-bold {
+        margin-left: 0 !important; /* Reset margin */
+        max-width: 100% !important; /* Allow full width */
+    }
+
+    /* Review Button */
+    #pending .review-btn {
+        width: 100%; /* Full width button for easy tapping */
+        padding: 12px !important;
+    }
+
+    /* --- 3. APPROVED HISTORY TABLE (Sticky Scroll) --- */
+    
+    /* Allow scrolling */
+    .table-responsive {
+        overflow-x: auto !important;
+        -webkit-overflow-scrolling: touch;
+        border: 1px solid #f0f0f0;
+        border-radius: 8px;
+    }
+
+    /* Force width to prevent squishing */
+    .table { min-width: 750px; }
+
+    /* Sticky First Column (Event Details) */
+    .approved-row td:first-child {
+        position: sticky;
+        left: 0;
+        background: #fff;
+        z-index: 5;
+        border-right: 2px solid #f0f0f0;
+        min-width: 180px;
+        max-width: 200px;
+    }
+    
+    /* Hide "Approved By" column on small screens to save space */
+    .approved-row td:nth-child(2),
+    .table thead th:nth-child(2) {
+        display: none;
+    }
+
+    /* --- 4. VERIFICATION MODAL (The Split View) --- */
+    
+    /* Remove the grid layout, stack them */
+    .modal-body .row.g-0 {
+        display: flex;
+        flex-direction: column;
+    }
+
+    /* Evidence Image Container (Top) */
+    .evidence-col {
+        width: 100%;
+        height: 350px; /* Reduced height for mobile */
+        border-radius: 8px 8px 0 0; /* Rounded top only */
+        border-bottom: 4px solid #1e293b;
+    }
+
+    /* Data Form Container (Bottom) */
+    .data-col {
+        width: 100%;
+        padding: 20px;
+        max-height: 50vh; /* Allow scrolling if form is long */
+        overflow-y: auto;
+    }
+
+    /* Adjust Modal Title */
+    .modal-header h5 {
+        font-size: 1rem;
+    }
+    
+    /* Fix Image Zoom behavior on mobile */
+    .evidence-img.zoomed {
+        width: 250%; /* Larger zoom for small screens */
+    }
+    
+    /* Winner Cards in Modal */
+    .winner-card {
+        padding: 0.75rem;
+    }
+    .winner-icon {
+        font-size: 1.2rem;
+        margin-right: 0.5rem;
+    }
+    
+    /* Modal Actions */
+    #approveForm button, 
+    #btnShowReject {
+        padding: 12px;
+        font-size: 1rem;
+    }
+
+    /* --- 5. FORCE TABS HORIZONTAL (50/50 Split) --- */
+    #resultsTab {
+        display: flex !important;
+        flex-wrap: nowrap !important; /* Prevent stacking */
+        width: 100% !important;
+    }
+    
+    #resultsTab .nav-item {
+        flex: 1 !important;        /* Grow to fill space equally */
+        width: 50% !important;     /* Force exactly half width */
+        text-align: center;
+    }
+    
+    #resultsTab .nav-link {
+        width: 100% !important;    /* Fill the item */
+        display: flex !important;
+        justify-content: center !important;
+        align-items: center !important;
+        padding: 12px 2px !important; /* Reduce padding to fit text */
+        font-size: 0.85rem !important; /* Slightly smaller text */
+        white-space: nowrap !important; /* Keep text on one line */
+    }
+
+    /* Adjust the inner badges (numbers) to fit better */
+    #resultsTab .nav-link .badge {
+        margin-left: 6px !important;
+        font-size: 0.7rem !important;
+        padding: 4px 6px !important;
+    }
+    
+    /* Optional: Hide icons on very small screens to save space */
+    @media (max-width: 360px) {
+        #resultsTab .nav-link i { display: none !important; }
+    }
+}
     @media (max-width: 991px) {
             /* 1. Center text on smaller screens */
             .footer-main { 

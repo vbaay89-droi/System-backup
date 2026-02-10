@@ -18,6 +18,36 @@ function render_event_list($managed_data, $college_map)
 {
     // Add custom CSS for enhanced table design
     echo '<style>
+
+        /* --- Add this to your existing CSS --- */
+
+@keyframes spin-pulse {
+    0% { transform: scale(1); opacity: 1; }
+    50% { transform: scale(1.2); opacity: 0.7; }
+    100% { transform: scale(1); opacity: 1; }
+}
+
+.icon-animate-wait {
+    animation: spin-pulse 2s infinite ease-in-out;
+    color: #f59e0b; /* Orange color specifically for the icon */
+    display: inline-block; /* Required for transform animations to work */
+}
+
+        @keyframes pulse-danger {
+            0%, 100% { opacity: 1; transform: scale(1); }
+            50% { opacity: 0.9; transform: scale(1.02); }
+        }
+
+        /* --- ADD THIS NEW SECTION --- */
+        @keyframes spin-continuous {
+            from { transform: rotate(0deg); }
+            to { transform: rotate(360deg); }
+        }
+
+        .icon-spin {
+            animation: spin-continuous 2s linear infinite;
+            display: inline-block; /* Required for transform to work on spans/icons */
+        }
         /* =========================================
            1. MODERN TABLE DESIGN SYSTEM (Desktop)
            ========================================= */
@@ -562,8 +592,16 @@ function render_winner_list($category, $college_map)
 
     $placeholder_messages = [
         'Upcoming' => ['icon' => 'fa-clock', 'text' => 'Event has not started.'],
-        'Ongoing' => ['icon' => 'fa-spinner', 'text' => 'Event is in progress...'],
-        'Completed (Pending Results)' => ['icon' => 'fa-hourglass-half', 'text' => 'Awaiting admin approval...'],
+        'Ongoing' => ['icon' => 'fa-spinner fa-spin', 'text' => 'Event is in progress...'],
+        'Completed (Pending Results)' => [
+            // 1. Add the animation class HERE inside the icon string
+            'icon' => 'fa-hourglass-half icon-animate-wait', 
+            
+            'text' => 'Awaiting admin approval...',
+            
+            // 2. Remove the animation class from here (keep it simple text-muted or text-warning)
+            'class' => 'text-muted fst-italic' 
+        ],
         'Results Rejected' => ['icon' => 'fa-times-circle', 'text' => 'Results were rejected.', 'class' => 'text-danger'],
         'Results Submitted' => ['icon' => 'fa-hourglass-half', 'text' => 'Awaiting admin approval...'],
         'Completed' => ['icon' => 'fa-info-circle', 'text' => 'No winners recorded.'],

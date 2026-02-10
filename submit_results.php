@@ -392,47 +392,171 @@ $current_submission = $conn->query("SELECT * FROM categories WHERE category_id =
     }
 
     /* General Content Cards */
-    .card { 
-        background: white; 
-        border: 1px solid #e2e8f0; 
-        border-radius: 12px; 
-        box-shadow: var(--card-shadow); 
-        overflow: hidden; 
-        margin-bottom: 1.5rem; 
-    }
-    .card-header { 
-        background: white; 
-        border-bottom: 1px solid #f1f5f9; 
-        padding: 1.25rem 1.5rem; 
-    }
-    .card-header h5 {
-        font-weight: 700;
-        color: #334155;
-        margin: 0;
-    }
+    /* =========================================
+   6. GLASSMORPHISM CARDS
+   ========================================= */
+.card { 
+    background: rgba(255, 255, 255, 0.95);
+    backdrop-filter: blur(10px);
+    border: 1px solid rgba(255, 255, 255, 0.3);
+    border-radius: 20px; 
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.08);
+    overflow: hidden; 
+    margin-bottom: 1.5rem;
+    transition: all 0.3s;
+}
+
+.card:hover {
+    transform: translateY(-4px);
+    box-shadow: 0 12px 48px rgba(0, 0, 0, 0.12);
+}
+
+.card-header { 
+    background: linear-gradient(135deg, rgba(102, 126, 234, 0.05) 0%, rgba(118, 75, 162, 0.05) 100%);
+    border-bottom: 2px solid rgba(102, 126, 234, 0.1);
+    padding: 1.5rem; 
+}
+
+.card-header h5 {
+    font-family: 'Poppins', sans-serif;
+    font-weight: 700;
+    color: #1e293b;
+    margin: 0;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.card-header h5 i {
+    width: 32px;
+    height: 32px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 8px;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    font-size: 0.9rem;
+}
 
     /* =========================================
-       4. MEDAL INPUT ROWS (Clean Style)
-       ========================================= */
-    .medal-row { 
-        padding: 1.25rem; 
-        border-radius: 10px; 
-        margin-bottom: 1rem; 
-        border: 1px solid #e2e8f0; 
-        transition: all 0.2s ease; 
-        background: white;
-        display: flex;
-        align-items: center;
-    }
-    .medal-row:hover { 
-        box-shadow: 0 4px 12px rgba(0,0,0,0.05); 
-        transform: translateY(-2px); 
-    }
+   4. INTERACTIVE MEDAL SELECTORS
+   ========================================= */
+.medal-row { 
+    padding: 1.5rem; 
+    border-radius: 16px; 
+    margin-bottom: 1.25rem; 
+    border: 2px solid transparent;
+    transition: all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+    background: white;
+    position: relative;
+    overflow: hidden;
+}
 
-    /* Colored Left Borders */
-    .medal-row.gold-row { border-left: 5px solid var(--gold); }
-    .medal-row.silver-row { border-left: 5px solid var(--silver); }
-    .medal-row.bronze-row { border-left: 5px solid var(--bronze); }
+/* Animated Gradient Background */
+.medal-row::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: -100%;
+    width: 100%;
+    height: 100%;
+    transition: 0.5s;
+    z-index: 0;
+}
+
+.medal-row.gold-row::before { 
+    background: linear-gradient(90deg, var(--gold-glow) 0%, transparent 100%); 
+}
+.medal-row.silver-row::before { 
+    background: linear-gradient(90deg, var(--silver-glow) 0%, transparent 100%); 
+}
+.medal-row.bronze-row::before { 
+    background: linear-gradient(90deg, var(--bronze-glow) 0%, transparent 100%); 
+}
+
+.medal-row:hover::before {
+    left: 0;
+}
+
+.medal-row:hover { 
+    transform: translateX(8px) scale(1.02);
+    box-shadow: 0 12px 40px rgba(0, 0, 0, 0.15);
+}
+
+/* Colored Left Border Glow */
+.medal-row.gold-row { 
+    border-left: 6px solid var(--gold); 
+    box-shadow: 0 4px 20px var(--gold-glow);
+}
+.medal-row.silver-row { 
+    border-left: 6px solid var(--silver); 
+    box-shadow: 0 4px 20px var(--silver-glow);
+}
+.medal-row.bronze-row { 
+    border-left: 6px solid var(--bronze); 
+    box-shadow: 0 4px 20px var(--bronze-glow);
+}
+
+/* Medal Icon Badge */
+.medal-icon {
+    width: 50px;
+    height: 50px;
+    border-radius: 12px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.5rem;
+    position: relative;
+    z-index: 1;
+    transition: transform 0.3s;
+}
+
+.medal-row:hover .medal-icon {
+    transform: rotate(15deg) scale(1.15);
+}
+
+.medal-row.gold-row .medal-icon { 
+    background: linear-gradient(135deg, var(--gold) 0%, #f59e0b 100%);
+    box-shadow: 0 4px 15px var(--gold-glow);
+}
+.medal-row.silver-row .medal-icon { 
+    background: linear-gradient(135deg, var(--silver) 0%, #64748b 100%);
+    box-shadow: 0 4px 15px var(--silver-glow);
+}
+.medal-row.bronze-row .medal-icon { 
+    background: linear-gradient(135deg, var(--bronze) 0%, #ea580c 100%);
+    box-shadow: 0 4px 15px var(--bronze-glow);
+}
+
+/* Typography */
+.medal-label { 
+    font-weight: 800; 
+    font-size: 0.95rem; 
+    letter-spacing: 1px;
+    position: relative;
+    z-index: 1;
+}
+
+.text-gold { color: var(--gold); text-shadow: 0 2px 10px var(--gold-glow); } 
+.text-silver { color: var(--silver); text-shadow: 0 2px 10px var(--silver-glow); } 
+.text-bronze { color: var(--bronze); text-shadow: 0 2px 10px var(--bronze-glow); }
+
+/* Enhanced Select & Input */
+.medal-row select,
+.medal-row input {
+    position: relative;
+    z-index: 1;
+    border: 2px solid #e2e8f0;
+    transition: all 0.3s;
+}
+
+.medal-row select:focus,
+.medal-row input:focus {
+    border-color: var(--accent-primary);
+    box-shadow: 0 0 0 4px rgba(99, 102, 241, 0.1);
+    transform: scale(1.02);
+}
 
     /* Typography */
     .medal-label { font-weight: 700; font-size: 0.9rem; width: 100px; }
@@ -594,55 +718,105 @@ $current_submission = $conn->query("SELECT * FROM categories WHERE category_id =
                                 <h5 class="mb-0"><i class="fas fa-trophy me-2 text-warning"></i>Select Winners</h5>
                             </div>
                             <div class="card-body p-4">
-                                <div class="medal-row gold-row row align-items-center g-3">
-                                    <div class="col-md-3"><div class="medal-label text-gold"><i class="fas fa-medal"></i> GOLD</div></div>
-                                    <div class="col-md-7">
-                                        <select class="form-select fw-bold" name="gold_winner_id" <?php if ($is_locked) echo 'disabled'; ?>>
-                                            <option value="">-- Select Winner --</option>
-                                            <?php foreach ($teams as $team): ?>
-                                                <option value="<?php echo $team['team_id']; ?>" <?php echo ($current_submission && $current_submission['gold_winner_college_id'] == $team['team_id']) ? 'selected' : ''; ?>>
-                                                    <?php echo htmlspecialchars($team['team_name']); ?>
-                                                </option>
-                                            <?php endforeach; ?>
-                                        </select>
-                                    </div>
-                                    <div class="col-md-2">
-                                        <input type="number" class="form-control text-center fw-bold" name="gold_count" value="<?php echo $current_submission['gold_count'] ?? 0; ?>" min="0" <?php if ($is_locked) echo 'disabled'; ?>>
-                                    </div>
-                                </div>
-                                <div class="medal-row silver-row row align-items-center g-3">
-                                    <div class="col-md-3"><div class="medal-label text-silver"><i class="fas fa-medal"></i> SILVER</div></div>
-                                    <div class="col-md-7">
-                                        <select class="form-select fw-bold" name="silver_winner_id" <?php if ($is_locked) echo 'disabled'; ?>>
-                                            <option value="">-- Select Winner --</option>
-                                            <?php foreach ($teams as $team): ?>
-                                                <option value="<?php echo $team['team_id']; ?>" <?php echo ($current_submission && $current_submission['silver_winner_college_id'] == $team['team_id']) ? 'selected' : ''; ?>>
-                                                    <?php echo htmlspecialchars($team['team_name']); ?>
-                                                </option>
-                                            <?php endforeach; ?>
-                                        </select>
-                                    </div>
-                                    <div class="col-md-2">
-                                        <input type="number" class="form-control text-center fw-bold" name="silver_count" value="<?php echo $current_submission['silver_count'] ?? 0; ?>" min="0" <?php if ($is_locked) echo 'disabled'; ?>>
-                                    </div>
-                                </div>
-                                <div class="medal-row bronze-row row align-items-center g-3">
-                                    <div class="col-md-3"><div class="medal-label text-bronze"><i class="fas fa-medal"></i> BRONZE</div></div>
-                                    <div class="col-md-7">
-                                        <select class="form-select fw-bold" name="bronze_winner_id" <?php if ($is_locked) echo 'disabled'; ?>>
-                                            <option value="">-- Select Winner --</option>
-                                            <?php foreach ($teams as $team): ?>
-                                                <option value="<?php echo $team['team_id']; ?>" <?php echo ($current_submission && $current_submission['bronze_winner_college_id'] == $team['team_id']) ? 'selected' : ''; ?>>
-                                                    <?php echo htmlspecialchars($team['team_name']); ?>
-                                                </option>
-                                            <?php endforeach; ?>
-                                        </select>
-                                    </div>
-                                    <div class="col-md-2">
-                                        <input type="number" class="form-control text-center fw-bold" name="bronze_count" value="<?php echo $current_submission['bronze_count'] ?? 0; ?>" min="0" <?php if ($is_locked) echo 'disabled'; ?>>
-                                    </div>
-                                </div>
-                            </div>
+    <!-- GOLD MEDAL -->
+    <div class="medal-row gold-row">
+        <div class="row align-items-center g-3">
+            <div class="col-md-2 text-center">
+                <div class="medal-icon">
+                    <i class="fas fa-medal text-white"></i>
+                </div>
+            </div>
+            <div class="col-md-2">
+                <div class="medal-label text-gold">
+                    GOLD<br>
+                    <small class="fw-normal" style="font-size: 0.7rem; letter-spacing: 0;">1st Place</small>
+                </div>
+            </div>
+            <div class="col-md-6">
+                <select class="form-select fw-bold" name="gold_winner_id" <?php if ($is_locked) echo 'disabled'; ?>>
+                    <option value="">-- Select Champion Team --</option>
+                    <?php foreach ($teams as $team): ?>
+                        <option value="<?php echo $team['team_id']; ?>" <?php echo ($current_submission && $current_submission['gold_winner_college_id'] == $team['team_id']) ? 'selected' : ''; ?>>
+                            <?php echo htmlspecialchars($team['team_name']); ?>
+                        </option>
+                    <?php endforeach; ?>
+                </select>
+            </div>
+            <div class="col-md-2">
+                <input type="number" class="form-control text-center fw-bold" name="gold_count" 
+                       value="<?php echo $current_submission['gold_count'] ?? 0; ?>" 
+                       min="0" placeholder="0" <?php if ($is_locked) echo 'disabled'; ?>>
+                <small class="text-muted d-block text-center mt-1">Count</small>
+            </div>
+        </div>
+    </div>
+
+    <!-- SILVER MEDAL -->
+    <div class="medal-row silver-row">
+        <div class="row align-items-center g-3">
+            <div class="col-md-2 text-center">
+                <div class="medal-icon">
+                    <i class="fas fa-medal text-white"></i>
+                </div>
+            </div>
+            <div class="col-md-2">
+                <div class="medal-label text-silver">
+                    SILVER<br>
+                    <small class="fw-normal" style="font-size: 0.7rem; letter-spacing: 0;">2nd Place</small>
+                </div>
+            </div>
+            <div class="col-md-6">
+                <select class="form-select fw-bold" name="silver_winner_id" <?php if ($is_locked) echo 'disabled'; ?>>
+                    <option value="">-- Select Runner-Up Team --</option>
+                    <?php foreach ($teams as $team): ?>
+                        <option value="<?php echo $team['team_id']; ?>" <?php echo ($current_submission && $current_submission['silver_winner_college_id'] == $team['team_id']) ? 'selected' : ''; ?>>
+                            <?php echo htmlspecialchars($team['team_name']); ?>
+                        </option>
+                    <?php endforeach; ?>
+                </select>
+            </div>
+            <div class="col-md-2">
+                <input type="number" class="form-control text-center fw-bold" name="silver_count" 
+                       value="<?php echo $current_submission['silver_count'] ?? 0; ?>" 
+                       min="0" placeholder="0" <?php if ($is_locked) echo 'disabled'; ?>>
+                <small class="text-muted d-block text-center mt-1">Count</small>
+            </div>
+        </div>
+    </div>
+
+    <!-- BRONZE MEDAL -->
+    <div class="medal-row bronze-row">
+        <div class="row align-items-center g-3">
+            <div class="col-md-2 text-center">
+                <div class="medal-icon">
+                    <i class="fas fa-medal text-white"></i>
+                </div>
+            </div>
+            <div class="col-md-2">
+                <div class="medal-label text-bronze">
+                    BRONZE<br>
+                    <small class="fw-normal" style="font-size: 0.7rem; letter-spacing: 0;">3rd Place</small>
+                </div>
+            </div>
+            <div class="col-md-6">
+                <select class="form-select fw-bold" name="bronze_winner_id" <?php if ($is_locked) echo 'disabled'; ?>>
+                    <option value="">-- Select Bronze Team --</option>
+                    <?php foreach ($teams as $team): ?>
+                        <option value="<?php echo $team['team_id']; ?>" <?php echo ($current_submission && $current_submission['bronze_winner_college_id'] == $team['team_id']) ? 'selected' : ''; ?>>
+                            <?php echo htmlspecialchars($team['team_name']); ?>
+                        </option>
+                    <?php endforeach; ?>
+                </select>
+            </div>
+            <div class="col-md-2">
+                <input type="number" class="form-control text-center fw-bold" name="bronze_count" 
+                       value="<?php echo $current_submission['bronze_count'] ?? 0; ?>" 
+                       min="0" placeholder="0" <?php if ($is_locked) echo 'disabled'; ?>>
+                <small class="text-muted d-block text-center mt-1">Count</small>
+            </div>
+        </div>
+    </div>
+</div>
                         </div>
                     </div>
 
@@ -761,25 +935,41 @@ $current_submission = $conn->query("SELECT * FROM categories WHERE category_id =
                     
                 </div>
                 <?php if (!$is_locked): ?>
-        <div class="sticky-bottom bg-white border-top py-3 shadow-lg mt-4" style="z-index: 999;">
-            <div class="d-flex justify-content-between align-items-center px-3">
-                
-                <div class="text-muted small">
-                    <i class="fas fa-info-circle me-1"></i> Changes are not final until submitted.
-                </div>
+<div class="sticky-bottom py-4 mt-5" style="background: rgba(255, 255, 255, 0.95); backdrop-filter: blur(20px); border-top: 2px solid rgba(102, 126, 234, 0.2); box-shadow: 0 -8px 32px rgba(0, 0, 0, 0.08); z-index: 999;">
+    <div class="container-fluid">
+        <div class="d-flex justify-content-between align-items-center">
+            
+            <div class="d-flex align-items-center gap-2">
+                <div style="width: 8px; height: 8px; background: #10b981; border-radius: 50%; animation: pulse 2s infinite;"></div>
+                <span class="text-muted small fw-bold">
+                    <i class="fas fa-shield-alt me-1"></i> Auto-saving enabled
+                </span>
+            </div>
 
-                <div class="d-flex gap-3">
-                    <button type="submit" name="action" value="save_pending" class="btn btn-light border fw-bold px-4 rounded-pill">
-                        Save Draft
-                    </button>
-                    <button type="submit" name="action" value="submit_for_approval" class="btn btn-primary fw-bold px-4 rounded-pill shadow-sm"
-                            onclick="return confirm('Ensure the Tally Sheet is uploaded. Continue?')">
-                        Submit Results <i class="fas fa-arrow-right ms-2"></i>
-                    </button>
-                </div>
+            <div class="d-flex gap-3">
+                <button type="submit" name="action" value="save_pending" 
+                        class="btn btn-light border-2 fw-bold px-5 py-2 rounded-pill shadow-sm"
+                        style="border-color: #e2e8f0; transition: all 0.3s;">
+                    <i class="fas fa-save me-2"></i>Save Draft
+                </button>
+                <button type="submit" name="action" value="submit_for_approval" 
+                        class="btn btn-primary fw-bold px-5 py-2 rounded-pill shadow-lg"
+                        style="background: linear-gradient(green; border: none; transition: all 0.3s;"
+                        onclick="return confirm('Ensure the Tally Sheet is uploaded. Continue?')">
+                    <i class="fas fa-paper-plane me-2"></i>Submit for Approval
+                </button>
             </div>
         </div>
-    <?php endif; ?>
+    </div>
+</div>
+
+<style>
+@keyframes pulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.5; }
+}
+</style>
+<?php endif; ?>
             </form>
         </div>
     </div>

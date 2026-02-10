@@ -935,7 +935,7 @@ $pending_results_count = $conn->query("SELECT COUNT(*) FROM categories WHERE sta
 
             <div class="page-header">
     <h1 class="section-title">
-        <i class="fas fa-users-cog"></i>
+        </i>
         Manage Users
     </h1>
     <p class="page-subtitle">Create, edit, and manage system user accounts</p>

@@ -322,7 +322,277 @@ $pending_results_count = $conn->query("SELECT COUNT(*) FROM categories WHERE sta
       }
     }
 
-    @media (max-width: 991px) {
+    /* =========================================
+   MOBILE REPORTS OPTIMIZATION (Medal Standings)
+   ========================================= */
+@media (max-width: 991.98px) {
+
+    /* --- 1. GENERAL LAYOUT --- */
+    .container-fluid {
+        padding-left: 15px;
+        padding-right: 15px;
+    }
+
+    /* Stack Header & Print Button */
+    .d-flex.justify-content-between.align-items-center.mb-4 {
+        flex-direction: column;
+        align-items: stretch;
+        gap: 15px;
+    }
+    
+    /* Make Print Button & Sort Filter Full Width */
+    .btn-secondary, 
+    #sortFilter {
+        width: 100% !important;
+        padding: 10px;
+    }
+    
+    /* Adjust Sort Filter Container Width */
+    .card-header .d-flex {
+        flex-direction: column;
+        width: 100%;
+        gap: 10px;
+    }
+    .card-header div[style="width: 200px;"] {
+        width: 100% !important;
+    }
+
+    /* --- 2. SWIPEABLE TABS --- */
+    .nav-tabs {
+        flex-wrap: nowrap;
+        overflow-x: auto;
+        overflow-y: hidden;
+        white-space: nowrap;
+        -webkit-overflow-scrolling: touch;
+        border-bottom: 1px solid #dee2e6;
+        padding-bottom: 5px;
+    }
+    .nav-tabs .nav-link {
+        padding: 10px 15px;
+        font-size: 0.9rem;
+    }
+
+    /* --- 3. MEDAL TABLE (Sticky Column Technique) --- */
+    
+    /* Container Scroll */
+    .report-table-container {
+        overflow-x: auto !important;
+        -webkit-overflow-scrolling: touch;
+        border: 1px solid #e9ecef;
+        border-radius: 12px;
+        margin-bottom: 20px;
+        background: #fff;
+    }
+
+    /* Force Table Width (Prevent Squishing) */
+    .report-table {
+        min-width: 600px; /* Ensures enough width for numbers */
+    }
+
+    /* Cell Standardization */
+    .report-table th, 
+    .report-table td {
+        padding: 10px 8px !important;
+        font-size: 0.85rem !important; /* Smaller text for mobile */
+        white-space: nowrap;
+        text-align: center;
+        vertical-align: middle;
+    }
+
+    /* --- COLUMN 1: RANK (Hide on very small screens) --- */
+    .report-table th:first-child, 
+    .report-table td:first-child {
+        display: none; 
+    }
+
+    /* --- COLUMN 2: TEAM NAME (Sticky Left) --- */
+    /* This keeps the college name visible while scrolling medals */
+    .report-table td:nth-child(2),
+    .report-table th:nth-child(2) {
+        position: sticky !important;
+        left: 0;
+        background-color: #fff;
+        z-index: 5;
+        border-right: 2px solid #f0f0f0; /* Visual separator */
+        text-align: left;
+        min-width: 150px;
+        max-width: 170px;
+        white-space: normal; /* Allow text wrapping */
+        line-height: 1.2;
+    }
+
+    /* Fix header background for sticky column */
+    .report-table thead th:nth-child(2) { 
+        background: #f8f9fa; 
+        z-index: 10; 
+    }
+    
+    /* Fix hover background for sticky column */
+    .report-table tbody tr:hover td:nth-child(2) { 
+        background: #f8f9fa; 
+    }
+
+    /* Adjust Team Logo Size */
+    .report-table td:nth-child(2) img {
+        width: 30px !important;
+        height: 30px !important;
+        margin-right: 8px !important;
+    }
+
+    /* Typography Adjustments */
+    .report-table td:nth-child(2) .fw-bold { font-size: 0.9rem; } /* Team Code */
+    .report-table td:nth-child(2) .text-muted { font-size: 0.75rem; display: block; } /* Full Name */
+
+    /* --- MEDAL COLUMNS (Center & Bold) --- */
+    .report-table td:nth-child(3), /* Gold */
+    .report-table td:nth-child(4), /* Silver */
+    .report-table td:nth-child(5), /* Bronze */
+    .report-table td:nth-child(6) { /* Total */
+        min-width: 60px;
+        font-weight: 700;
+        font-size: 1rem !important; /* Larger numbers */
+    }
+
+    /* --- 4. DETAILED REPORT TABLE (DataTables) --- */
+    /* Handled by DataTables responsive, but we tweak the container */
+    #detailedReportTable {
+        min-width: 800px; /* Force scroll */
+    }
+    /* Make first column (Game Name) sticky in Detailed view too */
+    #detailedReportTable td:first-child,
+    #detailedReportTable th:first-child {
+        position: sticky;
+        left: 0;
+        background: #fff;
+        z-index: 5;
+        border-right: 2px solid #f0f0f0;
+        font-weight: 700;
+    }
+    #detailedReportTable thead th:first-child { background: #f8f9fa; z-index: 10; }
+    #detailedReportTable tbody tr:hover td:first-child { background: #f8f9fa; }
+
+    /* --- 5. CHARTS ADAPTATION --- */
+    .chart-wrapper {
+        height: 300px !important; /* Shorter height for mobile to see content */
+        padding: 10px;
+    }
+    
+    /* Stack charts vertically with space */
+    .col-12 .card {
+        margin-bottom: 20px;
+    }
+
+    
+    /* 1. COMPACT NAVBAR & LAYOUT */
+    .navbar {
+        padding: 0.5rem 1rem !important;
+        height: 60px !important; /* Fixed compact height */
+        display: flex !important;
+        flex-wrap: nowrap !important;
+        align-items: center !important;
+    }
+    
+    /* A. LEFT: Toggler Button */
+    .navbar-toggler {
+        order: 1 !important; /* First item */
+        border: 1px solid rgba(255,255,255,0.1);
+        padding: 4px 8px;
+        font-size: 1.2rem;
+        margin-right: 10px !important;
+    }
+    .navbar-toggler:focus { box-shadow: none; }
+
+    /* B. LEFT/CENTER: Brand Logo */
+    /* margin-right: auto PUSHES the Profile Icon to the far right */
+    .navbar-brand {
+        order: 2 !important; /* Second item */
+        margin-right: auto !important; /* THE KEY SPACER */
+        display: flex;
+        align-items: center;
+        max-width: 60%;
+    }
+    .navbar-brand img {
+        height: 30px !important;
+        width: 30px !important;
+        margin-right: 8px !important;
+    }
+    .navbar-brand strong {
+        font-size: 0.95rem !important;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
+    .navbar-brand small { display: none !important; }
+
+    /* C. RIGHT: Profile Menu Icon */
+    .user-dropdown {
+        order: 3 !important; /* Third item */
+        margin-left: 0 !important; 
+        position: relative;
+    }
+    .user-dropdown .user-name { display: none !important; } /* Hide Name */
+    
+    /* Icon Styling */
+    .user-dropdown .dropdown-toggle i { 
+        font-size: 26px !important; 
+        margin: 0 !important;
+        color: #fff; /* Ensure visibility */
+        cursor: pointer;
+    }
+
+    /* Order 3: Brand Logo */
+    .navbar-brand {
+        order: 3 !important;
+        display: flex;
+        align-items: center;
+        max-width: 55%; /* Adjust width to prevent overflow */
+        margin-right: 0 !important;
+    }
+    .navbar-brand img {
+        height: 30px !important;
+        width: 30px !important;
+        margin-right: 8px !important;
+    }
+    .navbar-brand strong {
+        font-size: 0.95rem !important;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
+    .navbar-brand small { display: none !important; }
+    
+    /* Compact Profile Menu */
+    .user-dropdown .user-name { display: none !important; }
+    .user-dropdown .dropdown-toggle i { font-size: 28px !important; margin: 0 !important; }
+
+    /* 2. SIDEBAR DRAWER (Fix Gap & Animation) */
+    .sidebar {
+        position: fixed !important;
+        top: 60px !important; /* Matches Navbar Height */
+        left: -260px !important; /* Hidden */
+        width: 260px !important;
+        height: calc(100vh - 60px) !important;
+        background-color: #2c3e50 !important;
+        box-shadow: 5px 0 15px rgba(0,0,0,0.3);
+        transition: left 0.3s ease-in-out !important;
+        z-index: 1045;
+        overflow-y: auto;
+    }
+    .sidebar.show { left: 0 !important; } /* Slide In */
+    
+    /* Prevent text cutoff in menu */
+    .sidebar-nav .nav-link { 
+        white-space: nowrap; 
+        font-size: 0.95rem;
+    }
+
+    /* 3. MAIN CONTENT ADJUSTMENTS */
+    .main-content {
+        padding: 15px !important;
+        margin-top: 60px !important;
+        margin-left: 0 !important;
+    }
+}
             /* 1. Center text on smaller screens */
             .footer-main { 
                 text-align: center; 
@@ -458,7 +728,7 @@ $pending_results_count = $conn->query("SELECT COUNT(*) FROM categories WHERE sta
             <div class="d-flex justify-content-between align-items-center mb-4">
                     <div class="page-header mb-4">
                         <h1 class="section-title">
-                            </i>Manage System Users
+                            </i>Overall Team Rankings
                         </h1>
                     </div>
                 <button class="btn btn-secondary" onclick="window.print()">
