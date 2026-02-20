@@ -1197,6 +1197,26 @@ $pending_results_count = $conn->query("SELECT COUNT(*) FROM categories WHERE sta
         justify-content: flex-start; /* Left align manager info */
     }
 
+    /* Help Button Style */
+.btn-guide {
+    background: #f1f5f9;
+    color: #475569;
+    border: none;
+    padding: 10px 20px;
+    border-radius: 50px;
+    font-weight: 600;
+    font-size: 0.9rem;
+    transition: all 0.2s;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+.btn-guide:hover {
+    background: #e2e8f0;
+    color: #1e293b;
+    transform: translateY(-2px);
+}
+
 </style>
 </head>
 <body>
@@ -1310,6 +1330,12 @@ $pending_results_count = $conn->query("SELECT COUNT(*) FROM categories WHERE sta
             </div>
                 <p class="text-muted mb-0">Configure games, events, and assign managers.</p>
             </div>
+
+            <div class="page-header-actions">
+                <button class="btn-guide" data-bs-toggle="modal" data-bs-target="#helpModal">
+                    <i class="fas fa-book-open text-primary"></i> Guide: How to Setup Events?
+                </button>
+            </div>
             <?php if ($message): ?>
             <div class="alert alert-<?php echo $message_type; ?> alert-dismissible fade show mb-0 shadow-sm" role="alert">
                 <?= htmlspecialchars($message) ?>
@@ -1318,22 +1344,30 @@ $pending_results_count = $conn->query("SELECT COUNT(*) FROM categories WHERE sta
             <?php endif; ?>
         </div>
 
-        <ul class="nav nav-pills-custom mb-4" id="eventTabs" role="tablist">
+        <ul class="nav nav-pills-custom mb-4 d-flex align-items-center" id="eventTabs" role="tablist">
+            
             <li class="nav-item" role="presentation">
                 <button class="nav-link active" id="games-tab" data-bs-toggle="tab" data-bs-target="#games" type="button" role="tab">
-                    <i class="fas fa-layer-group me-2"></i> Games (L1)
+                    <i class="fas fa-layer-group me-2"></i>Games
                 </button>
             </li>
+            
+            <i class="fas fa-chevron-right text-muted mx-1 opacity-50" style="font-size: 0.9rem;"></i>
+            
             <li class="nav-item" role="presentation">
                 <button class="nav-link" id="events-tab" data-bs-toggle="tab" data-bs-target="#events" type="button" role="tab">
-                    <i class="fas fa-calendar-day me-2"></i> Events (L2)
+                    <i class="fas fa-calendar-day me-2"></i>Events
                 </button>
             </li>
+            
+            <i class="fas fa-chevron-right text-muted mx-1 opacity-50" style="font-size: 0.9rem;"></i>
+            
             <li class="nav-item" role="presentation">
                 <button class="nav-link" id="categories-tab" data-bs-toggle="tab" data-bs-target="#categories" type="button" role="tab">
-                    <i class="fas fa-tags me-2"></i> Categories (L3)
+                    <i class="fas fa-tags me-2"></i>Categories & Divisions
                 </button>
             </li>
+            
         </ul>
 
         <div class="tab-content" id="eventTabsContent">
@@ -1399,97 +1433,97 @@ $pending_results_count = $conn->query("SELECT COUNT(*) FROM categories WHERE sta
                 </div>
 
                 <div class="card shadow-sm border-0 rounded-3">
-    <div class="card-body p-0">
-        <div class="table-responsive">
-            <table class="table table-hover align-middle mb-0">
-                <thead class="bg-light text-secondary">
-                    <tr>
-                        <th class="ps-4 py-3" style="width: 40%;">Event Name</th>
-                        <th class="py-3" style="width: 35%;">Assigned Manager</th>
-                        <th class="text-end pe-4 py-3" style="width: 25%;">Actions</th>
-                    </tr>
-                </thead>
-                <tbody id="eventsGrid">
-                    <?php if (empty($events_with_managers)): ?>
-                        <tr class="event-row">
-                        <tr>
-                            <td colspan="3" class="text-center py-5 text-muted">
-                                <i class="fas fa-calendar-day fa-3x mb-3 opacity-25"></i>
-                                <p class="mb-0">No events found.</p>
-                            </td>
-                        </tr>
-                    <?php else: ?>
-                        <?php foreach ($events_with_managers as $event): ?>
-                        <tr>
-                            <tr class="event-row"> <td class="ps-4 py-3">
-                                <div class="d-flex flex-column">
-                                    <span class="fw-bold text-dark fs-6"><?= htmlspecialchars($event['event_name']) ?></span>
-                                    <small class="text-muted mt-1">
-                                        <i class="fas fa-tag me-1 text-primary opacity-50"></i>
-                                        <?= htmlspecialchars($event['game_name']) ?>
-                                    </small>
-                                </div>
-                            </td>
+                    <div class="card-body p-0">
+                        <div class="table-responsive">
+                            <table class="table table-hover align-middle mb-0">
+                                <thead class="bg-light text-secondary">
+                                    <tr>
+                                        <th class="ps-4 py-3" style="width: 40%;">Event Name</th>
+                                        <th class="py-3" style="width: 35%;">Assigned Manager</th>
+                                        <th class="text-end pe-4 py-3" style="width: 25%;">Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="eventsGrid">
+                                    <?php if (empty($events_with_managers)): ?>
+                                        <tr class="event-row">
+                                        <tr>
+                                            <td colspan="3" class="text-center py-5 text-muted">
+                                                <i class="fas fa-calendar-day fa-3x mb-3 opacity-25"></i>
+                                                <p class="mb-0">No events found.</p>
+                                            </td>
+                                        </tr>
+                                    <?php else: ?>
+                                        <?php foreach ($events_with_managers as $event): ?>
+                                        <tr>
+                                            <tr class="event-row"> <td class="ps-4 py-3">
+                                                <div class="d-flex flex-column">
+                                                    <span class="fw-bold text-dark fs-6"><?= htmlspecialchars($event['event_name']) ?></span>
+                                                    <small class="text-muted mt-1">
+                                                        <i class="fas fa-tag me-1 text-primary opacity-50"></i>
+                                                        <?= htmlspecialchars($event['game_name']) ?>
+                                                    </small>
+                                                </div>
+                                            </td>
 
-                            <td class="py-3">
-                                <?php if($event['manager_name']): ?>
-                                    <div class="d-flex align-items-center">
-                                        <div class="manager-avatar-table text-white d-flex align-items-center justify-content-center me-2 shadow-sm" 
-                                             style="width: 32px; height: 32px; background-color: #2c3e50; border-radius: 50%; font-size: 12px; font-weight: bold;">
-                                            <?= strtoupper(substr($event['manager_name'], 0, 1)) ?>
-                                        </div>
-                                        <div>
-                                            <span class="d-block text-dark fw-medium small"><?= htmlspecialchars($event['manager_name']) ?></span>
-                                            <span class="d-block text-muted" style="font-size: 11px;">Event Manager</span>
-                                        </div>
-                                    </div>
-                                <?php else: ?>
-                                    <span class="badge bg-warning text-dark bg-opacity-25 border border-warning border-opacity-25 px-3 py-2 rounded-pill fw-normal">
-                                        <i class="fas fa-user-slash me-1"></i> Unassigned
-                                    </span>
-                                <?php endif; ?>
-                            </td>
+                                            <td class="py-3">
+                                                <?php if($event['manager_name']): ?>
+                                                    <div class="d-flex align-items-center">
+                                                        <div class="manager-avatar-table text-white d-flex align-items-center justify-content-center me-2 shadow-sm" 
+                                                            style="width: 32px; height: 32px; background-color: #2c3e50; border-radius: 50%; font-size: 12px; font-weight: bold;">
+                                                            <?= strtoupper(substr($event['manager_name'], 0, 1)) ?>
+                                                        </div>
+                                                        <div>
+                                                            <span class="d-block text-dark fw-medium small"><?= htmlspecialchars($event['manager_name']) ?></span>
+                                                            <span class="d-block text-muted" style="font-size: 11px;">Event Manager</span>
+                                                        </div>
+                                                    </div>
+                                                <?php else: ?>
+                                                    <span class="badge bg-warning text-dark bg-opacity-25 border border-warning border-opacity-25 px-3 py-2 rounded-pill fw-normal">
+                                                        <i class="fas fa-user-slash me-1"></i> Unassigned
+                                                    </span>
+                                                <?php endif; ?>
+                                            </td>
 
-                            <td class="text-end pe-4 py-3">
-                                <div class="btn-group">
-                                    <button class="btn btn-sm btn-light text-primary border me-1" 
-                                            data-bs-toggle="modal" 
-                                            data-bs-target="#assignManagerModal"
-                                            data-event-id="<?= $event['event_id'] ?>" 
-                                            data-event-name="<?= htmlspecialchars($event['event_name']) ?>"
-                                            data-user-id="<?= $event['user_id'] ?? '' ?>" 
-                                            title="Assign Manager">
-                                        <i class="fas fa-user-plus"></i>
-                                    </button>
+                                            <td class="text-end pe-4 py-3">
+                                                <div class="btn-group">
+                                                    <button class="btn btn-sm btn-light text-primary border me-1" 
+                                                            data-bs-toggle="modal" 
+                                                            data-bs-target="#assignManagerModal"
+                                                            data-event-id="<?= $event['event_id'] ?>" 
+                                                            data-event-name="<?= htmlspecialchars($event['event_name']) ?>"
+                                                            data-user-id="<?= $event['user_id'] ?? '' ?>" 
+                                                            title="Assign Manager">
+                                                        <i class="fas fa-user-plus"></i>
+                                                    </button>
 
-                                    <button class="btn btn-sm btn-light text-secondary border me-1" 
-                                            data-bs-toggle="modal" 
-                                            data-bs-target="#editEventModal"
-                                            data-event-id="<?= $event['event_id'] ?>" 
-                                            data-event-name="<?= htmlspecialchars($event['event_name']) ?>"
-                                            data-game-id="<?= $event['game_id'] ?>" 
-                                            title="Edit">
-                                        <i class="fas fa-pen"></i>
-                                    </button>
+                                                    <button class="btn btn-sm btn-light text-secondary border me-1" 
+                                                            data-bs-toggle="modal" 
+                                                            data-bs-target="#editEventModal"
+                                                            data-event-id="<?= $event['event_id'] ?>" 
+                                                            data-event-name="<?= htmlspecialchars($event['event_name']) ?>"
+                                                            data-game-id="<?= $event['game_id'] ?>" 
+                                                            title="Edit">
+                                                        <i class="fas fa-pen"></i>
+                                                    </button>
 
-                                    <button class="btn btn-sm btn-light text-danger border" 
-                                            data-bs-toggle="modal" 
-                                            data-bs-target="#deleteEventModal"
-                                            data-event-id="<?= $event['event_id'] ?>" 
-                                            data-event-name="<?= htmlspecialchars($event['event_name']) ?>" 
-                                            title="Delete">
-                                        <i class="fas fa-trash"></i>
-                                    </button>
-                                </div>
-                            </td>
-                        </tr>
-                        <?php endforeach; ?>
-                    <?php endif; ?>
-                </tbody>
-            </table>
-        </div>
-    </div>
-</div>
+                                                    <button class="btn btn-sm btn-light text-danger border" 
+                                                            data-bs-toggle="modal" 
+                                                            data-bs-target="#deleteEventModal"
+                                                            data-event-id="<?= $event['event_id'] ?>" 
+                                                            data-event-name="<?= htmlspecialchars($event['event_name']) ?>" 
+                                                            title="Delete">
+                                                        <i class="fas fa-trash"></i>
+                                                    </button>
+                                                </div>
+                                            </td>
+                                        </tr>
+                                        <?php endforeach; ?>
+                                    <?php endif; ?>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
             </div>
 
             <div class="tab-pane fade" id="categories" role="tabpanel">
@@ -1504,67 +1538,67 @@ $pending_results_count = $conn->query("SELECT COUNT(*) FROM categories WHERE sta
                 </div>
                 
                 <div class="row g-3" id="categoriesGrid">
-    <?php if (empty($categories)): ?>
-        <div class="col-12">
-            <div class="text-center text-muted py-5">
-                <i class="fas fa-tags fa-3x mb-3 opacity-25"></i>
-                <p class="mb-0">No categories yet. These are specific divisions where medals are awarded (e.g., "Men's Division").</p>
-            </div>
-        </div>
-    <?php else: ?>
-        <?php foreach ($categories as $category): ?>
-        <div class="col-12 category-item">
-            <div class="category-card-compact">
-                <div class="row align-items-center">
-                    <div class="col-lg-4 col-md-6 mb-2 mb-lg-0">
-                        <?php 
-                            $catName = $category['category_name'];
-                            $isDefault = ($catName === 'Single Division' || $catName === 'Open Division');
-                            $style = $isDefault ? 'text-muted fst-italic' : 'fw-bold text-dark';
-                        ?>
-                        <h6 class="mb-0 <?= $style ?>"><?= htmlspecialchars($catName) ?></h6>
-                        <small class="text-muted">Level 3 Division</small>
-                    </div>
-                    
-                    <div class="col-lg-4 col-md-6 mb-2 mb-lg-0">
-                        <small class="text-muted d-block text-uppercase" style="font-size: 0.7rem; letter-spacing: 0.5px;">
-                            <?= htmlspecialchars($category['game_name']) ?>
-                        </small>
-                        <span class="fw-semibold text-secondary"><?= htmlspecialchars($category['event_name']) ?></span>
-                    </div>
-                    
-                    <div class="col-lg-3 col-6 mb-2 mb-lg-0">
-                        <?php if($category['manager_name']): ?>
-                            <div class="manager-badge-sm">
-                                <div class="manager-avatar-sm"><?= substr($category['manager_name'], 0, 1) ?></div>
-                                <span class="small"><?= htmlspecialchars($category['manager_name']) ?></span>
+                    <?php if (empty($categories)): ?>
+                        <div class="col-12">
+                            <div class="text-center text-muted py-5">
+                                <i class="fas fa-tags fa-3x mb-3 opacity-25"></i>
+                                <p class="mb-0">No categories yet. These are specific divisions where medals are awarded (e.g., "Men's Division").</p>
                             </div>
-                        <?php else: ?>
-                            <div class="manager-badge-sm manager-unassigned">
-                                <i class="fas fa-user-slash me-1"></i> Unassigned
-                            </div>
-                        <?php endif; ?>
-                    </div>
-                    
-                    <div class="col-lg-1 col-6 text-end">
-                        <div class="btn-group-compact">
-                            <button class="btn-icon-sm edit" data-bs-toggle="modal" data-bs-target="#editCategoryModal"
-                                data-category-id="<?= $category['category_id'] ?>" data-category-name="<?= htmlspecialchars($category['category_name']) ?>"
-                                data-event-id="<?= $category['event_id'] ?>">
-                                <i class="fas fa-pen"></i>
-                            </button>
-                            <button class="btn-icon-sm delete" data-bs-toggle="modal" data-bs-target="#deleteCategoryModal"
-                                data-category-id="<?= $category['category_id'] ?>" data-category-name="<?= htmlspecialchars($category['category_name']) ?>">
-                                <i class="fas fa-trash"></i>
-                            </button>
                         </div>
-                    </div>
+                    <?php else: ?>
+                    <?php foreach ($categories as $category): ?>
+                        <div class="col-12 category-item">
+                            <div class="category-card-compact">
+                                <div class="row align-items-center">
+                                    <div class="col-lg-4 col-md-6 mb-2 mb-lg-0">
+                                        <?php 
+                                            $catName = $category['category_name'];
+                                            $isDefault = ($catName === 'Single Division' || $catName === 'Open Division');
+                                            $style = $isDefault ? 'text-muted fst-italic' : 'fw-bold text-dark';
+                                        ?>
+                                        <h6 class="mb-0 <?= $style ?>"><?= htmlspecialchars($catName) ?></h6>
+                                        <small class="text-muted">Level 3 Division</small>
+                                    </div>
+                                    
+                                    <div class="col-lg-4 col-md-6 mb-2 mb-lg-0">
+                                        <small class="text-muted d-block text-uppercase" style="font-size: 0.7rem; letter-spacing: 0.5px;">
+                                            <?= htmlspecialchars($category['game_name']) ?>
+                                        </small>
+                                        <span class="fw-semibold text-secondary"><?= htmlspecialchars($category['event_name']) ?></span>
+                                    </div>
+                                    
+                                    <div class="col-lg-3 col-6 mb-2 mb-lg-0">
+                                        <?php if($category['manager_name']): ?>
+                                            <div class="manager-badge-sm">
+                                                <div class="manager-avatar-sm"><?= substr($category['manager_name'], 0, 1) ?></div>
+                                                <span class="small"><?= htmlspecialchars($category['manager_name']) ?></span>
+                                            </div>
+                                        <?php else: ?>
+                                            <div class="manager-badge-sm manager-unassigned">
+                                                <i class="fas fa-user-slash me-1"></i> Unassigned
+                                            </div>
+                                        <?php endif; ?>
+                                    </div>
+                                    
+                                    <div class="col-lg-1 col-6 text-end">
+                                        <div class="btn-group-compact">
+                                            <button class="btn-icon-sm edit" data-bs-toggle="modal" data-bs-target="#editCategoryModal"
+                                                data-category-id="<?= $category['category_id'] ?>" data-category-name="<?= htmlspecialchars($category['category_name']) ?>"
+                                                data-event-id="<?= $category['event_id'] ?>">
+                                                <i class="fas fa-pen"></i>
+                                            </button>
+                                            <button class="btn-icon-sm delete" data-bs-toggle="modal" data-bs-target="#deleteCategoryModal"
+                                                data-category-id="<?= $category['category_id'] ?>" data-category-name="<?= htmlspecialchars($category['category_name']) ?>">
+                                                <i class="fas fa-trash"></i>
+                                            </button>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <?php endforeach; ?>
+                    <?php endif; ?>
                 </div>
-            </div>
-        </div>
-        <?php endforeach; ?>
-    <?php endif; ?>
-</div>
             </div>
         </div>
     </div>
@@ -1872,6 +1906,48 @@ $pending_results_count = $conn->query("SELECT COUNT(*) FROM categories WHERE sta
                             <button type="submit" class="btn btn-danger">Delete Division</button>
                         </div>
                     </form>
+                </div>
+            </div>
+        </div>
+
+        <div class="modal fade" id="helpModal" tabindex="-1" aria-hidden="true">
+            <div class="modal-dialog modal-dialog-centered modal-lg">
+                <div class="modal-content border-0 shadow-lg">
+                    <div class="modal-header border-bottom-0 pb-0">
+                        <h5 class="modal-title fw-bold "><i class="fas fa-info-circle text-primary me-2"></i>Tournament Setup Guide</h5>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                    </div>
+                    <div class="modal-body p-4">
+                        <div class="row g-4">
+                            <div class="col-md-6">
+                                <div class="p-3 bg-light rounded h-100 border">
+                                    <h6 class="fw-bold text-primary mb-2"><i class="fas fa-layer-group me-2"></i>1. Add Games</h6>
+                                    <p class="small text-muted mb-0">Start by creating broad groups for the tournament in the first tab. Examples include <strong>"Athletics"</strong>, <strong>"Ball Games"</strong>, or <strong>"Racket Games"</strong>.</p>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="p-3 bg-light rounded h-100 border">
+                                    <h6 class="fw-bold text-success mb-2"><i class="fas fa-calendar-day me-2"></i>2. Create Events</h6>
+                                    <p class="small text-muted mb-0">Go to the second tab to add individual events (like <strong>"100m Sprint"</strong> or <strong>"Basketball"</strong>) and link them to the Game group you just created.</p>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="p-3 bg-light rounded h-100 border">
+                                    <h6 class="fw-bold text-info text-dark mb-2"><i class="fas fa-user-plus me-2"></i>3. Assign Managers</h6>
+                                    <p class="small text-muted mb-0">Back in the <strong>Events</strong> tab, click the <span class="badge bg-light text-primary border"><i class="fas fa-user-plus"></i></span> icon to delegate an Event Manager to handle the live scoring.</p>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="p-3 bg-light rounded h-100 border">
+                                    <h6 class="fw-bold text-warning text-dark mb-2"><i class="fas fa-tags me-2"></i>4. Define Categories & Divisions</h6>
+                                    <p class="small text-muted mb-0">In the final tab, specify the exact medal categories (e.g., <strong>"Men's"</strong>, <strong>"Women's"</strong>, or <strong>"Lightweight"</strong>) where athletes will compete.</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="modal-footer border-top-0 pt-0">
+                        <button type="button" class="btn btn-secondary px-4 rounded-pill" data-bs-dismiss="modal">Got it</button>
+                    </div>
                 </div>
             </div>
         </div>

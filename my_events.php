@@ -1048,10 +1048,10 @@ $status_options = [
     <nav class="navbar navbar-dark bg-dark">
         <div class="container-fluid d-flex align-items-center justify-content-between">
             <a class="navbar-brand d-flex align-items-center" href="event_manager_dashboard.php">
-                <img src="imageslogo.png" alt="Logo" class="me-2" style="height: 50px; width: 48px; object-fit: contain;">
+                <img src="images/PIT.png" alt="Logo" class="me-2" style="height: 50px; width: 48px; object-fit: contain;">
                 <div class="d-flex flex-column lh-sm">
                     <strong class="text-white brand-heading" style="font-size: 1.25rem;">PIT SIGLAKAS MEDAL TALLY</strong>
-                    <small class="text-light" style="font-size: 0.75rem;">Event Manager Panel</small>
+                    <small class="text-light" style="font-size: 0.75rem;">Tournament Manager Panel</small>
                 </div>
             </a>
             <div class="dropdown user-dropdown ms-auto me-2 me-lg-0">

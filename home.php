@@ -575,6 +575,10 @@ $conn->close();
             0% { transform: translateX(0); }
             100% { transform: translateX(-50%); } /* Move exactly half the width */
         }
+        
+        .ticker-move.fast-ticker {
+            animation: ticker 20s linear infinite; /* 8 seconds is much faster than the normal 30s */
+        }
 
         /* --- MOBILE RESPONSIVE FIX --- */
         @media (max-width: 767px) {
@@ -724,44 +728,52 @@ $conn->close();
     <div class="main-content">
         <div class="container">
             <div class="hero-section">
-                <?php if (!empty($recent_winners)): ?>
                 <div class="news-ticker-box mb-4">
                     <div class="ticker-label">JUST IN</div>
                     <div class="ticker-wrap">
-                        <div class="ticker-move">
-                            <?php 
-                            // Get the single latest winner
-                            $latest = $recent_winners[0];
+                        <div class="ticker-move <?php echo empty($recent_winners) ? 'fast-ticker' : ''; ?>">
+                            <?php if (!empty($recent_winners)): ?>
+                                <?php 
+                                // Get the single latest winner
+                                $latest = $recent_winners[0];
 
-                            // Build the string ONCE
-                            $fullEvent = htmlspecialchars($latest['event_name']);
-                            if (!empty($latest['category_name']) && $latest['category_name'] !== 'Single Division' && $latest['category_name'] !== 'Main Event') {
-                                $fullEvent .= ' - ' . htmlspecialchars($latest['category_name']);
-                            }
-                            
-                            $itemHtml = '<div class="ticker-item">';
-                            $itemHtml .= '<span class="text-uppercase fw-bold me-2" style="color: #fff; opacity: 0.7; letter-spacing: 1px;">' . $fullEvent . ':</span>';
-                            
-                            if($latest['gold_code']) {
-                                $itemHtml .= '<span class="me-3">🥇(' . $latest['gold_count'] . ') <strong style="color: #FFD700; text-shadow: 0 0 10px rgba(255, 215, 0, 0.3);">' . htmlspecialchars($latest['gold_code']) . '</strong></span>';
-                            }
-                            if($latest['silver_code']) {
-                                $itemHtml .= '<span class="me-3">🥈(' . $latest['silver_count'] . ') <strong style="color: #C0C0C0; text-shadow: 0 0 10px rgba(192, 192, 192, 0.3);">' . htmlspecialchars($latest['silver_code']) . '</strong></span>';
-                            }
-                            if($latest['bronze_code']) {
-                                $itemHtml .= '<span class="me-3">🥉(' . $latest['bronze_count'] . ') <strong style="color: #CD7F32; text-shadow: 0 0 10px rgba(205, 127, 50, 0.3);">' . htmlspecialchars($latest['bronze_code']) . '</strong></span>';
-                            }
-                            $itemHtml .= '</div>';
-                            
-                            // REPEAT IT 10 TIMES to fill the bar and loop seamlessly
-                            for ($i = 0; $i < 10; $i++) {
-                                echo $itemHtml;
-                            }
-                            ?>
+                                // Build the string ONCE
+                                $fullEvent = htmlspecialchars($latest['event_name']);
+                                if (!empty($latest['category_name']) && $latest['category_name'] !== 'Single Division' && $latest['category_name'] !== 'Main Event') {
+                                    $fullEvent .= ' - ' . htmlspecialchars($latest['category_name']);
+                                }
+                                
+                                $itemHtml = '<div class="ticker-item">';
+                                $itemHtml .= '<span class="text-uppercase fw-bold me-2" style="color: #fff; opacity: 0.7; letter-spacing: 1px;">' . $fullEvent . ':</span>';
+                                
+                                if($latest['gold_code']) {
+                                    $itemHtml .= '<span class="me-3">🥇(' . $latest['gold_count'] . ') <strong style="color: #FFD700; text-shadow: 0 0 10px rgba(255, 215, 0, 0.3);">' . htmlspecialchars($latest['gold_code']) . '</strong></span>';
+                                }
+                                if($latest['silver_code']) {
+                                    $itemHtml .= '<span class="me-3">🥈(' . $latest['silver_count'] . ') <strong style="color: #C0C0C0; text-shadow: 0 0 10px rgba(192, 192, 192, 0.3);">' . htmlspecialchars($latest['silver_code']) . '</strong></span>';
+                                }
+                                if($latest['bronze_code']) {
+                                    $itemHtml .= '<span class="me-3">🥉(' . $latest['bronze_count'] . ') <strong style="color: #CD7F32; text-shadow: 0 0 10px rgba(205, 127, 50, 0.3);">' . htmlspecialchars($latest['bronze_code']) . '</strong></span>';
+                                }
+                                $itemHtml .= '</div>';
+                                
+                                // REPEAT IT 10 TIMES
+                                for ($i = 0; $i < 10; $i++) {
+                                    echo $itemHtml;
+                                }
+                                ?>
+                            <?php else: ?>
+                                <?php 
+                                // REPEAT THE PLACEHOLDER 10 TIMES FOR SEAMLESS FAST SCROLL
+                                $emptyHtml = '<div class="ticker-item"><span class="text-uppercase fw-bold" style="color: #fff; opacity: 0.7; letter-spacing: 1px;">Awaiting first official results...</span></div>';
+                                for ($i = 0; $i < 10; $i++) {
+                                    echo $emptyHtml;
+                                }
+                                ?>
+                            <?php endif; ?>
                         </div>
                     </div>
                 </div>
-                <?php endif; ?>
                 <div class="hero-header">
                     <div class="hero-title-group">
                         <img src="images/SIGLAKASTEST.png" alt="Logo">
@@ -941,9 +953,18 @@ $conn->close();
         const tickerContainer = document.querySelector('.news-ticker-box');
         const tickerMove = document.querySelector('.ticker-move');
         
-        // If no winners, hide ticker
+        // If no winners, show the default empty message, repeat it, and SPEED IT UP
         if (!winners || winners.length === 0) {
-            if(tickerContainer) tickerContainer.style.display = 'none';
+            if (tickerMove) {
+                let emptyHtml = '<div class="ticker-item"><span class="text-uppercase fw-bold" style="color: #fff; opacity: 0.7; letter-spacing: 1px;">Awaiting first official results...</span></div>';
+                let finalEmptyHtml = "";
+                for (let i = 0; i < 10; i++) {
+                    finalEmptyHtml += emptyHtml;
+                }
+                
+                tickerMove.innerHTML = finalEmptyHtml;
+                tickerMove.classList.add('fast-ticker'); // ADD FAST SCROLL
+            }
             return;
         }
 
@@ -979,8 +1000,11 @@ $conn->close();
         }
 
         // Only update DOM if content changed
-        if (tickerMove && tickerMove.innerHTML !== finalHtml) {
-            tickerMove.innerHTML = finalHtml;
+        if (tickerMove) {
+            tickerMove.classList.remove('fast-ticker'); // REMOVE FAST SCROLL FOR REAL DATA
+            if (tickerMove.innerHTML !== finalHtml) {
+                tickerMove.innerHTML = finalHtml;
+            }
         }
     }
 
