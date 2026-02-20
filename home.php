@@ -546,7 +546,7 @@ $conn->close();
             display: inline-block;
             white-space: nowrap;
             /* Move left by 50% (the width of one full set of items) */
-            animation: ticker 15s linear infinite; 
+            animation: ticker 30s linear infinite; 
         }
         
         .ticker-wrap:hover .ticker-move {
@@ -881,6 +881,7 @@ $conn->close();
                 </div>
             </div>
             <div class="footer-bottom">
+                <small> ver.8 </small><br>
                 <small>&copy; <?php echo date("Y"); ?> PIT SILAKAS MEDAL TALLY. All rights reserved.</small><br>
                 <small>Developed by Jayvee Baybyon</small>
             </div>

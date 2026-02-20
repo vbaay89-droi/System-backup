@@ -753,7 +753,7 @@ if ($log_res) {
                 <img src="../imageslogo.png" alt="Logo" class="me-2" style="height: 50px; width: 48px; object-fit: contain;">
                 <div class="d-flex flex-column lh-sm">
                     <strong class="text-white" style="font-size: 1.25rem;">PIT SPORTS TALLYING</strong>
-                    <small class="text-light" style="font-size: 0.75rem;">Director Panel</small>
+                    <small class="text-light" style="font-size: 0.75rem;">Sports Director Panel</small>
                 </div>
             </a>
             <button class="navbar-toggler d-lg-none" type="button" id="mobileToggle">

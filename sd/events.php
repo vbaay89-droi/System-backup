@@ -145,13 +145,33 @@ if (isset($_POST['delete_category'])) {
 }
 // MANAGER ASSIGNMENT
 if (isset($_POST['assign_manager'])) {
-    $event_id = (int)$_POST['event_id']; $user_id = (int)$_POST['user_id'];
+    $event_id = (int)$_POST['event_id']; 
+    $user_id = (int)$_POST['user_id'];
+
+    // 1. Check if this user is ALREADY assigned to another event (and it's not THIS event)
+    if ($user_id > 0) {
+        $check = $conn->query("SELECT event_id FROM event_manager_assignments WHERE user_id = $user_id AND event_id != $event_id");
+        if ($check->num_rows > 0) {
+            $_SESSION['message'] = "Error: That manager is already assigned to another event."; 
+            $_SESSION['message_type'] = "danger"; 
+            header("Location: events.php?tab=events"); 
+            exit();
+        }
+    }
+
+    // 2. Proceed with assignment
     $conn->query("DELETE FROM event_manager_assignments WHERE event_id = $event_id");
+    
     if ($user_id > 0) {
         $stmt_ins = $conn->prepare("INSERT INTO event_manager_assignments (event_id, user_id) VALUES (?, ?)");
-        $stmt_ins->bind_param("ii", $event_id, $user_id); $stmt_ins->execute();
+        $stmt_ins->bind_param("ii", $event_id, $user_id); 
+        $stmt_ins->execute();
     }
-    $_SESSION['message'] = "Manager assignment updated."; $_SESSION['message_type'] = "success"; header("Location: events.php?tab=events"); exit();
+    
+    $_SESSION['message'] = "Manager assignment updated."; 
+    $_SESSION['message_type'] = "success"; 
+    header("Location: events.php?tab=events"); 
+    exit();
 }
 
 // --- FETCH DATA ---
@@ -160,6 +180,13 @@ $events = $conn->query("SELECT e.*, g.game_name FROM game_events e JOIN games g 
 $categories = $conn->query("SELECT c.*, e.event_name, g.game_name, u.full_name as manager_name FROM categories c JOIN game_events e ON c.event_id = e.event_id JOIN games g ON e.game_id = g.game_id LEFT JOIN event_manager_assignments ema ON e.event_id = ema.event_id LEFT JOIN users u ON ema.user_id = u.id ORDER BY g.game_name, e.event_name, c.category_name")->fetch_all(MYSQLI_ASSOC);
 $events_with_managers = $conn->query("SELECT e.*, g.game_name, u.full_name as manager_name, ema.user_id FROM game_events e JOIN games g ON e.game_id = g.game_id LEFT JOIN event_manager_assignments ema ON e.event_id = ema.event_id LEFT JOIN users u ON ema.user_id = u.id ORDER BY g.game_name, e.event_name")->fetch_all(MYSQLI_ASSOC);
 $event_managers = $conn->query("SELECT id, full_name FROM users WHERE role = 'Event Manager' ORDER BY full_name")->fetch_all(MYSQLI_ASSOC);
+
+// [NEW] Get a simple list of User IDs that are ALREADY assigned to ANY event
+$assigned_ids = [];
+$assigned_q = $conn->query("SELECT user_id FROM event_manager_assignments");
+while($row = $assigned_q->fetch_assoc()) {
+    $assigned_ids[] = $row['user_id'];
+}
 
 $message = $_SESSION['message'] ?? null;
 $message_type = $_SESSION['message_type'] ?? 'info';
@@ -174,7 +201,7 @@ $pending_results_count = $conn->query("SELECT COUNT(*) FROM categories WHERE sta
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Manage Events - Director Panel</title>
+    <title>Manage Events - Sports Director Panel</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" rel="stylesheet">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=Poppins:wght@400;500;600;700;800&display=swap" rel="stylesheet">
@@ -1180,7 +1207,7 @@ $pending_results_count = $conn->query("SELECT COUNT(*) FROM categories WHERE sta
                 <img src="../imageslogo.png" alt="Logo" class="me-2" style="height: 50px; width: 48px; object-fit: contain;">
                 <div class="d-flex flex-column lh-sm">
                     <strong class="text-white" style="font-size: 1.25rem;">PIT SPORTS TALLYING</strong>
-                    <small class="text-light" style="font-size: 0.75rem;">Director Panel</small>
+                    <small class="text-light" style="font-size: 0.75rem;">Sports Director Panel</small>
                 </div>
             </a>
             <button class="navbar-toggler d-lg-none" type="button" id="mobileToggle">
@@ -1572,7 +1599,7 @@ $pending_results_count = $conn->query("SELECT COUNT(*) FROM categories WHERE sta
             <div class="modal-dialog">
                 <div class="modal-content">
                     <div class="modal-header">
-                        <h5 class="modal-title"><i class="fas fa-plus-circle"></i>Add New Sport / Event</h5>
+                        <h5 class="modal-title"><i class="fas fa-plus-circle"></i>Add New Event</h5>
                         <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
                     </div>
                     <form action="events.php" method="POST">
@@ -1580,9 +1607,9 @@ $pending_results_count = $conn->query("SELECT COUNT(*) FROM categories WHERE sta
                             <input type="hidden" name="add_event">
                             
                             <div class="mb-3">
-                                <label class="form-label fw-bold">Select Game Category</label>
+                                <label class="form-label fw-bold">Select Game </label>
                                 <select class="form-select" name="game_id" required>
-                                    <option value="" disabled selected>-- Select Category --</option>
+                                    <option value="" disabled selected>-- Select Game --</option>
                                     <?php foreach ($games as $game): ?>
                                     <option value="<?= $game['game_id'] ?>"><?= htmlspecialchars($game['game_name']) ?></option>
                                     <?php endforeach; ?>
@@ -1590,7 +1617,7 @@ $pending_results_count = $conn->query("SELECT COUNT(*) FROM categories WHERE sta
                             </div>
 
                             <div class="mb-3">
-                                <label class="form-label fw-bold">Sport Name</label>
+                                <label class="form-label fw-bold">Event Name</label>
                                 <input type="text" class="form-control" name="event_name" placeholder="e.g. Basketball, Chess, 100m Dash" required>
                             </div>
                             
@@ -1626,7 +1653,7 @@ $pending_results_count = $conn->query("SELECT COUNT(*) FROM categories WHERE sta
                                 </select>
                             </div>
                             <div class="mb-3">
-                                <label class="form-label fw-bold">Division / Category Name</label>
+                                <label class="form-label fw-bold">Category Name</label>
                                 <input type="text" class="form-control" name="category_name" placeholder="e.g. Men's Division, Lightweight" required>
                             </div>
                         </div>
@@ -1650,13 +1677,27 @@ $pending_results_count = $conn->query("SELECT COUNT(*) FROM categories WHERE sta
                         <div class="modal-body">
                             <input type="hidden" name="assign_manager">
                             <input type="hidden" name="event_id" id="assign_event_id">
-                            <p>Assigning manager for: <strong id="assign_event_name" class="text-primary"></strong></p>
+                            <p>Assigning manager for: <strong id="assign_event_name" class="text-dark"></strong></p>
                             <div class="mb-3">
                                 <label for="user_id" class="form-label fw-bold">Select Manager</label>
                                 <select class="form-select" id="assign_user_id" name="user_id">
                                     <option value="0">-- Unassign --</option>
+                                    
                                     <?php foreach ($event_managers as $manager): ?>
-                                    <option value="<?= $manager['id'] ?>"><?= htmlspecialchars($manager['full_name']) ?></option>
+                                        <?php 
+                                            // Check if this manager is busy
+                                            $is_busy = in_array($manager['id'], $assigned_ids);
+                                        ?>
+                                        
+                                        <option value="<?= $manager['id'] ?>" 
+                                                <?= $is_busy ? 'disabled' : '' ?>
+                                                
+                                                class="<?= $is_busy ? 'text-muted fst-italic' : 'fw-bold text-dark' ?>">
+                                            
+                                            <?= htmlspecialchars($manager['full_name']) ?>
+                                            <?= $is_busy ? ' (Already Assigned)' : '' ?>
+                                        
+                                        </option>
                                     <?php endforeach; ?>
                                 </select>
                             </div>
@@ -1939,7 +1980,28 @@ setupGridSearch('searchCategories', 'categoriesGrid', '.category-item');
                 const button = event.relatedTarget;
                 document.getElementById('assign_event_id').value = button.dataset.eventId;
                 document.getElementById('assign_event_name').textContent = button.dataset.eventName;
-                document.getElementById('assign_user_id').value = button.dataset.userId || '0';
+                
+                const currentUserId = button.dataset.userId || '0';
+                const selectBox = document.getElementById('assign_user_id');
+
+                // 1. Reset: Ensure all options respect their HTML 'disabled' state first
+                Array.from(selectBox.options).forEach(opt => {
+                    // If the text contains "(Already Assigned)", keep it disabled
+                    if (opt.text.includes('(Already Assigned)')) {
+                        opt.disabled = true;
+                    }
+                });
+
+                // 2. UNLOCK current user: If the manager is assigned to THIS event, enable them
+                if (currentUserId !== '0') {
+                    const currentOption = selectBox.querySelector(`option[value="${currentUserId}"]`);
+                    if (currentOption) {
+                        currentOption.disabled = false; // Allow selecting the current person
+                    }
+                }
+
+                // 3. Set the value
+                selectBox.value = currentUserId;
             });
         }
 

@@ -36,12 +36,11 @@ $message = '';
 $message_type = '';
 
 // Helper function to validate the email
+// Helper function to validate the email
 function validate_gmail($email) {
+    // We only check if it is a valid email format now (works for Yahoo, Edu, Gmail, etc.)
     if (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
         return "Not a valid email address.";
-    }
-    if (substr($email, -10) !== '@gmail.com') {
-        return "Only @gmail.com addresses are allowed.";
     }
     return true;
 }
@@ -186,7 +185,7 @@ $pending_results_count = $conn->query("SELECT COUNT(*) FROM categories WHERE sta
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Manage Users - Director Panel</title>
+    <title>Manage Users - SPorts Director Panel</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" rel="stylesheet">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=Poppins:wght@400;500;600;700;800&display=swap" rel="stylesheet">
@@ -830,7 +829,7 @@ $pending_results_count = $conn->query("SELECT COUNT(*) FROM categories WHERE sta
                 <img src="imageslogo.png" alt="Logo" class="me-2 brand-logo" style="height: 50px; width: 48px; object-fit: contain;">
                 <div class="d-flex flex-column lh-sm">
                     <strong class="text-white" style="font-size: 1.25rem;">PIT SPORTS TALLYING</strong>
-                    <small class="text-light" style="font-size: 0.75rem;">Director Panel</small>
+                    <small class="text-light" style="font-size: 0.75rem;">Sports Director Panel</small>
                 </div>
             </a>
             <button class="navbar-toggler d-lg-none" type="button" id="mobileToggle">
@@ -1101,10 +1100,10 @@ $pending_results_count = $conn->query("SELECT COUNT(*) FROM categories WHERE sta
                         </div>
                         
                         <div class="mb-3">
-                            <label for="username" class="form-label">Email Address (@gmail.com only)</label>
+                            <label for="username" class="form-label">Email Address</label>
                             <input type="email" class="form-control" id="username" name="username" required 
-                                   pattern=".+@gmail\.com" title="Please enter a valid @gmail.com address."
-                                   placeholder="example@gmail.com">
+                                title="Please enter a valid email address."
+                                placeholder="name@example.com">
                         </div>
 
                         <div class="mb-3">
@@ -1156,7 +1155,7 @@ $pending_results_count = $conn->query("SELECT COUNT(*) FROM categories WHERE sta
                         <div class="mb-3">
                             <label for="edit_username" class="form-label">Email Address</label>
                             <input type="email" class="form-control" id="edit_username" name="edit_username" required
-                                   pattern=".+@gmail\.com" title="Please enter a valid @gmail.com address.">
+       title="Please enter a valid email address.">
                         </div>
 
                         <div class="row">

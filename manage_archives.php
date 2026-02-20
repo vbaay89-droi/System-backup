@@ -215,7 +215,7 @@ $pending_results_count = $conn->query("SELECT COUNT(*) FROM categories WHERE sta
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Season Archives - Director Panel</title>
+    <title>Season Archives - Sports Director Panel</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" rel="stylesheet">
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
@@ -1345,7 +1345,7 @@ $pending_results_count = $conn->query("SELECT COUNT(*) FROM categories WHERE sta
                 <img src="imageslogo.png" alt="Logo" class="me-2" style="height: 50px; width: 48px; object-fit: contain;">
                 <div class="d-flex flex-column lh-sm">
                     <strong class="text-white" style="font-size: 1.25rem;">PIT SPORTS TALLYING</strong>
-                    <small class="text-light" style="font-size: 0.75rem;">Director Panel</small>
+                    <small class="text-light" style="font-size: 0.75rem;">Sports Director Panel</small>
                 </div>
             </a>
             <button class="navbar-toggler d-lg-none" type="button" id="mobileToggle">
@@ -1458,7 +1458,7 @@ $pending_results_count = $conn->query("SELECT COUNT(*) FROM categories WHERE sta
                 <li class="nav-item">
                     <button class="nav-link active" id="history-tab" data-bs-toggle="tab" data-bs-target="#history" type="button">
                         <i class="fas fa-folder-open text-warning"></i>
-                        Season History
+                        History
                     </button>
                 </li>
                 <li class="nav-item">
@@ -1552,7 +1552,7 @@ $pending_results_count = $conn->query("SELECT COUNT(*) FROM categories WHERE sta
                                 <h3>Archive Current Season</h3>
                                 <p>Create a permanent snapshot of all current games, events, results, and teams.</p>
                                 <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#confirmArchiveModal">
-                                    <i class="fas fa-save me-2"></i> Create Archive Now
+                                    <i class="fas fa-save me-2"></i>Archive Now
                                 </button>
                             </div>
                         </div>

@@ -1240,7 +1240,7 @@ function truncate_text($text, $length = 100, $suffix = '...') {
                                         <th style="width: 20%;">Game</th>
                                         <th style="width: 25%;">Event</th>
                                         <th style="width: 25%;">Category</th>
-                                        <th class="text-end" style="width: 15%;">Date</th>
+                                        <th class="text-center" style="width: 15%;">Date</th>
                                     </tr>
                                 </thead>
                                 <tbody>
