@@ -130,6 +130,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $bronze_team = !empty($_POST['bronze_winner_id']) ? (int)$_POST['bronze_winner_id'] : null;
             $bronze_count = !empty($_POST['bronze_count']) ? (int)$_POST['bronze_count'] : 0;
 
+            /*
             // 1. General Check for Duplicate Teams (Happens for Draft & Submit)
             if ($category_info['category_type'] == 'medal') {
                 $winners = array_filter([$gold_team, $silver_team, $bronze_team]);
@@ -137,6 +138,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     throw new Exception("The same team cannot win multiple medals.");
                 }
             }
+            */
 
             $new_status = $category_info['status']; 
             
@@ -718,105 +720,105 @@ $current_submission = $conn->query("SELECT * FROM categories WHERE category_id =
                                 <h5 class="mb-0"><i class="fas fa-trophy me-2 text-warning"></i>Select Winners</h5>
                             </div>
                             <div class="card-body p-4">
-    <!-- GOLD MEDAL -->
-    <div class="medal-row gold-row">
-        <div class="row align-items-center g-3">
-            <div class="col-md-2 text-center">
-                <div class="medal-icon">
-                    <i class="fas fa-medal text-white"></i>
-                </div>
-            </div>
-            <div class="col-md-2">
-                <div class="medal-label text-gold">
-                    GOLD<br>
-                    <small class="fw-normal" style="font-size: 0.7rem; letter-spacing: 0;">1st Place</small>
-                </div>
-            </div>
-            <div class="col-md-6">
-                <select class="form-select fw-bold" name="gold_winner_id" <?php if ($is_locked) echo 'disabled'; ?>>
-                    <option value="">-- Select Champion Team --</option>
-                    <?php foreach ($teams as $team): ?>
-                        <option value="<?php echo $team['team_id']; ?>" <?php echo ($current_submission && $current_submission['gold_winner_college_id'] == $team['team_id']) ? 'selected' : ''; ?>>
-                            <?php echo htmlspecialchars($team['team_name']); ?>
-                        </option>
-                    <?php endforeach; ?>
-                </select>
-            </div>
-            <div class="col-md-2">
-                <input type="number" class="form-control text-center fw-bold" name="gold_count" 
-                       value="<?php echo $current_submission['gold_count'] ?? 0; ?>" 
-                       min="0" placeholder="0" <?php if ($is_locked) echo 'disabled'; ?>>
-                <small class="text-muted d-block text-center mt-1">Count</small>
-            </div>
-        </div>
-    </div>
+                                <!-- GOLD MEDAL -->
+                                <div class="medal-row gold-row">
+                                    <div class="row align-items-center g-3">
+                                        <div class="col-md-2 text-center">
+                                            <div class="medal-icon">
+                                                <i class="fas fa-medal text-white"></i>
+                                            </div>
+                                        </div>
+                                        <div class="col-md-2">
+                                            <div class="medal-label text-gold">
+                                                GOLD<br>
+                                                <small class="fw-normal" style="font-size: 0.7rem; letter-spacing: 0;">1st Place</small>
+                                            </div>
+                                        </div>
+                                        <div class="col-md-6">
+                                            <select class="form-select fw-bold" name="gold_winner_id" <?php if ($is_locked) echo 'disabled'; ?>>
+                                                <option value="">-- Select Champion Team --</option>
+                                                <?php foreach ($teams as $team): ?>
+                                                    <option value="<?php echo $team['team_id']; ?>" <?php echo ($current_submission && $current_submission['gold_winner_college_id'] == $team['team_id']) ? 'selected' : ''; ?>>
+                                                        <?php echo htmlspecialchars($team['team_name']); ?>
+                                                    </option>
+                                                <?php endforeach; ?>
+                                            </select>
+                                        </div>
+                                        <div class="col-md-2">
+                                            <input type="number" class="form-control text-center fw-bold" name="gold_count" 
+                                                value="<?php echo $current_submission['gold_count'] ?? 0; ?>" 
+                                                min="0" placeholder="0" <?php if ($is_locked) echo 'disabled'; ?>>
+                                            <small class="text-muted d-block text-center mt-1">Medal Count</small>
+                                        </div>
+                                    </div>
+                                </div>
 
-    <!-- SILVER MEDAL -->
-    <div class="medal-row silver-row">
-        <div class="row align-items-center g-3">
-            <div class="col-md-2 text-center">
-                <div class="medal-icon">
-                    <i class="fas fa-medal text-white"></i>
-                </div>
-            </div>
-            <div class="col-md-2">
-                <div class="medal-label text-silver">
-                    SILVER<br>
-                    <small class="fw-normal" style="font-size: 0.7rem; letter-spacing: 0;">2nd Place</small>
-                </div>
-            </div>
-            <div class="col-md-6">
-                <select class="form-select fw-bold" name="silver_winner_id" <?php if ($is_locked) echo 'disabled'; ?>>
-                    <option value="">-- Select Runner-Up Team --</option>
-                    <?php foreach ($teams as $team): ?>
-                        <option value="<?php echo $team['team_id']; ?>" <?php echo ($current_submission && $current_submission['silver_winner_college_id'] == $team['team_id']) ? 'selected' : ''; ?>>
-                            <?php echo htmlspecialchars($team['team_name']); ?>
-                        </option>
-                    <?php endforeach; ?>
-                </select>
-            </div>
-            <div class="col-md-2">
-                <input type="number" class="form-control text-center fw-bold" name="silver_count" 
-                       value="<?php echo $current_submission['silver_count'] ?? 0; ?>" 
-                       min="0" placeholder="0" <?php if ($is_locked) echo 'disabled'; ?>>
-                <small class="text-muted d-block text-center mt-1">Count</small>
-            </div>
-        </div>
-    </div>
+                                <!-- SILVER MEDAL -->
+                                <div class="medal-row silver-row">
+                                    <div class="row align-items-center g-3">
+                                        <div class="col-md-2 text-center">
+                                            <div class="medal-icon">
+                                                <i class="fas fa-medal text-white"></i>
+                                            </div>
+                                        </div>
+                                        <div class="col-md-2">
+                                            <div class="medal-label text-silver">
+                                                SILVER<br>
+                                                <small class="fw-normal" style="font-size: 0.7rem; letter-spacing: 0;">2nd Place</small>
+                                            </div>
+                                        </div>
+                                        <div class="col-md-6">
+                                            <select class="form-select fw-bold" name="silver_winner_id" <?php if ($is_locked) echo 'disabled'; ?>>
+                                                <option value="">-- Select Runner-Up Team --</option>
+                                                <?php foreach ($teams as $team): ?>
+                                                    <option value="<?php echo $team['team_id']; ?>" <?php echo ($current_submission && $current_submission['silver_winner_college_id'] == $team['team_id']) ? 'selected' : ''; ?>>
+                                                        <?php echo htmlspecialchars($team['team_name']); ?>
+                                                    </option>
+                                                <?php endforeach; ?>
+                                            </select>
+                                        </div>
+                                        <div class="col-md-2">
+                                            <input type="number" class="form-control text-center fw-bold" name="silver_count" 
+                                                value="<?php echo $current_submission['silver_count'] ?? 0; ?>" 
+                                                min="0" placeholder="0" <?php if ($is_locked) echo 'disabled'; ?>>
+                                            <small class="text-muted d-block text-center mt-1">Medal Count</small>
+                                        </div>
+                                    </div>
+                                </div>
 
-    <!-- BRONZE MEDAL -->
-    <div class="medal-row bronze-row">
-        <div class="row align-items-center g-3">
-            <div class="col-md-2 text-center">
-                <div class="medal-icon">
-                    <i class="fas fa-medal text-white"></i>
-                </div>
-            </div>
-            <div class="col-md-2">
-                <div class="medal-label text-bronze">
-                    BRONZE<br>
-                    <small class="fw-normal" style="font-size: 0.7rem; letter-spacing: 0;">3rd Place</small>
-                </div>
-            </div>
-            <div class="col-md-6">
-                <select class="form-select fw-bold" name="bronze_winner_id" <?php if ($is_locked) echo 'disabled'; ?>>
-                    <option value="">-- Select Bronze Team --</option>
-                    <?php foreach ($teams as $team): ?>
-                        <option value="<?php echo $team['team_id']; ?>" <?php echo ($current_submission && $current_submission['bronze_winner_college_id'] == $team['team_id']) ? 'selected' : ''; ?>>
-                            <?php echo htmlspecialchars($team['team_name']); ?>
-                        </option>
-                    <?php endforeach; ?>
-                </select>
-            </div>
-            <div class="col-md-2">
-                <input type="number" class="form-control text-center fw-bold" name="bronze_count" 
-                       value="<?php echo $current_submission['bronze_count'] ?? 0; ?>" 
-                       min="0" placeholder="0" <?php if ($is_locked) echo 'disabled'; ?>>
-                <small class="text-muted d-block text-center mt-1">Count</small>
-            </div>
-        </div>
-    </div>
-</div>
+                                <!-- BRONZE MEDAL -->
+                                <div class="medal-row bronze-row">
+                                    <div class="row align-items-center g-3">
+                                        <div class="col-md-2 text-center">
+                                            <div class="medal-icon">
+                                                <i class="fas fa-medal text-white"></i>
+                                            </div>
+                                        </div>
+                                        <div class="col-md-2">
+                                            <div class="medal-label text-bronze">
+                                                BRONZE<br>
+                                                <small class="fw-normal" style="font-size: 0.7rem; letter-spacing: 0;">3rd Place</small>
+                                            </div>
+                                        </div>
+                                        <div class="col-md-6">
+                                            <select class="form-select fw-bold" name="bronze_winner_id" <?php if ($is_locked) echo 'disabled'; ?>>
+                                                <option value="">-- Select Bronze Team --</option>
+                                                <?php foreach ($teams as $team): ?>
+                                                    <option value="<?php echo $team['team_id']; ?>" <?php echo ($current_submission && $current_submission['bronze_winner_college_id'] == $team['team_id']) ? 'selected' : ''; ?>>
+                                                        <?php echo htmlspecialchars($team['team_name']); ?>
+                                                    </option>
+                                                <?php endforeach; ?>
+                                            </select>
+                                        </div>
+                                        <div class="col-md-2">
+                                            <input type="number" class="form-control text-center fw-bold" name="bronze_count" 
+                                                value="<?php echo $current_submission['bronze_count'] ?? 0; ?>" 
+                                                min="0" placeholder="0" <?php if ($is_locked) echo 'disabled'; ?>>
+                                            <small class="text-muted d-block text-center mt-1">Medal Count</small>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
                         </div>
                     </div>
 

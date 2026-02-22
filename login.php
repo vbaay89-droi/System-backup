@@ -846,9 +846,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
               <form action="login.php" method="POST">
                 <div class="mb-4 text-start">
-                  <label for="username" class="form-label">Username</label>
+                  <label for="username" class="form-label">Username/Email</label>
                   <div class="position-relative">
-                    <input type="text" class="form-control" id="username" name="username" placeholder="Enter username" required value="<?= htmlspecialchars($_POST['username'] ?? '') ?>">
+                    <input type="text" class="form-control" id="username" name="username/Email" placeholder="Enter username/Email" required value="<?= htmlspecialchars($_POST['username'] ?? '') ?>">
                     <i class="fas fa-user position-absolute top-50 start-0 translate-middle-y ms-3 text-muted"></i>
                   </div>
                 </div>
