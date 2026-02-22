@@ -1140,7 +1140,7 @@ $status_options = [
             <div class="row">
                 <div class="col-lg-5 col-md-12 mb-4 mb-lg-0">
                     <div class="footer-logo-group">
-                        <img src="imageslogo.png" alt="Logo">
+                        <img src="images/PIT.png" alt="Logo">
                         <img src="images/Cote.png" alt="Logo">
                         <h5> PIT SILAKAS MEDAL TALLY</h5>
                     </div>

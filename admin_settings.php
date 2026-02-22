@@ -687,7 +687,7 @@ if ($request_result) {
         <div class="container-fluid d-flex align-items-center justify-content-between">
             
             <a class="navbar-brand d-flex align-items-center" href="admin_dashboard.php" style="cursor: pointer;">
-                <img src="imageslogo.png" alt="Logo" class="me-2 brand-logo" style="height: 50px; width: 48px; object-fit: contain;">
+                <img src="images/PIT.png" alt="Logo" class="me-2 brand-logo" style="height: 50px; width: 48px; object-fit: contain;">
                 <div class="d-flex flex-column lh-sm">
                     <strong class="text-white brand-heading" style="font-size: 1.25rem;">PIT SPORTS TALLYING</strong>
                     <small class="text-light brand-subheading" style="font-size: 0.75rem;">Administrator Panel</small>

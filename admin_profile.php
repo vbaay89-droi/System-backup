@@ -361,7 +361,7 @@ if (isset($_POST['change_email'])) {
                 if ($_SESSION['role'] === 'Event Manager') echo 'event_manager_dashboard.php';
                 else echo 'sd/sports_director_dashboard.php';
             ?>">
-                <img src="imageslogo.png" alt="Logo" class="me-2" style="height: 50px; width: 48px; object-fit: contain;">
+                <img src="images/PIT.png" alt="Logo" class="me-2" style="height: 50px; width: 48px; object-fit: contain;">
                 <div class="d-flex flex-column lh-sm">
                     <strong class="text-white" style="font-size: 1.25rem;">PIT SPORTS TALLYING</strong>
                     <small class="text-light" style="font-size: 0.75rem;"><?php echo htmlspecialchars($_SESSION['role']); ?> Panel</small>
@@ -598,7 +598,7 @@ if (isset($_POST['change_email'])) {
             <div class="row">
                 <div class="col-lg-5 col-md-12 mb-4 mb-lg-0">
                     <div class="footer-logo-group">
-                        <img src="imageslogo.png" alt="Logo">
+                        <img src="images/PIT.png" alt="Logo">
                         <img src="images/Cote.png" alt="Logo">
                         <h5> PIT SILAKAS MEDAL TALLY</h5>
                     </div>

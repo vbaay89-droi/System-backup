@@ -774,7 +774,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
   <nav class="navbar navbar-expand-lg navbar-dark bg-dark">
     <div class="container-fluid d-flex align-items-center justify-content-between">
         <a class="navbar-brand d-flex align-items-center interactive-brand" href="home.php" style="cursor: pointer;">
-            <img src="imageslogo.png" alt="Logo" class="me-2 brand-logo" style="height: 50px; width: 48px; object-fit: contain;">
+            <img src="images/PIT.png" alt="Logo" class="me-2 brand-logo" style="height: 50px; width: 48px; object-fit: contain;">
             <div class="d-flex flex-column lh-sm">
                 <strong class="text-white brand-heading" style="font-size: 1.25rem;">PIT SIGLAKAS MEDAL TALLY</strong>
                 <small class="text-light brand-subheading" style="font-size: 0.75rem;">Official College Tournament System</small>
@@ -813,7 +813,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
         <div class="col-lg-7 brand-section">
           <div class="logo-container">
-            <img src="imageslogo.png" alt="PIT Logo" class="main-logo">
+            <img src="images/PIT.png" alt="PIT Logo" class="main-logo">
             <img src="images/COTE.png" alt="Siglakas Logo" class="main-logo">
           </div>
           <h1 class="brand-title">
@@ -846,9 +846,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
               <form action="login.php" method="POST">
                 <div class="mb-4 text-start">
-                  <label for="username" class="form-label">Username/Email</label>
+                  <label for="username" class="form-label">Email</label>
                   <div class="position-relative">
-                    <input type="text" class="form-control" id="username" name="username/Email" placeholder="Enter username/Email" required value="<?= htmlspecialchars($_POST['username'] ?? '') ?>">
+                    <input type="text" class="form-control" id="username" name="username/Email" placeholder="Enter username Email" required value="<?= htmlspecialchars($_POST['username'] ?? '') ?>">
                     <i class="fas fa-user position-absolute top-50 start-0 translate-middle-y ms-3 text-muted"></i>
                   </div>
                 </div>
@@ -895,7 +895,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             <div class="row">
                 <div class="col-lg-5 col-md-12 mb-4 mb-lg-0">
                     <div class="footer-logo-group">
-                        <img src="imageslogo.png" alt="Logo">
+                        <img src="images/PIT.png" alt="Logo">
                         <img src="images/COte.png" alt="Logo">
                         <h5> PIT SILAKAS MEDAL TALLY</h5>
                     </div>

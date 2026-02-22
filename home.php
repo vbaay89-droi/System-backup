@@ -691,7 +691,7 @@ $conn->close();
     <nav class="navbar navbar-expand-lg navbar-dark bg-dark fixed-top">
         <div class="container-fluid d-flex align-items-center justify-content-between">
             <a class="navbar-brand d-flex align-items-center" href="home.php">
-                <img src="imageslogo.png" alt="Logo" class="me-2 brand-logo" style="height: 50px; width: 48px; object-fit: contain;">
+                <img src="images/PIT.png" alt="Logo" class="me-2 brand-logo" style="height: 50px; width: 48px; object-fit: contain;">
                 <div class="d-flex flex-column lh-sm">
                     <strong class="text-white brand-heading" style="font-size: 1.25rem;">PIT SIGLAKAS MEDAL TALLY</strong>
                     <small class="text-light brand-subheading" style="font-size: 0.75rem;">Official College Medal Tally System</small>
@@ -866,7 +866,7 @@ $conn->close();
             <div class="row">
                 <div class="col-lg-5 col-md-12 mb-4 mb-lg-0">
                     <div class="footer-logo-group">
-                        <img src="imageslogo.png" alt="Logo">
+                        <img src="images/PIT.png" alt="Logo">
                         <img src="images/COTE.png" alt="Logo">
                         <h5> PIT SILAKAS MEDAL TALLY</h5>
                     </div>

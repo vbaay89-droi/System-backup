@@ -72,16 +72,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     $mail->SMTPSecure = PHPMailer::ENCRYPTION_STARTTLS;
                     $mail->Port       = 587;
 
-                    $mail->setFrom('vbaay89@gmail.com', 'PIT Sports Tallying');
+                    $mail->setFrom('vbaay89@gmail.com', 'PIT SIGLAKAS MEDAL TALLY');
                     $mail->addAddress($email, $full_name); 
 
                     $mail->isHTML(true);
-                    $mail->Subject = 'Account Request Received - PIT Sports Tallying';
+                    $mail->Subject = 'Account Request Received - PIT SIGLAKAS MEDAL TALLY';
                     $mail->Body    = "
                         <h2>Thank you for your request, " . htmlspecialchars($full_name) . "!</h2>
                         <p>We have received your request for an <strong>" . htmlspecialchars($requested_role) . "</strong> account.</p>
                         <p>An administrator will review your submission. You will receive another email once your account is approved.</p>
-                        <p>Thank you,<br>The PIT Sports Tallying Team</p>
+                        <p>Thank you,<br>The PIT SIGLAKAS MEDAL TALLY Team</p>
                     ";
 
                     $mail->send();
@@ -301,9 +301,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
   <nav class="navbar navbar-expand-lg navbar-dark bg-dark">
     <div class="container-fluid d-flex align-items-center justify-content-between">
         <a class="navbar-brand d-flex align-items-center interactive-brand" href="home.php" style="cursor: pointer;">
-            <img src="imageslogo.png" alt="Logo" class="me-2 brand-logo" style="height: 50px; width: 48px; object-fit: contain;">
+            <img src="images/PIT.png" alt="Logo" class="me-2 brand-logo" style="height: 50px; width: 48px; object-fit: contain;">
             <div class="d-flex flex-column lh-sm">
-                <strong class="text-white brand-heading" style="font-size: 1.25rem;">PIT SPORTS TALLYING</strong>
+                <strong class="text-white brand-heading" style="font-size: 1.25rem;">PIT SIGLAKAS MEDAL TALLY</strong>
                 <small class="text-light brand-subheading" style="font-size: 0.75rem;">Official College Tournament System</small>
             </div>
         </a>
@@ -328,7 +328,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
         <div class="col-lg-7 brand-section">
           <div class="logo-container">
-            <img src="imageslogo.png" alt="PIT Logo" class="main-logo">
+            <img src="images/PIT.png" alt="PIT Logo" class="main-logo">
             <img src="images/siglakas_pfpNOBG.png" alt="Siglakas Logo" class="main-logo">
           </div>
           <h1 class="brand-title">
@@ -414,7 +414,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
   <footer class="bg-dark text-white py-4">
     <div class="text-center">
-      <small>&copy; <?= date("Y") ?> PIT SPORTS TALLYING. All rights reserved.</small><br>
+      <small>&copy; <?= date("Y") ?> PIT SIGLAKAS MEDAL TALLY. All rights reserved.</small><br>
       <small>Developed by Tsunayoshi Sawada</small>
     </div>
   </footer>

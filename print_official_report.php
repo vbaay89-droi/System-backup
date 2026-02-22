@@ -529,7 +529,7 @@ function formatDateTime($date, $time) {
         <!-- Letterhead -->
         <div class="letterhead">
             <div class="lh-header">
-                <img src="imageslogo.png" alt="Institution Logo" class="lh-logo">
+                <img src="images/PIT.png" alt="Institution Logo" class="lh-logo">
                 <div class="lh-text">
                     <h1>Palompon Institute of Technology</h1>                   
                     <h2>Official Siglakas Results</h2>
@@ -620,7 +620,7 @@ function formatDateTime($date, $time) {
         <!-- Letterhead -->
         <div class="letterhead">
             <div class="lh-header">
-                <img src="imageslogo.png" alt="Institution Logo" class="lh-logo">
+                <img src="images/PIT.png" alt="Institution Logo" class="lh-logo">
                 <div class="lh-text">
                     <h1>Palompon Institute of Technology</h1>                   
                     <h2>Official Siglakas Results</h2>

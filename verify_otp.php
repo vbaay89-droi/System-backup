@@ -415,7 +415,7 @@ if (!isset($_SESSION['otp_expiry'])) {
     <nav class="navbar navbar-expand-lg navbar-dark bg-dark">
         <div class="container-fluid d-flex align-items-center justify-content-between">
             <a class="navbar-brand d-flex align-items-center interactive-brand" href="home.php">
-                <img src="imageslogo.png" alt="Logo" class="me-2 brand-logo" style="height: 50px; width: 48px; object-fit: contain;">
+                <img src="images/PIT.png" alt="Logo" class="me-2 brand-logo" style="height: 50px; width: 48px; object-fit: contain;">
                 <div class="d-flex flex-column lh-sm">
                     <strong class="text-white brand-heading" style="font-size: 1.25rem;">PIT SIGLAKAS MEDAL TALLY</strong>
                     <small class="text-light brand-subheading" style="font-size: 0.75rem;">Official College Tournament System</small>
@@ -452,7 +452,7 @@ if (!isset($_SESSION['otp_expiry'])) {
                 <div class="col-lg-6 col-md-8">
                     <div class="verify-container text-center">
     <div class="form-logos">
-        <img src="imageslogo.png" alt="PIT Logo" class="form-logo-img">
+        <img src="images/PIT.png" alt="PIT Logo" class="form-logo-img">
     </div>
     
     <h2 class="fw-bold mb-2">Enter OTP Code</h2>

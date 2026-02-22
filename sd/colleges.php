@@ -831,7 +831,7 @@ $pending_results_count = $conn->query("SELECT COUNT(*) FROM categories WHERE sta
     <nav class="navbar navbar-dark bg-dark">
         <div class="container-fluid d-flex align-items-center justify-content-between">
             <a class="navbar-brand d-flex align-items-center" href="sports_director_dashboard.php">
-                <img src="../imageslogo.png" alt="Logo" class="me-2" style="height: 50px; width: 48px; object-fit: contain;">
+                <img src="../images/PIT.png" alt="Logo" class="me-2" style="height: 50px; width: 48px; object-fit: contain;">
                 <div class="d-flex flex-column lh-sm">
                     <strong class="text-white" style="font-size: 1.25rem;">PIT SPORTS TALLYING</strong>
                     <small class="text-light" style="font-size: 0.75rem;">Sports Director Panel</small>
@@ -1175,7 +1175,7 @@ $pending_results_count = $conn->query("SELECT COUNT(*) FROM categories WHERE sta
             <div class="row">
                 <div class="col-lg-5 col-md-12 mb-4 mb-lg-0">
                     <div class="footer-logo-group">
-                        <img src="../imageslogo.png" alt="Logo">
+                        <img src="../images/PIT.png" alt="Logo">
                         <img src="../images/Cote.png" alt="Logo">
                         <h5> PIT SILAKAS MEDAL TALLY</h5>
                     </div>
