@@ -45,6 +45,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             // --- Action: Save Category (Add or Update) ---
             if ($action === 'save_category') {
                 $category_name = trim($_POST['category_name']);
+                $division_name = trim($_POST['division_name'] ?? '');
                 $status = $_POST['status'];
                 $event_id = (int)$_POST['event_id'];
                 $category_id = !empty($_POST['category_id']) ? (int)$_POST['category_id'] : null;
@@ -71,10 +72,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     }
                     
                     $stmt = $conn->prepare(
-                        "INSERT INTO categories (event_id, category_name, status, category_type, event_date, event_time, venue) 
-                         VALUES (?, ?, ?, ?, ?, ?, ?)"
+                        "INSERT INTO categories (event_id, category_name, division_name, status, category_type, event_date, event_time, venue) 
+                         VALUES (?, ?, ?, ?, ?, ?, ?, ?)"
                     );
-                    $stmt->bind_param("issssss", $event_id, $category_name, $status, $category_type, $event_date, $event_time, $venue);
+                    $stmt->bind_param("isssssss", $event_id, $category_name, $division_name, $status, $category_type, $event_date, $event_time, $venue);
                     $stmt->execute();
                     
                     $new_category_id = (int)$conn->insert_id; 
@@ -113,10 +114,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     $old_data_stmt->close();
                     
                     $stmt = $conn->prepare(
-                        "UPDATE categories SET category_name = ?, status = ?, event_date = ?, event_time = ?, venue = ? 
+                        "UPDATE categories SET category_name = ?, division_name = ?, status = ?, event_date = ?, event_time = ?, venue = ? 
                          WHERE category_id = ? AND event_id = ?"
                     );
-                    $stmt->bind_param("sssssii", $category_name, $status, $event_date, $event_time, $venue, $category_id, $event_id);
+                    $stmt->bind_param("ssssssii", $category_name, $division_name, $status, $event_date, $event_time, $venue, $category_id, $event_id);
                     $stmt->execute();
                     
                     try {
@@ -246,7 +247,7 @@ try {
         ge.event_id, 
         ge.event_name,
         ge.event_structure, /* <--- Now this will work! */
-        c.category_id, c.category_name, 
+        c.category_id, c.category_name, c.division_name,
         c.status,
     
         -- END NEW LOGIC --
@@ -1175,7 +1176,7 @@ $status_options = [
     
     <!-- Add/Edit Category Modal -->
     <div class="modal fade" id="categoryModal" tabindex="-1" aria-labelledby="categoryModalLabel" aria-hidden="true">
-        <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-dialog modal-dialog-centered modal-dialog-scrollable">
             <div class="modal-content">
                 <form method="POST" action="my_events.php"> 
                     <input type="hidden" name="action" value="save_category">
@@ -1188,37 +1189,45 @@ $status_options = [
                     </div>
                     <div class="modal-body">
                         <div class="mb-3">
-                            <label class="form-label">Event</label>
-                            <input type="text" class="form-control" id="modal_event_name" disabled readonly>
+                            <label class="form-label fw-bold">Event</label>
+                            <input type="text" class="form-control bg-light" id="modal_event_name" disabled readonly>
                         </div>
-                        <div class="mb-3">
-                            <label for="category_name" class="form-label">Category Name</label>
-                            <input type="text" class="form-control" id="modal_category_name" name="category_name" required>
+
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                <label for="modal_category_name" class="form-label fw-bold">Category Name</label>
+                                <input type="text" class="form-control" id="modal_category_name" name="category_name" required>
+                            </div>
+                            <div class="col-md-6 mb-3">
+                                <label for="modal_division_name" class="form-label fw-bold">Division Name (Optional)</label>
+                                <input type="text" class="form-control" id="modal_division_name" name="division_name" placeholder="e.g. Men's Division">
+                            </div>
                         </div>
                         
                         <div class="row">
                             <div class="col-md-6 mb-3">
-                                <label for="modal_event_date" class="form-label">Date</label>
+                                <label for="modal_event_date" class="form-label fw-bold">Date</label>
                                 <input type="date" class="form-control" id="modal_event_date" name="event_date">
                             </div>
                             <div class="col-md-6 mb-3">
-                                <label for="modal_event_time" class="form-label">Time</label>
+                                <label for="modal_event_time" class="form-label fw-bold">Time</label>
                                 <input type="time" class="form-control" id="modal_event_time" name="event_time">
                             </div>
                         </div>
-                        <div class="mb-3">
-                            <label for="modal_venue" class="form-label">Venue</label>
-                            <input type="text" class="form-control" id="modal_venue" name="venue" placeholder="e.g., PIT Main Gymnasium">
-                        </div>
-                        
 
-                        <div class="mb-3">
-                            <label for="status" class="form-label">Status</label>
-                            <select class="form-select" id="modal_category_status" name="status" required>
-                                <?php foreach ($status_options as $status_opt): ?>
-                                    <option value="<?php echo $status_opt; ?>"><?php echo $status_opt; ?></option>
-                                <?php endforeach; ?>
-                            </select>
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                <label for="modal_venue" class="form-label fw-bold">Venue</label>
+                                <input type="text" class="form-control" id="modal_venue" name="venue" placeholder="e.g., Main Gym">
+                            </div>
+                            <div class="col-md-6 mb-3">
+                                <label for="modal_category_status" class="form-label fw-bold">Status</label>
+                                <select class="form-select" id="modal_category_status" name="status" required>
+                                    <?php foreach ($status_options as $status_opt): ?>
+                                        <option value="<?php echo $status_opt; ?>"><?php echo $status_opt; ?></option>
+                                    <?php endforeach; ?>
+                                </select>
+                            </div>
                         </div>
                     </div>
                     <div class="modal-footer">
@@ -1338,7 +1347,7 @@ $status_options = [
     <div class="modal-dialog modal-dialog-centered modal-lg">
         <div class="modal-content border-0 shadow-lg">
             <div class="modal-header border-bottom-0 pb-0">
-                <h5 class="modal-title fw-bold text-dark"><i class="fas fa-info-circle text-primary me-2"></i>Event Management Guide</h5>
+                <h5 class="modal-title fw-bold text-white"><i class="fas fa-info-circle text-primary me-2"></i>Event Management Guide</h5>
                 <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
             <div class="modal-body p-4">
@@ -1538,6 +1547,7 @@ $status_options = [
                 const eventNameInput = categoryModal.querySelector('#modal_event_name');
                 const categoryIdInput = categoryModal.querySelector('#modal_category_id');
                 const categoryNameInput = categoryModal.querySelector('#modal_category_name');
+                const divisionNameInput = categoryModal.querySelector('#modal_division_name');
                 const categoryStatusSelect = categoryModal.querySelector('#modal_category_status');
                 const categoryTypeSelect = categoryModal.querySelector('#modal_category_type');
                 
@@ -1561,6 +1571,9 @@ $status_options = [
                     categoryIdInput.value = button.getAttribute('data-category-id');
                     
                     let rawName = button.getAttribute('data-category-name');
+
+                    // NEW: Populate Division Name
+                    divisionNameInput.value = button.getAttribute('data-division-name') || '';
                     
                     // --- LOGIC TO HANDLE "NO CATEGORY" ---
                     // Check if this is a "Main Event" (Single Category)
@@ -1606,6 +1619,7 @@ $status_options = [
                     modalTitle.innerHTML = '<i class="fas fa-plus-circle me-2"></i>Add Category to ' + eventName;
                     categoryIdInput.value = '';
                     categoryNameInput.value = '';
+                    divisionNameInput.value = ''; // <--- Clear the division name
                     categoryNameInput.disabled = false; // Reset disabled state
                     categoryNameInput.classList.remove('bg-light', 'text-muted');
                     

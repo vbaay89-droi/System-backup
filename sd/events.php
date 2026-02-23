@@ -125,17 +125,35 @@ if (isset($_POST['delete_event'])) {
 
 // L3 - CATEGORIES (CREATE)
 if (isset($_POST['add_category'])) {
-    $event_id = (int)$_POST['event_id']; $category_name = $_POST['category_name'];
-    $stmt = $conn->prepare("INSERT INTO categories (event_id, category_name) VALUES (?, ?)");
-    $stmt->bind_param("is", $event_id, $category_name); $stmt->execute();
-    $_SESSION['message'] = "Category added successfully."; $_SESSION['message_type'] = "success"; header("Location: events.php?tab=categories"); exit();
+    $event_id = (int)$_POST['event_id']; 
+    $category_name = trim($_POST['category_name']);
+    $division_name = trim($_POST['division_name'] ?? ''); // <--- Added ?? '' here
+    
+    $stmt = $conn->prepare("INSERT INTO categories (event_id, category_name, division_name) VALUES (?, ?, ?)");
+    $stmt->bind_param("iss", $event_id, $category_name, $division_name); 
+    $stmt->execute();
+    
+    $_SESSION['message'] = "Category and Division added successfully."; 
+    $_SESSION['message_type'] = "success"; 
+    header("Location: events.php?tab=categories"); 
+    exit();
 }
+
 // L3 - CATEGORIES (UPDATE)
 if (isset($_POST['update_category'])) {
-    $category_id = (int)$_POST['category_id']; $event_id = (int)$_POST['event_id']; $category_name = $_POST['category_name'];
-    $stmt = $conn->prepare("UPDATE categories SET event_id = ?, category_name = ? WHERE category_id = ?");
-    $stmt->bind_param("isi", $event_id, $category_name, $category_id); $stmt->execute();
-    $_SESSION['message'] = "Category updated successfully."; $_SESSION['message_type'] = "success"; header("Location: events.php?tab=categories"); exit();
+    $category_id = (int)$_POST['category_id']; 
+    $event_id = (int)$_POST['event_id']; 
+    $category_name = trim($_POST['category_name']);
+    $division_name = trim($_POST['division_name'] ?? ''); // <--- Added ?? '' here
+    
+    $stmt = $conn->prepare("UPDATE categories SET event_id = ?, category_name = ?, division_name = ? WHERE category_id = ?");
+    $stmt->bind_param("issi", $event_id, $category_name, $division_name, $category_id); 
+    $stmt->execute();
+    
+    $_SESSION['message'] = "Category updated successfully."; 
+    $_SESSION['message_type'] = "success"; 
+    header("Location: events.php?tab=categories"); 
+    exit();
 }
 // L3 - CATEGORIES (DELETE)
 if (isset($_POST['delete_category'])) {
@@ -1533,7 +1551,7 @@ $pending_results_count = $conn->query("SELECT COUNT(*) FROM categories WHERE sta
                         <input type="search" id="searchCategories" class="form-control" placeholder="Search categories...">
                     </div>
                     <button class="btn btn-primary rounded-pill px-4" data-bs-toggle="modal" data-bs-target="#addCategoryModal">
-                        <i class="fas fa-plus me-2"></i> New Category
+                        <i class="fas fa-plus me-2"></i> Add Event Category
                     </button>
                 </div>
                 
@@ -1553,11 +1571,17 @@ $pending_results_count = $conn->query("SELECT COUNT(*) FROM categories WHERE sta
                                     <div class="col-lg-4 col-md-6 mb-2 mb-lg-0">
                                         <?php 
                                             $catName = $category['category_name'];
+                                            $divName = $category['division_name'] ?? '';
                                             $isDefault = ($catName === 'Single Division' || $catName === 'Open Division');
                                             $style = $isDefault ? 'text-muted fst-italic' : 'fw-bold text-dark';
                                         ?>
                                         <h6 class="mb-0 <?= $style ?>"><?= htmlspecialchars($catName) ?></h6>
-                                        <small class="text-muted">Level 3 Division</small>
+                                        
+                                        <?php if (!empty($divName)): ?>
+                                            <small class="text-primary fw-bold"><?= htmlspecialchars($divName) ?></small>
+                                        <?php else: ?>
+                                            <small class="text-muted">No Division specified</small>
+                                        <?php endif; ?>
                                     </div>
                                     
                                     <div class="col-lg-4 col-md-6 mb-2 mb-lg-0">
@@ -1583,7 +1607,9 @@ $pending_results_count = $conn->query("SELECT COUNT(*) FROM categories WHERE sta
                                     <div class="col-lg-1 col-6 text-end">
                                         <div class="btn-group-compact">
                                             <button class="btn-icon-sm edit" data-bs-toggle="modal" data-bs-target="#editCategoryModal"
-                                                data-category-id="<?= $category['category_id'] ?>" data-category-name="<?= htmlspecialchars($category['category_name']) ?>"
+                                                data-category-id="<?= $category['category_id'] ?>" 
+                                                data-category-name="<?= htmlspecialchars($category['category_name']) ?>"
+                                                data-division-name="<?= htmlspecialchars($category['division_name'] ?? '') ?>" 
                                                 data-event-id="<?= $category['event_id'] ?>">
                                                 <i class="fas fa-pen"></i>
                                             </button>
@@ -1675,6 +1701,7 @@ $pending_results_count = $conn->query("SELECT COUNT(*) FROM categories WHERE sta
                     <form action="events.php" method="POST">
                         <div class="modal-body">
                             <input type="hidden" name="add_category">
+                            
                             <div class="mb-3">
                                 <label class="form-label fw-bold">Select Event</label>
                                 <select class="form-select" name="event_id" required>
@@ -1686,10 +1713,17 @@ $pending_results_count = $conn->query("SELECT COUNT(*) FROM categories WHERE sta
                                     <?php endforeach; ?>
                                 </select>
                             </div>
+                            
                             <div class="mb-3">
                                 <label class="form-label fw-bold">Category Name</label>
-                                <input type="text" class="form-control" name="category_name" placeholder="e.g. Men's Division, Lightweight" required>
+                                <input type="text" class="form-control" name="category_name" placeholder="e.g. Singles, Doubles, 100m Dash" required>
                             </div>
+                            
+                            <div class="mb-3">
+                                <label class="form-label fw-bold">Division Name (Optional)</label>
+                                <input type="text" class="form-control" name="division_name" placeholder="e.g. Men's Division, Women's, Lightweight">
+                            </div>
+                            
                         </div>
                         <div class="modal-footer">
                             <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
@@ -1874,8 +1908,12 @@ $pending_results_count = $conn->query("SELECT COUNT(*) FROM categories WHERE sta
                                 </select>
                             </div>
                             <div class="mb-3">
-                                <label for="edit_category_name" class="form-label fw-bold">Division Name</label>
+                                <label for="edit_category_name" class="form-label fw-bold">Event Category </label>
                                 <input type="text" class="form-control" id="edit_category_name" name="category_name" required>
+                            </div>
+                            <div class="mb-3">
+                                <label class="form-label fw-bold">Division Name (Optional)</label>
+                                <input type="text" class="form-control" id="edit_division_name" name="division_name" placeholder="e.g. Men's Division, Women's, Lightweight">
                             </div>
                         </div>
                         <div class="modal-footer">
@@ -2142,6 +2180,10 @@ setupGridSearch('searchCategories', 'categoriesGrid', '.category-item');
                 const button = event.relatedTarget;
                 editCategoryModal.querySelector('#edit_category_id').value = button.dataset.categoryId;
                 editCategoryModal.querySelector('#edit_category_name').value = button.dataset.categoryName;
+                
+                // NEW: Populate the Division Name
+                editCategoryModal.querySelector('#edit_division_name').value = button.dataset.divisionName || '';
+                
                 editCategoryModal.querySelector('#edit_event_id_select_cat').value = button.dataset.eventId;
             });
         }

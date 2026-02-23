@@ -533,8 +533,16 @@ function render_event_list($managed_data, $college_map)
                         $table_row_class = 'table-danger-light';
                     }
 
+                    $catName = htmlspecialchars($category['category_name']);
+                    $divName = !empty($category['division_name']) ? htmlspecialchars($category['division_name']) : '';
+
                     echo '  <tr class="' . $table_row_class . '">';
-                    echo '    <td class="category-cell">' . htmlspecialchars($category['category_name']) . '</td>';
+                    echo '    <td class="category-cell">';
+                    echo '        <div class="fw-bold"><b>' . $catName . '</b></div>';
+                    if ($divName) {
+                        echo '    <div class="small text-dark fw-semibold mt-1">' . $divName . '</div>';
+                    }
+                    echo '    </td>';
                     echo '    <td>' . get_status_badge($category['status'], $category['notes'], $category['category_id'], $category['category_name'], $event_name) . '</td>';
                     echo '    <td>' . render_winner_list($category, $college_map) . '</td>';
                     echo '    <td class="action-cell text-end">' . render_category_actions($category, $event_id, $event_name) . '</td>';
@@ -742,6 +750,7 @@ function render_category_actions($category, $event_id, $event_name)
                       data-event-name='" . htmlspecialchars($event_name, ENT_QUOTES) . "' 
                       data-category-id='{$cat_id}' 
                       data-category-name='" . htmlspecialchars($category['category_name'], ENT_QUOTES) . "' 
+                      data-division-name='" . htmlspecialchars($category['division_name'] ?? '', ENT_QUOTES) . "' 
                       data-status='{$status}' 
                       data-event-date='" . htmlspecialchars($category['event_date']) . "' 
                       data-event-time='" . htmlspecialchars($category['event_time']) . "' 
