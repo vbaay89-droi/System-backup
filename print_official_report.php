@@ -31,7 +31,7 @@ $medal_data = $result_medals ? $result_medals->fetch_all(MYSQLI_ASSOC) : [];
 
 // 3. FETCH DATA FOR PAGE 2 (DETAILED EVENTS)
 $sql_events = "SELECT 
-            g.game_name, ge.event_name, c.category_name, 
+            g.game_name, ge.event_name, c.category_name, c.division_name, 
             c.event_date, c.event_time,
             col_gold.college_code AS gold_winner,
             col_silver.college_code AS silver_winner,
@@ -642,7 +642,7 @@ function formatDateTime($date, $time) {
                 <tr>
                     <th style="width: 13%;">Game</th>
                     <th style="width: 14%;">Event</th>
-                    <th style="width: 12%;">Category</th>
+                    <th style="width: 12%;">Category & Division</th>
                     <th style="width: 15%;">Date & Time</th>
                     <th style="width: 15%;">Gold</th>
                     <th style="width: 15%;">Silver</th>
@@ -670,9 +670,19 @@ function formatDateTime($date, $time) {
                     </td>
                     
                     <td>
-                        <?= ($row['category_name'] !== 'Main Event') 
-                            ? htmlspecialchars($row['category_name']) 
-                            : '<span style="color:#bdc3c7;">—</span>' ?>
+                        <?php if ($row['category_name'] !== 'Main Event'): ?>
+                            <strong style="color: #2c3e50;"><?= htmlspecialchars($row['category_name']) ?></strong>
+                            
+                            <?php if (!empty($row['division_name'])): ?>
+                                <br>
+                                <span style="font-size: 0.85em; color: #555;">
+                                    <?= htmlspecialchars($row['division_name']) ?>
+                                </span>
+                            <?php endif; ?>
+                            
+                        <?php else: ?>
+                            <span style="color:#bdc3c7;">—</span>
+                        <?php endif; ?>
                     </td>
 
                     <td class="date-cell">

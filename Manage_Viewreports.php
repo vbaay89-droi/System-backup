@@ -88,6 +88,7 @@ $sql_events = "SELECT
                     g.game_name,
                     ge.event_name, 
                     c.category_name,
+                    c.division_name,
                     c.event_date,
                     c.event_time,
                     gold_col.college_name AS gold_winner,
@@ -1006,7 +1007,13 @@ function getStatusBadge($status) {
                                                     if ($event['category_name'] === 'Main Event' || $event['category_name'] === 'Main Competition') {
                                                         echo '<div class="small text-muted fst-italic">(No specific category)</div>';
                                                     } else {
-                                                        echo '<div class="fw-semibold text-primary">' . htmlspecialchars($event['category_name']) . '</div>';
+                                                        // 1. Display Category
+                                                        echo '<div class="fw-bolder text-dark" style="font-size: 0.9rem;">' . htmlspecialchars($event['category_name']) . '</div>';
+                                                        
+                                                        // 2. Display Division (if it exists)
+                                                        if (!empty($event['division_name'])) {
+                                                            echo '<div class="badge bg-light text-primary border border-primary border-opacity-25 mt-1">' . htmlspecialchars($event['division_name']) . '</div>';
+                                                        }
                                                     }
                                                     ?>
                                                 </td>

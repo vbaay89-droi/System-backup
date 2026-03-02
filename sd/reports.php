@@ -66,7 +66,7 @@ if($result_summary) {
 // --- 2. FETCH DETAILED DATA (FOR BOTTOM TABLE) ---
 $detailed_results = [];
 $sql_detailed = "SELECT 
-                    g.game_name, ge.event_name, c.category_name, c.category_type,
+                    g.game_name, ge.event_name, c.category_name, c.division_name, c.category_type,
                     c.gold_count, c.silver_count, c.bronze_count,
                     gold_col.college_name AS gold_winner,
                     silver_col.college_name AS silver_winner,
@@ -793,7 +793,7 @@ $pending_results_count = $conn->query("SELECT COUNT(*) FROM categories WHERE sta
                                 <tr>
                                     <th>Game</th>
                                     <th>Event</th>
-                                    <th>Category</th>
+                                    <th>Category & Division</th>
                                     <th><i class="fas fa-medal text-warning me-1"></i> Gold</th>
                                     <th><i class="fas fa-medal text-secondary me-1"></i> Silver</th>
                                     <th><i class="fas fa-medal text-danger me-1"></i> Bronze</th>
@@ -810,7 +810,13 @@ $pending_results_count = $conn->query("SELECT COUNT(*) FROM categories WHERE sta
                                         if ($row['category_name'] === 'Main Event' || $row['category_name'] === 'Main Competition') {
                                             echo '<span class="text-muted fst-italic small">(no category)</span>';
                                         } else {
-                                            echo '<span class="fw-semibold text-primary">' . htmlspecialchars($row['category_name']) . '</span>';
+                                            // Print Category
+                                            echo '<span class="fw-bold text-dark d-block">' . htmlspecialchars($row['category_name']) . '</span>';
+                                            
+                                            // Print Division (if it exists) underneath it without the badge box
+                                            if (!empty($row['division_name'])) {
+                                                echo '<span class="text-secondary small d-block mt-1">' . htmlspecialchars($row['division_name']) . '</span>';
+                                            }
                                         }
                                         ?>
                                     </td>

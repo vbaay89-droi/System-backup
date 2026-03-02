@@ -26,6 +26,7 @@ $sql_fetch_events = "
         c.category_id AS event_id,
         c.category_type,
         c.category_name AS event_name,
+        c.division_name,
         
         CASE 
             WHEN c.status = 'Results Approved' THEN 'Completed' 
@@ -1362,22 +1363,22 @@ $conn->close();
                         
 
                         <li class="nav-item" role="presentation">
-    <button class="nav-link rounded-top" id="result-tab" 
-            data-bs-toggle="tab" data-bs-target="#tab-result" 
-            type="button" role="tab">
-        <i class="fas fa-trophy me-2"></i>
-        Event Result
-    </button>
-</li>
+                            <button class="nav-link rounded-top" id="result-tab" 
+                                    data-bs-toggle="tab" data-bs-target="#tab-result" 
+                                    type="button" role="tab">
+                                <i class="fas fa-trophy me-2"></i>
+                                Event Result
+                            </button>
+                        </li>
 
-<li class="nav-item" role="presentation">
-    <button class="nav-link rounded-top" id="moment-tab" 
-            data-bs-toggle="tab" data-bs-target="#tab-moment" 
-            type="button" role="tab">
-        <i class="fas fa-camera-retro me-2"></i>
-        Winning Moment
-    </button>
-</li>
+                        <li class="nav-item" role="presentation">
+                            <button class="nav-link rounded-top" id="moment-tab" 
+                                    data-bs-toggle="tab" data-bs-target="#tab-moment" 
+                                    type="button" role="tab">
+                                <i class="fas fa-camera-retro me-2"></i>
+                                Winning Moment
+                            </button>
+                        </li>
                     </ul>
 
                     <div class="tab-content" id="eventDetailsTabContent">
@@ -1395,20 +1396,24 @@ $conn->close();
                                             
                                             <div class="col-md-6">
                                                 <div class="detail-row mb-3">
-                                                    <label class="text-muted small mb-1">Game (L1)</label>
+                                                    <label class="text-muted small mb-1">Game</label>
                                                     <div class="fw-semibold fs-5" id="viewGameName">Loading...</div>
                                                 </div>
                                                 <div class="detail-row mb-3">
-                                                    <label class="text-muted small mb-1">Event (L2)</label>
+                                                    <label class="text-muted small mb-1">Event</label>
                                                     <div class="fw-semibold" id="viewEventName">Loading...</div>
                                                 </div>
-                                                <div class="detail-row mb-3"> <label class="text-muted small mb-1">Category (L3)</label>
+                                                <div class="detail-row mb-3"> <label class="text-muted small mb-1">Category</label>
                                                     <div class="fw-semibold" id="viewCategory">Loading...</div>
                                                 </div>
                                                 <div class="detail-row mb-3 mb-md-0"> <label class="text-muted small mb-1">Status</label>
                                                     <div>
                                                         <span class="badge fs-6 bg-light text-dark" id="viewEventStatus">Loading...</span>
                                                     </div>
+                                                </div>
+                                                <div class="detail-row mb-3" id="viewDivisionRow"> 
+                                                    <label class="text-muted small mb-1">Division</label>
+                                                    <div class="fw-semibold text-primary" id="viewDivision">Loading...</div>
                                                 </div>
                                             </div>
                                             
@@ -1428,7 +1433,7 @@ $conn->close();
                                             
                                         </div>
                                     </div>
-                                    </div>
+                                    
                             </div>
 
                         <div class="tab-pane fade p-4" id="tab-medals" role="tabpanel">
@@ -1638,6 +1643,7 @@ $conn->close();
                 const mainTitle = String(event.category || 'Untitled'); // e.g., "Basketball"
                 const subCategory = String(event.event_name || 'General'); // e.g., "Men's Division"
                 const sportName = String(event.sport_name || 'Unknown Sport'); // e.g., "Ball Games"
+                const divisionName = String(event.division_name || ''); // e.g., "Men's Division"
                 // 1. Get Data
                 const eventDate = formatDate(event.event_date); // Uses your existing helper
                 const eventTime = formatTime(event.event_time); // Uses your existing helper
@@ -1689,6 +1695,15 @@ $conn->close();
                                         <i class="fas fa-tag me-2 text-primary opacity-75"></i>
                                         <span>${escapeHtml(subCategory)}</span>
                                     </div>
+                                    
+                                    ${divisionName ? `
+                                        <div class="d-flex align-items-center mt-1 ms-4"> 
+                                            <span class="badge bg-light text-dark border border-secondary border-opacity-25 fw-semibold" 
+                                                  style="font-size: 0.75rem;">
+                                                ${escapeHtml(divisionName)}
+                                            </span>
+                                        </div>
+                                    ` : ''}
                                 </div>
 
                                 <div class="mb-3 ps-1 flex-grow-1">
@@ -1866,6 +1881,16 @@ $conn->close();
                         document.getElementById('viewGameName').textContent = data.event_details.sport_name || 'N/A';
                         document.getElementById('viewEventName').textContent = data.event_details.category || 'N/A';
                         document.getElementById('viewCategory').textContent = data.event_details.event_name || 'N/A';
+
+                        // NEW: Update Division
+                        const divEl = document.getElementById('viewDivision');
+                        const divRow = document.getElementById('viewDivisionRow');
+                        if (data.event_details.division_name) {
+                            divEl.textContent = data.event_details.division_name;
+                            divRow.style.display = 'block';
+                        } else {
+                            divRow.style.display = 'none'; // Hide if no division
+                        }
                         
                         document.getElementById('viewEventDate').textContent = formatDate(data.event_details.event_date);
                         document.getElementById('viewEventTime').textContent = formatTime(data.event_details.event_time);

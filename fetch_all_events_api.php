@@ -31,6 +31,7 @@ $sql = "
         c.category_id AS event_id,
         c.category_type,
         c.category_name AS event_name,
+        c.division_name,
         c.notes AS description,  /* Changed 'description' to 'notes' based on your other file */
         c.event_date,
         c.event_time,

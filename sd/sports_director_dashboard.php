@@ -132,30 +132,36 @@ function formatLogEntry($conn, $log, $current_user_id) {
             break;
 
         // --- EVENT MANAGER ACTIONS (UPDATED SECTION) ---
+        // --- EVENT MANAGER ACTIONS (UPDATED SECTION) ---
         case 'SUBMITTED_RESULTS':
             // 1. Try to get names from the log context first
             $cat_name = $ctx['category_name'] ?? null;
             $event_name = $ctx['event_name'] ?? null;
+            $div_name = $ctx['division_name'] ?? null; // Fetch division from log if it exists
 
-            // 2. If Event Name is missing, fetch it from DB using the Category ID
-            if (!$event_name && $related_id > 0) {
-                $q = $conn->query("SELECT ge.event_name, c.category_name 
+            // 2. If data is missing, fetch it from DB using the Category ID
+            if ($related_id > 0) {
+                // UPDATE: Added c.division_name to the SELECT query
+                $q = $conn->query("SELECT ge.event_name, c.category_name, c.division_name 
                                    FROM categories c 
                                    JOIN game_events ge ON c.event_id = ge.event_id 
                                    WHERE c.category_id = $related_id LIMIT 1");
                 if ($q && $row = $q->fetch_assoc()) {
-                    $event_name = $row['event_name'];
-                    // Update category name if we found a better one
+                    if (!$event_name) $event_name = $row['event_name'];
                     if (!$cat_name) $cat_name = $row['category_name'];
+                    if (!$div_name) $div_name = $row['division_name']; // Get division from DB
                 }
             }
 
-            // 3. Fallbacks
+            // 3. Fallbacks and Formatting
             $event_name = htmlspecialchars($event_name ?? 'Unknown Event');
             $cat_name = htmlspecialchars($cat_name ?? 'Unknown Category');
+            
+            // Format Division string (e.g., " - Men's Division")
+            $div_display = !empty($div_name) ? " <span class='text-muted'>(" . htmlspecialchars($div_name) . ")</span>" : "";
 
-            // 4. Construct the New Message Format: "Event - Category"
-            $msg = "$actor submitted results for <strong>$event_name - $cat_name</strong>.";
+            // 4. Construct the New Message Format: "Event - Category (Division)"
+            $msg = "$actor submitted results for <strong>$event_name - $cat_name</strong>$div_display.";
             $icon = "fas fa-paper-plane text-warning"; 
             break;
 
