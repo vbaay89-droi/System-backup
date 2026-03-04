@@ -457,68 +457,186 @@ $conn->close();
         }
 
         .sport-card {
-            border-radius: 16px; /* Slightly rounder for a modern look */
+            border-radius: 12px;
             background: #fff;
-            
-            /* NEW: Stronger Shadow for visibility */
-            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.12); 
-            
-            /* NEW: Light border to separate it from the white background */
-            border: 1px solid rgba(0, 0, 0, 0.05);
-
-            padding: 24px;
+            box-shadow: 0 2px 12px rgba(0, 0, 0, 0.08);
+            border: 1px solid rgba(0, 0, 0, 0.06);
+            padding: 0;
             margin-bottom: 24px;
-            transition: all 0.3s ease;
-            
-            height: 100%;           
-            min-height: 220px;      
-            
-            border-left: 5px solid transparent; /* Slightly thicker accent line */
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            height: 100%;
             display: flex;
             flex-direction: column;
+            overflow: hidden;
         }
 
         .sport-card:hover {
-            transform: translateY(-6px);
+            transform: translateY(-4px);
             box-shadow: 0 8px 24px rgba(0,0,0,0.12);
-            border-left-color: var(--primary-green);
-        }
-        .sport-card-body {
-            flex-grow: 1;
-        }
-        .sport-card p.text-muted {
-            overflow: hidden;
-            text-overflow: ellipsis;
-            display: -webkit-box;
-            -webkit-line-clamp: 3;
-            -webkit-box-orient: vertical;
         }
         
-        .event-title {
-            font-family: 'Roboto', sans-serif;
+        .sport-card-header {
+            background: linear-gradient(135deg, #f8f9fa 0%, #ffffff 100%);
+            padding: 20px;
+            border-bottom: 1px solid rgba(0, 0, 0, 0.06);
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            gap: 16px;
+        }
+        
+        .sport-card-category {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+        
+        .sport-card-category-icon {
+            width: 44px;
+            height: 44px;
+            min-width: 44px;
+            background: linear-gradient(135deg, rgba(76, 175, 80, 0.1) 0%, rgba(46, 125, 50, 0.08) 100%);
+            border-radius: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: var(--primary-green);
+        }
+        
+        .sport-card-category-text {
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+        }
+        
+        .sport-card-category-name {
+            font-size: 0.75rem;
             font-weight: 700;
-            font-size: 1.25rem;       /* Increased size slightly for impact */
-            color: #2c3e50;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            color: #6c757d;
+        }
+        
+        .sport-card-category-title {
+            font-size: 1.1rem;
+            font-weight: 700;
+            color: #1a1a1a;
+            line-height: 1.3;
+        }
+
+        .sport-card-body {
+            flex-grow: 1;
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            gap: 16px;
+        }
+        
+        .sport-card-subtitle {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 0.9rem;
+            color: #495057;
+            font-weight: 500;
+        }
+        
+        .sport-card-subtitle i {
+            color: var(--primary-green);
+            font-size: 0.85rem;
+        }
+        
+        .sport-card-division {
+            display: inline-block;
+            background: rgba(13, 110, 253, 0.08);
+            color: #0d6efd;
+            padding: 4px 10px;
+            border-radius: 6px;
+            font-size: 0.8rem;
+            font-weight: 600;
+            border: 1px solid rgba(13, 110, 253, 0.15);
+        }
+        
+        .sport-card-meta {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            padding: 12px 0;
+            border-top: 1px solid rgba(0, 0, 0, 0.04);
+            border-bottom: 1px solid rgba(0, 0, 0, 0.04);
+        }
+        
+        .sport-card-meta-item {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            font-size: 0.9rem;
+            color: #495057;
+        }
+        
+        .sport-card-meta-icon {
+            width: 32px;
+            height: 32px;
+            background: #f0f0f0;
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: #6c757d;
+            font-size: 0.85rem;
+            flex-shrink: 0;
+        }
+        
+        .sport-card-manager {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            font-size: 0.85rem;
+            color: #6c757d;
+            padding-top: 8px;
+        }
+        
+        .sport-card-manager i {
+            color: var(--primary-green);
+        }
+
+        .sport-card-footer {
+            padding: 16px 20px;
+            border-top: 1px solid rgba(0, 0, 0, 0.04);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            background: rgba(0, 0, 0, 0.01);
+        }
+
+        .event-title {
+            font-family: 'Inter', sans-serif;
+            font-weight: 700;
+            font-size: 1.1rem;
+            color: #1a1a1a;
             margin: 0;
-            line-height: 1.2;
-            padding-top: 2px;
-            
-            /* FIX: Professional Wrapping */
+            line-height: 1.3;
             white-space: normal;
-            word-break: normal;       /* Stops "Basketb all" */
-            overflow-wrap: break-word; /* Wraps "Chess(INDIVIDUAL)" naturally */
+            word-break: normal;
+            overflow-wrap: break-word;
         }
         
         .check-event {
             font-weight: 600;
-            color: #001f3f;
+            color: white;
             text-decoration: none;
             display: inline-flex;
             align-items: center;
+            gap: 8px;
             transition: all 0.2s;
+            background: var(--primary-green) !important;
+            border: none !important;
         }
+        
         .check-event:hover {
-            color: #0066ff;
+            background: var(--primary-dark) !important;
+            color: white;
+            transform: translateX(2px);
         }
 
         footer.bg-dark {
@@ -575,139 +693,212 @@ $conn->close();
         .modal-body .silver-medal { color: var(--accent-silver); }
         .modal-body .bronze-medal { color: var(--accent-bronze); }
 
-        /* --- MODERN 3D PODIUM DESIGN --- */
-        .podium-container {
-            display: flex;
-            align-items: flex-end;
-            justify-content: center;
-            min-height: 320px; /* Taller for better impact */
-            padding: 3rem 1rem 1rem;
-            gap: 15px; /* More spacing between steps */
-            background: radial-gradient(circle at center bottom, rgba(255, 215, 0, 0.05) 0%, transparent 70%); /* Subtle gold glow from bottom */
-        }
+        /* ===== REDESIGNED PODIUM: CHAMPIONSHIP STAGE ===== */
+.podium-container {
+    display: flex;
+    align-items: flex-end;
+    justify-content: center;
+    padding: 0 1rem 0;
+    gap: 0;
+    position: relative;
+    background: #ffffff;
+    border-radius: 0 0 16px 16px;
+    overflow: hidden;
+    min-height: 380px;
+}
 
-        .podium-wrapper {
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            width: 30%; /* Slightly narrower columns */
-            position: relative;
-            transition: transform 0.3s ease;
-        }
+/* Ambient light beams from top */
+.podium-container::before {
+    content: '';
+    position: absolute;
+    top: -20px; left: 50%;
+    transform: translateX(-50%);
+    width: 200px; height: 300px;
+    background: radial-gradient(ellipse, rgba(255,215,0,0.12) 0%, transparent 70%);
+    pointer-events: none;
+    z-index: 0;
+}
 
-        .podium-wrapper:hover {
-            transform: translateY(-5px); /* Slight lift on hover */
-        }
+/* Floating particles / star dots */
+.podium-container::after {
+    display: none;
+}
 
-        /* Order: Silver(1) - Gold(2) - Bronze(3) */
-        .podium-wrapper.gold { order: 2; width: 35%; z-index: 10; } /* Gold is wider and on top */
-        .podium-wrapper.silver { order: 1; }
-        .podium-wrapper.bronze { order: 3; }
+.podium-wrapper {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    width: 30%;
+    position: relative;
+    z-index: 1;
+    transition: transform 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+.podium-wrapper:hover { transform: translateY(-6px); }
 
-        /* WINNER NAME CARDS */
-        .podium-winner-name {
-            font-size: 1rem;
-            font-weight: 800;
-            color: var(--text-dark);
-            margin-bottom: 15px;
-            text-align: center;
-            width: 100%;
-            background: white;
-            padding: 8px 5px;
-            border-radius: 8px;
-            box-shadow: 0 4px 10px rgba(0,0,0,0.1);
-            border: 1px solid rgba(0,0,0,0.05);
-            text-transform: uppercase;
-            letter-spacing: 0.5px;
-            display: -webkit-box;
-            -webkit-line-clamp: 2;
-            -webkit-box-orient: vertical;
-            overflow: hidden;
-        }
+.podium-wrapper.gold  { order: 2; width: 36%; z-index: 10; }
+.podium-wrapper.silver { order: 1; }
+.podium-wrapper.bronze { order: 3; }
 
-        .podium-wrapper.gold .podium-winner-name {
-            font-size: 1.2rem;
-            color: #b78a02;
-            border-bottom: 3px solid #FFD700;
-        }
+/* --- AVATAR CIRCLE (replaces flat logo) --- */
+.podium-logo {
+    width: 64px; height: 64px;
+    border-radius: 50%;
+    object-fit: cover;
+    border: 3px solid rgba(255,255,255,0.3);
+    box-shadow: 0 0 0 4px rgba(255,255,255,0.08), 0 8px 20px rgba(0,0,0,0.4);
+    background: #2a3a4a;
+    margin-bottom: 8px;
+    position: relative;
+    z-index: 2;
+    transition: transform 0.3s ease, box-shadow 0.3s ease;
+}
+.podium-wrapper:hover .podium-logo {
+    transform: scale(1.12);
+    box-shadow: 0 0 0 4px rgba(255,215,0,0.3), 0 12px 30px rgba(0,0,0,0.5);
+}
+.podium-wrapper.gold .podium-logo {
+    width: 84px; height: 84px;
+    border: 3px solid #FFD700;
+    box-shadow: 0 0 0 5px rgba(255,215,0,0.2), 0 0 30px rgba(255,215,0,0.3), 0 10px 30px rgba(0,0,0,0.5);
+    animation: gold-pulse 3s ease-in-out infinite;
+}
+@keyframes gold-pulse {
+    0%,100% { box-shadow: 0 0 0 5px rgba(255,215,0,0.2), 0 0 20px rgba(255,215,0,0.3); }
+    50%      { box-shadow: 0 0 0 8px rgba(255,215,0,0.35), 0 0 40px rgba(255,215,0,0.5); }
+}
 
-        /* THE STEPS (Pillars) */
-        .podium-step {
-            display: flex;
-            flex-direction: column;
-            justify-content: flex-start; 
-            align-items: center;
-            text-align: center;
-            width: 100%;
-            border-radius: 12px 12px 0 0;
-            padding-top: 20px;
-            position: relative;
-            box-shadow: 
-                inset 0 0 20px rgba(0,0,0,0.05), /* Inner Depth */
-                0 10px 20px rgba(0,0,0,0.1); /* Drop Shadow */
-            color: white; 
-        }
+/* --- NAME CARD --- */
+.podium-winner-name {
+    font-size: 0.78rem;
+    font-weight: 800;
+    color: #1a1a1a;
+    text-align: center;
+    background: #f8f9fa;
+    backdrop-filter: none;
+    border: 1px solid rgba(0,0,0,0.08);
+    padding: 6px 10px;
+    border-radius: 8px;
+    margin-bottom: 10px;
+    width: 90%;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+    transition: background 0.3s;
+}
+.podium-wrapper.gold .podium-winner-name {
+    font-size: 0.88rem;
+    background: rgba(255,215,0,0.15);
+    border-color: rgba(255,215,0,0.4);
+    color: #FFD700;
+}
+.podium-wrapper:hover .podium-winner-name {
+    background: rgba(255,255,255,0.15);
+}
 
-        /* GOLD PILLAR */
-        .podium-step.gold {
-            height: 220px;
-            background: linear-gradient(135deg, #FFD700 0%, #FDB931 50%, #d4af37 100%);
-            border: none;
-        }
+/* --- THE STEPS --- */
+.podium-step {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: flex-start;
+    width: 100%;
+    border-radius: 12px 12px 0 0;
+    padding: 18px 10px 0;
+    position: relative;
+    overflow: hidden;
+}
 
-        /* SILVER PILLAR */
-        .podium-step.silver {
-            height: 160px;
-            background: linear-gradient(135deg, #E0E0E0 0%, #BDBDBD 50%, #9E9E9E 100%);
-            border: none;
-        }
+/* Shine overlay */
+.podium-step::before {
+    content: '';
+    position: absolute;
+    top: 0; left: -60%;
+    width: 40%; height: 100%;
+    background: linear-gradient(90deg, transparent, rgba(255,255,255,0.12), transparent);
+    transform: skewX(-15deg);
+    animation: podium-shine 4s ease-in-out infinite;
+}
+@keyframes podium-shine {
+    0%,70%,100% { left: -60%; }
+    40% { left: 120%; }
+}
 
-        /* BRONZE PILLAR */
-        .podium-step.bronze {
-            height: 120px;
-            background: linear-gradient(135deg, #FFAF7B 0%, #D78957 50%, #A0522D 100%);
-            border: none;
-        }
+.podium-step.gold {
+    height: 230px;
+    background: linear-gradient(160deg, #b8860b 0%, #DAA520 30%, #FFD700 60%, #FFC200 100%);
+    box-shadow: 0 -6px 30px rgba(255,215,0,0.4), inset 0 1px 0 rgba(255,255,255,0.3);
+}
+.podium-step.silver {
+    height: 175px;
+    background: linear-gradient(160deg, #707070 0%, #9E9E9E 40%, #C8C8C8 70%, #B0B0B0 100%);
+    box-shadow: 0 -4px 20px rgba(180,180,180,0.3), inset 0 1px 0 rgba(255,255,255,0.3);
+}
+.podium-step.bronze {
+    height: 130px;
+    background: linear-gradient(160deg, #6b3a1f 0%, #A0522D 40%, #CD7F32 70%, #B87333 100%);
+    box-shadow: 0 -4px 20px rgba(160,82,45,0.3), inset 0 1px 0 rgba(255,255,255,0.2);
+}
 
-        /* MEDAL ICONS */
-        .podium-medal {
-            font-size: 2.5rem;
-            margin-bottom: 5px;
-            filter: drop-shadow(0 2px 4px rgba(0,0,0,0.2));
-            color: white !important; 
-        }
+/* --- RANK NUMBER --- */
+.rank-badge-podium {
+    font-family: 'Poppins', sans-serif;
+    font-weight: 900;
+    font-size: 3rem;
+    line-height: 1;
+    color: rgba(255,255,255,0.25);
+    position: absolute;
+    bottom: 10px;
+    right: 14px;
+    letter-spacing: -2px;
+    pointer-events: none;
+}
 
-        /* MEDAL COUNT (The Score) */
-        .podium-medal-count {
-            font-size: 2rem;
-            font-weight: 900;
-            color: rgba(255,255,255,0.95);
-            line-height: 1;
-        }
+/* --- MEDAL ICON & COUNT --- */
+.podium-medal {
+    font-size: 2rem;
+    color: rgba(255,255,255,0.9) !important;
+    filter: drop-shadow(0 2px 6px rgba(0,0,0,0.3));
+    margin-bottom: 4px;
+}
+.podium-wrapper.gold .podium-medal {
+    font-size: 2.4rem;
+    animation: trophy-bounce 2.5s ease-in-out infinite;
+}
+@keyframes trophy-bounce {
+    0%,100% { transform: translateY(0); }
+    50%      { transform: translateY(-5px); }
+}
+.podium-medal-count {
+    font-weight: 900;
+    font-size: 1.6rem;
+    color: rgba(255,255,255,0.95);
+    line-height: 1;
+}
+.podium-label {
+    font-size: 0.65rem;
+    text-transform: uppercase;
+    letter-spacing: 1.5px;
+    color: rgba(255,255,255,0.7);
+    margin-top: 3px;
+}
 
-        .podium-label {
-            font-size: 0.7rem;
-            text-transform: uppercase;
-            opacity: 0.8;
-            margin-top: 5px;
-            font-weight: 600;
-        }
-
-        /* RANK BADGE (1, 2, 3) */
-        .rank-badge-podium {
-            width: 40px;
-            height: 40px;
-            background: rgba(255,255,255,0.2);
-            border-radius: 50%;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-weight: 800;
-            font-size: 1.2rem;
-            margin-top: auto; 
-            margin-bottom: 20px;
-            border: 1px solid rgba(255,255,255,0.4);
-        }
+/* Mobile adjustments */
+@media (max-width: 767px) {
+    .podium-container { min-height: 260px; padding: 0 4px; }
+    .podium-step.gold { height: 170px; }
+    .podium-step.silver { height: 130px; }
+    .podium-step.bronze { height: 100px; }
+    .podium-wrapper.gold .podium-logo { width: 64px; height: 64px; }
+    .podium-logo { width: 50px; height: 50px; }
+    .rank-badge-podium { font-size: 2rem; }
+    .podium-medal { font-size: 1.5rem; }
+    .podium-medal-count { font-size: 1.2rem; }
+    .podium-winner-name { font-size: 0.7rem; }
+}
+/* ===== END PODIUM REDESIGN ===== */
 
         @media (max-width: 991.98px) {
             .hero-section {
@@ -715,7 +906,30 @@ $conn->close();
             }
             .sport-card {
                 height: auto;
-                min-height: 220px;
+            }
+            
+            .sport-card-header {
+                padding: 16px;
+                flex-direction: column;
+                align-items: flex-start;
+            }
+            
+            .sport-card-category {
+                width: 100%;
+                margin-bottom: 8px;
+            }
+            
+            .status-pill {
+                align-self: flex-start;
+            }
+            
+            .sport-card-body {
+                padding: 16px;
+                gap: 12px;
+            }
+            
+            .sport-card-footer {
+                padding: 12px 16px;
             }
         }
         
@@ -775,22 +989,19 @@ $conn->close();
         }
         
         .status-pill {
-    font-size: 0.7rem;          /* Slightly smaller text to fit long statuses */
-    font-weight: 800;
-    padding: 6px 10px;
-    border-radius: 30px;
-    color: #fff;
-    text-transform: uppercase;
-    letter-spacing: 0.5px;
-    box-shadow: 0 2px 5px rgba(0,0,0,0.15);
-    border: 1px solid rgba(255,255,255,0.2);
-    
-    /* FIX: Set a fixed minimum width and center text */
-    min-width: 130px;           /* Ensures all badges are at least this wide */
-    text-align: center;         /* Centers the text inside the badge */
-    display: inline-block;      /* Required for width to work */
-    white-space: nowrap;        /* Keeps status text on one line */
-}
+            font-size: 0.7rem;
+            font-weight: 700;
+            padding: 6px 12px;
+            border-radius: 20px;
+            color: #fff;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+            border: none;
+            display: inline-block;
+            white-space: nowrap;
+            flex-shrink: 0;
+        }
 
         /* 1. ONGOING (Active/Green) - With Pulse Animation */
         .status-ongoing {
@@ -1435,8 +1646,7 @@ $conn->close();
                                     </div>
                                     
                             </div>
-
-                        <div class="tab-pane fade p-4" id="tab-medals" role="tabpanel">
+                        </div> <div class="tab-pane fade p-4" id="tab-medals" role="tabpanel">
                             <div class="card border-0 shadow-sm">
                                 <div class="card-header bg-warning bg-opacity-10 border-0">
                                     <h6 class="mb-0 text-dark">
@@ -1467,46 +1677,36 @@ $conn->close();
 
 
                         <div class="tab-pane fade p-0" id="tab-result" role="tabpanel">
-    <div class="card border-0">
-        <div class="card-header bg-warning bg-opacity-10 border-0">
-            <h6 class="mb-0 text-dark">
-                <i class="fas fa-award me-2"></i>Official Medal Winners
-            </h6>
-        </div>
-        <div class="card-body">
-            <div id="medal-winners-body">
-                <div class="text-center p-5 text-muted">Loading...</div>
-            </div>
-        </div>
-    </div>
-</div>
+                            <div id="medal-winners-body">
+                                <div class="text-center p-5 text-muted">Loading...</div>
+                            </div>
+                        </div>
+                        <div class="tab-pane fade p-0" id="tab-moment" role="tabpanel">
+                            <div class="card border-0">
+                                <div class="card-header bg-success bg-opacity-10 border-0">
+                                    <h6 class="mb-0 text-dark">
+                                        <i class="fas fa-image me-2"></i>Captured Moment
+                                    </h6>
+                                </div>
+                                <div class="card-body text-center p-4">
+                                    
+                                    <div id="podiumPhotoContainer" class="d-none">
+                                        <div class="winning-photo-frame mx-auto">
+                                            <img id="podiumPhotoImg" src="" alt="Winning Moment" title="Click to view full size">
+                                        </div>
+                                        <div class="small text-muted mt-2">
+                                            <i class="fas fa-search-plus me-1"></i>Click image to expand
+                                        </div>
+                                    </div>
 
-<div class="tab-pane fade p-0" id="tab-moment" role="tabpanel">
-    <div class="card border-0">
-        <div class="card-header bg-success bg-opacity-10 border-0">
-            <h6 class="mb-0 text-dark">
-                <i class="fas fa-image me-2"></i>Captured Moment
-            </h6>
-        </div>
-        <div class="card-body text-center p-4">
-            
-            <div id="podiumPhotoContainer" class="d-none">
-                <div class="winning-photo-frame mx-auto">
-                    <img id="podiumPhotoImg" src="" alt="Winning Moment" title="Click to view full size">
-                </div>
-                <div class="small text-muted mt-2">
-                    <i class="fas fa-search-plus me-1"></i>Click image to expand
-                </div>
-            </div>
+                                    <div id="noPhotoMessage" class="py-5 text-muted" style="display:none;">
+                                        <i class="fas fa-camera-slash mb-2 fs-3 opacity-50"></i><br>
+                                        No winning moment photo available for this event.
+                                    </div>
 
-            <div id="noPhotoMessage" class="py-5 text-muted" style="display:none;">
-                <i class="fas fa-camera-slash mb-2 fs-3 opacity-50"></i><br>
-                No winning moment photo available for this event.
-            </div>
-
-        </div>
-    </div>
-</div>
+                                </div>
+                            </div>
+                        </div>
 
                     </div>
                 </div>
@@ -1653,7 +1853,7 @@ $conn->close();
                 const displayStatus = formatStatusTextForCard(originalStatus);
                 
                 const managerNameHtml = event.manager_name ? 
-                    `<div class="small text-muted mt-2 border-top pt-2"><i class="fas fa-user-tie me-1"></i>Manager: ${escapeHtml(event.manager_name)}</div>` : '';
+                    `<div class="sport-card-manager"><i class="fas fa-user-tie"></i>Manager: ${escapeHtml(event.manager_name)}</div>` : '';
                 
                 // Get the icon using our new helper
                 const iconClass = getEventIconJS(sportName, mainTitle);
@@ -1665,78 +1865,61 @@ $conn->close();
                         data-search-text="${escapeHtml(mainTitle.toLowerCase())} ${escapeHtml(sportName.toLowerCase())}">
                         
                         <div class="sport-card h-100">
-                            <div class="sport-card-body d-flex flex-column">
-                                
-                                <div class="d-flex align-items-start mb-3">
-                                    <div class="me-3 flex-shrink-0 d-flex align-items-center justify-content-center bg-success bg-opacity-10 rounded-circle text-success shadow-sm" 
-                                        style="width: 50px; height: 50px;">
+                            <div class="sport-card-header">
+                                <div class="sport-card-category flex-grow-1">
+                                    <div class="sport-card-category-icon">
                                         <i class="${iconClass} fa-lg"></i>
                                     </div>
-
-                                    <div class="flex-grow-1" style="min-width: 0;">
-                                        
-                                        <div class="d-flex justify-content-between align-items-center mb-1">
-                                            <span class="text-uppercase text-primary fw-bold small" style="font-size: 0.7rem; letter-spacing: 0.5px;">
-                                                ${escapeHtml(sportName)}
-                                            </span>
-                                            <span class="status-pill ${statusClass}" style="transform: scale(0.85); transform-origin: right center;">
-                                                ${escapeHtml(displayStatus)}
-                                            </span>
-                                        </div>
-
-                                        <h5 class="event-title text-dark">
-                                            ${escapeHtml(mainTitle)}
-                                        </h5>
+                                    <div class="sport-card-category-text">
+                                        <div class="sport-card-category-name">${escapeHtml(sportName)}</div>
+                                        <div class="sport-card-category-title">${escapeHtml(mainTitle)}</div>
                                     </div>
                                 </div>
-                         
-                                <div class="mb-3 ps-1">
-                                    <div class="d-flex align-items-center text-dark fw-bolder text-uppercase" style="font-size: 0.85rem; letter-spacing: 0.5px;">
-                                        <i class="fas fa-tag me-2 text-primary opacity-75"></i>
+                                <span class="status-pill ${statusClass}">
+                                    ${escapeHtml(displayStatus)}
+                                </span>
+                            </div>
+
+                            <div class="sport-card-body">
+                                <div>
+                                    <div class="sport-card-subtitle">
+                                        <i class="fas fa-tag"></i>
                                         <span>${escapeHtml(subCategory)}</span>
                                     </div>
-                                    
                                     ${divisionName ? `
                                         <div class="d-flex align-items-center mt-1 ms-4"> 
-                                            <span class="badge bg-light text-dark border border-secondary border-opacity-25 fw-semibold" 
-                                                  style="font-size: 0.75rem;">
-                                                ${escapeHtml(divisionName)}
+                                            <span class="text-dark small fw-semibold">
+                                                - ${escapeHtml(divisionName)}
                                             </span>
                                         </div>
                                     ` : ''}
                                 </div>
 
-                                <div class="mb-3 ps-1 flex-grow-1">
-    
-                                    <div class="d-flex align-items-center mb-2">
-                                        <div class="d-flex align-items-center justify-content-center bg-light rounded-circle me-2" style="width: 28px; height: 28px;">
-                                            <i class="fas fa-calendar-alt text-secondary" style="font-size: 0.8rem;"></i>
+                                <div class="sport-card-meta">
+                                    <div class="sport-card-meta-item">
+                                        <div class="sport-card-meta-icon">
+                                            <i class="fas fa-calendar-alt"></i>
                                         </div>
-                                        <span class="text-dark small fw-medium">
-                                            ${eventDate} <span class="mx-1 text-muted">•</span> ${eventTime}
-                                        </span>
+                                        <span>${eventDate} • ${eventTime}</span>
                                     </div>
-
-                                    <div class="d-flex align-items-center">
-                                        <div class="d-flex align-items-center justify-content-center bg-light rounded-circle me-2" style="width: 28px; height: 28px;">
-                                            <i class="fas fa-map-marker-alt text-danger" style="font-size: 0.8rem;"></i>
+                                    <div class="sport-card-meta-item">
+                                        <div class="sport-card-meta-icon">
+                                            <i class="fas fa-map-marker-alt"></i>
                                         </div>
-                                        <span class="text-dark small fw-medium">
-                                            ${escapeHtml(venue)}
-                                        </span>
+                                        <span>${escapeHtml(venue)}</span>
                                     </div>
-
                                 </div>
+                                
                                 ${managerNameHtml}
                             </div>
 
-                            <div class="d-flex justify-content-end align-items-center mt-3 pt-3 border-top">
-                                <a href="#" class="check-event btn btn-sm btn-outline-primary rounded-pill px-3 fw-bold" 
+                            <div class="sport-card-footer">
+                                <a href="#" class="check-event btn btn-sm btn-primary rounded-pill px-4 fw-bold" 
                                 data-bs-toggle="modal" data-bs-target="#viewEventModal" 
                                 data-id="${event.event_id}" 
                                 data-category-type="${event.category_type || 'medal'}"
                                 data-status="${(originalStatus).toLowerCase()}">
-                                    View Details <i class="fas fa-arrow-right ms-1"></i>
+                                    View Details <i class="fas fa-arrow-right ms-2"></i>
                                 </a>
                             </div>
                         </div>
@@ -1840,7 +2023,10 @@ $conn->close();
                     }
                     
                     const tabToActivate = document.getElementById(targetTabId);
-                    if (tabToActivate) new bootstrap.Tab(tabToActivate).show();
+                    if (tabToActivate) {
+                        // Safely get or create the instance without duplicating it
+                        bootstrap.Tab.getOrCreateInstance(tabToActivate).show();
+                    }
 
                     // 3. Reset Loading States
                     if(modalMedalStandingsBody) modalMedalStandingsBody.innerHTML = '<tr><td colspan="6" class="text-center text-muted py-4">Loading...</td></tr>';
@@ -2031,20 +2217,20 @@ $conn->close();
                                     <div class="rank-badge-podium">2</div>
                                 </div>
                             </div>`;
-                            
+
                             // GOLD (Center)
                             html += `
                             <div class="podium-wrapper gold">
                                 <img src="${escapeHtml(data.gold_logo || defaultLogo)}" class="podium-logo" onerror="this.src='${defaultLogo}'">
                                 <div class="podium-winner-name">${escapeHtml(data.gold || 'N/A')}</div>
                                 <div class="podium-step gold">
-                                    <i class="fas fa-trophy podium-medal mb-2"></i>
+                                    <i class="fas fa-trophy podium-medal"></i>
                                     <div class="podium-medal-count">${escapeHtml(data.gold_count || '0')}</div>
                                     <div class="podium-label">Medals</div>
                                     <div class="rank-badge-podium">1</div>
                                 </div>
                             </div>`;
-                            
+
                             // BRONZE (Right)
                             html += `
                             <div class="podium-wrapper bronze">
