@@ -1012,7 +1012,7 @@ function getStatusBadge($status) {
                                                         
                                                         // 2. Display Division (if it exists)
                                                         if (!empty($event['division_name'])) {
-                                                            echo '<div class="badge bg-light text-primary border border-primary border-opacity-25 mt-1">' . htmlspecialchars($event['division_name']) . '</div>';
+                                                            echo '<div class="text-secondary small fw-semibold mt-1">- ' . htmlspecialchars($event['division_name']) . '</div>';
                                                         }
                                                     }
                                                     ?>

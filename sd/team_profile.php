@@ -98,6 +98,7 @@ $stmt_cat_breakdown = $conn->prepare("
       g.game_name,
       ge.event_name,
       c.category_name,
+      c.division_name,
       SUM(CASE WHEN c.gold_winner_college_id = ? THEN c.gold_count ELSE 0 END) AS GoldCount,
       SUM(CASE WHEN c.silver_winner_college_id = ? THEN c.silver_count ELSE 0 END) AS SilverCount,
       SUM(CASE WHEN c.bronze_winner_college_id = ? THEN c.bronze_count ELSE 0 END) AS BronzeCount
@@ -168,6 +169,7 @@ $stmt_gallery = $conn->prepare("
         ge.event_name,
         g.game_name,
         c.category_name,
+        c.division_name,
         c.approved_at
     FROM categories c
     JOIN game_events ge ON c.event_id = ge.event_id
@@ -634,7 +636,12 @@ $pending_results_count = $conn->query("SELECT COUNT(*) FROM categories WHERE sta
                                             <tr>
                                                 <td><?= htmlspecialchars($cat['game_name']) ?></td>
                                                 <td><?= htmlspecialchars($cat['event_name']) ?></td>
-                                                <td><strong><?= htmlspecialchars($cat['category_name']) ?></strong></td>
+                                                <td>
+                                                    <span class="fw-bold d-block"><?= htmlspecialchars($cat['category_name']) ?></span>
+                                                    <?php if (!empty($cat['division_name'])): ?>
+                                                        <span class="text-secondary small d-block">- <?= htmlspecialchars($cat['division_name']) ?></span>
+                                                    <?php endif; ?>
+                                                </td>
                                                 <td class="text-center fs-5"><?= $cat['GoldCount'] ?></td>
                                                 <td class="text-center fs-5"><?= $cat['SilverCount'] ?></td>
                                                 <td class="text-center fs-5"><?= $cat['BronzeCount'] ?></td>
@@ -763,10 +770,14 @@ $pending_results_count = $conn->query("SELECT COUNT(*) FROM categories WHERE sta
                                         <div class="col-md-6 col-lg-4">
                                             <div class="card gallery-card h-100 border-0">
                                                 <div class="gallery-img-wrapper">
+                                                    <?php 
+                                                        $div_text = !empty($photo['division_name']) ? ' - ' . $photo['division_name'] : ''; 
+                                                        $full_caption = $photo['event_name'] . ' - ' . $photo['category_name'] . $div_text;
+                                                    ?>
                                                     <img src="<?= htmlspecialchars($photo['display_url']) ?>" 
                                                          class="gallery-img zoomable-photo" 
                                                          alt="Podium Photo"
-                                                         data-caption="<?= htmlspecialchars($photo['event_name'] . ' - ' . $photo['category_name']) ?>"
+                                                         data-caption="<?= htmlspecialchars($full_caption) ?>"
                                                          style="cursor: pointer;"
                                                          title="Click to view full size">
                                                     
@@ -775,7 +786,7 @@ $pending_results_count = $conn->query("SELECT COUNT(*) FROM categories WHERE sta
                                                 <div class="card-body text-center p-3">
                                                     <h6 class="fw-bold mb-1"><?= htmlspecialchars($photo['event_name']) ?></h6>
                                                     <p class="text-muted small mb-1">
-                                                        <?= htmlspecialchars($photo['game_name']) ?> • <?= htmlspecialchars($photo['category_name']) ?>
+                                                        <?= htmlspecialchars($photo['category_name']) ?> <?= htmlspecialchars($div_text) ?>
                                                     </p>
                                                     <small class="text-secondary fst-italic" style="font-size: 0.75rem;">
                                                         <?= date('F d, Y', strtotime($photo['approved_at'])) ?>

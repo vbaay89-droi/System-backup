@@ -162,7 +162,9 @@ if (isset($_POST['delete_user'])) {
 
 // 4. FETCH DATA
 $users = [];
-$result = $conn->query("SELECT id AS user_id, full_name, username, email, role, status, created_at FROM users ORDER BY username");
+$result = $conn->query("SELECT id AS user_id, full_name, username, email, role, status, created_at 
+                        FROM users 
+                        ORDER BY CASE WHEN role = 'Sports Director' THEN 1 ELSE 2 END, username ASC");
 if ($result) {
     $users = $result->fetch_all(MYSQLI_ASSOC);
 }
@@ -923,22 +925,22 @@ $pending_results_count = $conn->query("SELECT COUNT(*) FROM categories WHERE sta
     </div>
     
     <div class="main-content">
-        <div class="container-fluid">
-            
-            <nav aria-label="breadcrumb" class="mb-4">
-              <ol class="breadcrumb">
-                <li class="breadcrumb-item"><a href="sd/sports_director_dashboard.php">Dashboard</a></li>
-                <li class="breadcrumb-item active" aria-current="page">Manage Users</li>
-              </ol>
-            </nav>
+            <div class="container-fluid">
+                
+                <nav aria-label="breadcrumb" class="mb-4">
+                <ol class="breadcrumb">
+                    <li class="breadcrumb-item"><a href="sd/sports_director_dashboard.php">Dashboard</a></li>
+                    <li class="breadcrumb-item active" aria-current="page">Manage Users</li>
+                </ol>
+                </nav>
 
-            <div class="page-header">
-    <h1 class="section-title">
-        </i>
-        Manage Users
-    </h1>
-    <p class="page-subtitle">Create, edit, and manage system user accounts</p>
-</div>
+                <div class="page-header">
+        <h1 class="section-title">
+            </i>
+            Manage Users
+        </h1>
+        <p class="page-subtitle">Create, edit, and manage system user accounts</p>
+    </div>
             
             <?php if ($message): ?>
             <div class="alert alert-<?php echo $message_type; ?> alert-dismissible fade show shadow-sm" role="alert">
@@ -979,18 +981,19 @@ $pending_results_count = $conn->query("SELECT COUNT(*) FROM categories WHERE sta
                                         <div class="text-muted small"><i class="fas fa-envelope me-1"></i> <?= htmlspecialchars($user['username']) ?></div>
                                     </td> 
                                     <td>
-    <?php 
-        if ($user['role'] === 'Sports Director') {
-            echo '<span class="fw-bold text-primary" style="font-size: 0.9rem;">
-                    <i class="fas fa-user-shield me-1"></i>Sports Director
-                  </span>';
-        } else {
-            echo '<span class="fw-bold text-secondary" style="font-size: 0.9rem;">
-                    <i class="fas fa-user-tie me-1"></i>Event Manager
-                  </span>';
-        }
-    ?>
-</td>
+                                        <?php 
+                                            if ($user['role'] === 'Sports Director') {
+                                                // Changed text-primary to text-dark for bold black text
+                                                echo '<span class="fw-bold text-dark" style="font-size: 0.9rem;">
+                                                        <i class="fas fa-user-shield me-1"></i>Sports Director
+                                                    </span>';
+                                            } else {
+                                                echo '<span class="fw-bold text-secondary" style="font-size: 0.9rem;">
+                                                        <i class="fas fa-user-tie me-1"></i>Event Manager
+                                                    </span>';
+                                            }
+                                        ?>
+                                    </td>
                                     <td>
                                         <?php if ($user['status'] == 'active'): ?>
                                             <span class="badge bg-success rounded-pill">Active</span>
@@ -1029,14 +1032,14 @@ $pending_results_count = $conn->query("SELECT COUNT(*) FROM categories WHERE sta
                                 <?php endforeach; ?>
                                 <?php if (empty($users)): ?>
                                 <tr>
-    <td colspan="7" class="text-center py-5">
-        <div class="empty-state">
-            <i class="fas fa-users-slash fa-4x mb-3" style="color: #cbd5e1;"></i>
-            <p class="text-muted mb-0 fs-5">No users found</p>
-            <small class="text-muted">Click "Add New User" to create your first user account</small>
-        </div>
-    </td>
-</tr>
+                                    <td colspan="7" class="text-center py-5">
+                                        <div class="empty-state">
+                                            <i class="fas fa-users-slash fa-4x mb-3" style="color: #cbd5e1;"></i>
+                                            <p class="text-muted mb-0 fs-5">No users found</p>
+                                            <small class="text-muted">Click "Add New User" to create your first user account</small>
+                                        </div>
+                                    </td>
+                                </tr>
                                 <?php endif; ?>
                             </tbody>
                         </table>
@@ -1155,7 +1158,7 @@ $pending_results_count = $conn->query("SELECT COUNT(*) FROM categories WHERE sta
                         <div class="mb-3">
                             <label for="edit_username" class="form-label">Email Address</label>
                             <input type="email" class="form-control" id="edit_username" name="edit_username" required
-       title="Please enter a valid email address.">
+                                title="Please enter a valid email address.">
                         </div>
 
                         <div class="row">
