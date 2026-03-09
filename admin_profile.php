@@ -48,7 +48,7 @@ $stats = [
 ];
 
 // Only fetch stats if user is Sports Director to save performance
-if ($_SESSION['role'] !== 'Event Manager') {
+if ($_SESSION['role'] !== 'Tournament Manager') {
     $stats['pending_requests'] = fetchCount($conn, "SELECT COUNT(*) FROM account_requests WHERE status = 'pending'");
     $stats['pending_results']  = fetchCount($conn, "SELECT COUNT(*) FROM categories WHERE status='Results Submitted'");
 }
@@ -358,7 +358,7 @@ if (isset($_POST['change_email'])) {
     <nav class="navbar navbar-dark bg-dark">
         <div class="container-fluid d-flex align-items-center justify-content-between">
             <a class="navbar-brand d-flex align-items-center" href="<?php
-                if ($_SESSION['role'] === 'Event Manager') echo 'event_manager_dashboard.php';
+                if ($_SESSION['role'] === 'Tournament Manager') echo 'tournamentmanager_dashboard.php';
                 else echo 'sd/sports_director_dashboard.php';
             ?>">
                 <img src="images/PIT.png" alt="Logo" class="me-2" style="height: 50px; width: 48px; object-fit: contain;">
@@ -386,11 +386,11 @@ if (isset($_POST['change_email'])) {
     </nav>
 
     <div class="sidebar" id="sidebar">
-        <?php if ($_SESSION['role'] === 'Event Manager'): ?>
-            <!-- === EVENT MANAGER SIDEBAR === -->
+        <?php if ($_SESSION['role'] === 'Tournament Manager'): ?>
+            <!-- === TOURNAMENT MANAGER SIDEBAR === -->
             <ul class="nav flex-column sidebar-nav">
                 <li class="nav-item">
-                    <a class="nav-link" href="event_manager_dashboard.php">
+                    <a class="nav-link" href="tournamentmanager_dashboard.php">
                         <i class="fas fa-tachometer-alt me-2"></i> <span>Dashboard</span>
                     </a>
                 </li>

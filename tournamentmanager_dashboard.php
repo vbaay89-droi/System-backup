@@ -3,13 +3,13 @@ session_start();
 require_once 'config.php'; // Your DB connection
 
 // 1. SECURITY & ACCESS CONTROL
-if (!isset($_SESSION['logged_in']) || $_SESSION['logged_in'] !== true || !isset($_SESSION['role']) || $_SESSION['role'] !== 'Event Manager') {
+if (!isset($_SESSION['logged_in']) || $_SESSION['logged_in'] !== true || !isset($_SESSION['role']) || $_SESSION['role'] !== 'Tournament Manager') {
     header('Location: login.php');
     exit();
 }
 
 $user_id = (int)$_SESSION['user_id'];
-$username = isset($_SESSION['username']) ? $_SESSION['username'] : 'Event Manager';
+$username = isset($_SESSION['username']) ? $_SESSION['username'] : 'Tournament Manager';
 $current_page = basename($_SERVER['PHP_SELF']);
 
 // --- FETCH FULL NAME FROM DB ---
@@ -171,7 +171,7 @@ try {
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Event Manager Dashboard - PIT Tallying</title>
+    <title>Tournament Manager Dashboard - PIT Tallying</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" rel="stylesheet">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=Poppins:wght@400;500;600;700;800&display=swap" rel="stylesheet">
@@ -445,7 +445,7 @@ try {
         .main-content, footer { margin-left: 0; } 
     }
 /* =========================================
-   MOBILE OPTIMIZATION (Event Manager)
+   MOBILE OPTIMIZATION (Tournament Manager)
    ========================================= */
 @media (max-width: 991.98px) {
 
@@ -661,7 +661,7 @@ try {
 
     <nav class="navbar navbar-dark bg-dark">
         <div class="container-fluid d-flex align-items-center justify-content-between">
-            <a class="navbar-brand d-flex align-items-center" href="event_manager_dashboard.php">
+            <a class="navbar-brand d-flex align-items-center" href="tournamentmanager_dashboard.php">
                 <img src="images/PIT.png" alt="Logo" class="me-2" style="height: 50px; width: 48px; object-fit: contain;">
                 <div class="d-flex flex-column lh-sm">
                     <strong class="text-white brand-heading" style="font-size: 1.25rem;">PIT SIGLAKAS MEDAL TALLY</strong>
@@ -688,7 +688,7 @@ try {
     <div class="sidebar" id="sidebar">
         <ul class="nav flex-column sidebar-nav">
             <li class="nav-item">
-                <a class="nav-link active" href="event_manager_dashboard.php">
+                <a class="nav-link active" href="tournamentmanager_dashboard.php">
                     <i class="fas fa-tachometer-alt me-2"></i> <span>Dashboard</span>
                 </a>
             </li>
@@ -716,7 +716,7 @@ try {
             <div class="hero-section">
                 <div class="row align-items-center">
                     <div class="col-lg-9">
-                        <div class="welcome-badge mb-3"><i class="fas fa-id-badge me-1"></i> Official Event Manager</div>
+                        <div class="welcome-badge mb-3"><i class="fas fa-id-badge me-1"></i> Official Tournament Manager</div>
                         <h1 class="fw-bold mb-1">Welcome to SmartScore</h1>
                         <h5 class="fw-light mb-3 text-white-50">Event Management & Verification Portal</h5>
                         <hr class="my-4" style="border-color: rgba(255,255,255,0.15); width: 60%;">
@@ -920,7 +920,7 @@ try {
 
     // --- 2. AJAX STATS LOADER ---
     function loadDashboardStats() {
-        fetch('event_manager_api.php?action=get_dashboard_stats')
+        fetch('tournament_manager_api.php?action=get_dashboard_stats')
             .then(response => {
                 if (!response.ok) throw new Error('Network response was not ok');
                 return response.json();

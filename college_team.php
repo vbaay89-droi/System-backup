@@ -916,17 +916,8 @@ function truncate_text($text, $length = 100, $suffix = '...') {
                                     </p>
                                 </div>
 
-                                <!-- NEW: Mini Medal Stats on Card -->
-                                <div class="medal-mini-stat">
-                                    <div title="Gold" class="text-warning"><i class="fas fa-medal"></i> <span><?= $college['GoldCount'] ?></span></div>
-                                    <div title="Silver" class="text-secondary"><i class="fas fa-medal"></i> <span><?= $college['SilverCount'] ?></span></div>
-                                    <div title="Bronze" style="color: #cd7f32;"><i class="fas fa-medal"></i> <span><?= $college['BronzeCount'] ?></span></div>
-                                    <div title="Total" class="text-dark border-start ps-3">Total <span><?= $college['TotalMedals'] ?></span></div>
-                                </div>
-
                                 <div class="mt-auto d-grid gap-2">
-
-                                    <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#detailsModal" 
+                                    <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#detailsModal"
 
                                             data-college-id="<?= $college['college_id'] ?>">
 
@@ -1443,13 +1434,6 @@ function truncate_text($text, $length = 100, $suffix = '...') {
                                 <h5 class="college-name mb-1 text-dark">${escapeHtml(college.college_name)}</h5>
                                 <span class="badge bg-light text-dark border mb-2">${escapeHtml(college.college_code)}</span>
                                 <p class="text-muted small truncate-text fst-italic mb-2" style="height: 40px;">"${escapeHtml(slogan)}"</p>
-                            </div>
-
-                            <div class="medal-mini-stat">
-                                <div title="Gold" class="text-warning"><i class="fas fa-medal"></i> <span>${college.GoldCount}</span></div>
-                                <div title="Silver" class="text-secondary"><i class="fas fa-medal"></i> <span>${college.SilverCount}</span></div>
-                                <div title="Bronze" style="color: #cd7f32;"><i class="fas fa-medal"></i> <span>${college.BronzeCount}</span></div>
-                                <div title="Total" class="text-dark border-start ps-3">Total <span>${college.TotalMedals}</span></div>
                             </div>
 
                             <div class="mt-auto d-grid gap-2">

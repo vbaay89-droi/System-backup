@@ -73,7 +73,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
             
             if ($stmt_cat->affected_rows > 0) {
                 $conn->commit();
-                $alert_message = "SUCCESS: Results rejected. Event Manager has been notified.";
+                $alert_message = "SUCCESS: Results rejected. The Tournament Manager has been notified.";
                 $alert_type = "warning";
             } else {
                  throw new Exception("Could not find the pending result.");
@@ -137,7 +137,7 @@ function getCollegeName($id, $map) {
 // FETCH PENDING RESULTS
 // Updated SQL to prioritize Full Name, fallback to Username
 $sql_pending = "SELECT 
-            c.category_id, c.category_name, c.division_name, c.category_type, c.tally_sheet_url,
+            c.category_id, c.category_name, c.division_name, c.tally_sheet_url,
             c.gold_winner_college_id, c.gold_count,
             c.silver_winner_college_id, c.silver_count,
             c.bronze_winner_college_id, c.bronze_count,
@@ -147,7 +147,7 @@ $sql_pending = "SELECT
         FROM categories c
         JOIN game_events ge ON c.event_id = ge.event_id
         JOIN games g ON ge.game_id = g.game_id
-        LEFT JOIN event_manager_assignments ema ON c.event_id = ema.event_id
+        LEFT JOIN tournament_manager_assignments ema ON c.event_id = ema.event_id
         LEFT JOIN users u ON ema.user_id = u.id
         WHERE c.status = 'Results Submitted'
         GROUP BY c.category_id
@@ -158,7 +158,7 @@ $pending_results = ($result_pending) ? $result_pending->fetch_all(MYSQLI_ASSOC) 
 // FETCH APPROVED RESULTS
 // Updated SQL to prioritize Full Name for Approver
 $sql_approved = "SELECT 
-            c.category_id, c.category_name, c.division_name, c.category_type, c.tally_sheet_url,
+            c.category_id, c.category_name, c.division_name, c.tally_sheet_url,
             c.gold_winner_college_id, c.gold_count,
             c.silver_winner_college_id, c.silver_count,
             c.bronze_winner_college_id, c.bronze_count,
@@ -183,7 +183,7 @@ $approved_results_count = count($approved_results); // Count for history tab
 if (isset($_GET['ajax_update']) && $_GET['ajax_update'] == '1') {
     // 1. Fetch Pending Results
     $sql_pending = "SELECT 
-            c.category_id, c.category_name, c.division_name, c.category_type, c.tally_sheet_url,
+            c.category_id, c.category_name, c.division_name, c.tally_sheet_url,
             c.gold_winner_college_id, c.gold_count,
             c.silver_winner_college_id, c.silver_count,
             c.bronze_winner_college_id, c.bronze_count,
@@ -193,7 +193,7 @@ if (isset($_GET['ajax_update']) && $_GET['ajax_update'] == '1') {
         FROM categories c
         JOIN game_events ge ON c.event_id = ge.event_id
         JOIN games g ON ge.game_id = g.game_id
-        LEFT JOIN event_manager_assignments ema ON c.event_id = ema.event_id
+        LEFT JOIN tournament_manager_assignments ema ON c.event_id = ema.event_id
         LEFT JOIN users u ON ema.user_id = u.id
         WHERE c.status = 'Results Submitted'
         GROUP BY c.category_id
@@ -202,7 +202,7 @@ if (isset($_GET['ajax_update']) && $_GET['ajax_update'] == '1') {
 
     // 2. Fetch Approved Results
     $sql_approved = "SELECT 
-            c.category_id, c.category_name, c.division_name, c.category_type, c.tally_sheet_url,
+            c.category_id, c.category_name, c.division_name, c.tally_sheet_url,
             c.approved_at, ge.event_name, g.game_name, 
             COALESCE(u.full_name, u.username) AS approved_by_name
         FROM categories c

@@ -211,14 +211,18 @@ $conn->close();
             overflow: hidden;
         }
         .hero-section::before {
-            content: '';
-            position: absolute;
-            top: 0;
-            left: 0;
-            right: 0;
-            height: 5px;
-            background: linear-gradient(90deg, var(--primary-green), var(--accent-gold), var(--accent-silver));
-        }
+    content: '';
+    position: absolute;
+    top: 0; left: 0; right: 0;
+    height: 5px;
+    background: linear-gradient(90deg, var(--primary-green), var(--accent-gold), var(--accent-silver), var(--primary-green));
+    background-size: 200% 100%;
+    animation: shimmerBar 3s linear infinite;
+}
+@keyframes shimmerBar {
+    0% { background-position: 0% 0; }
+    100% { background-position: 200% 0; }
+}
         .hero-header {
             display: flex;
             flex-direction: column; 
@@ -245,11 +249,19 @@ $conn->close();
             font-family: 'Poppins', sans-serif;
             font-weight: 800;
             font-size: 2.5rem;
-            background: linear-gradient(135deg, var(--primary-green), var(--primary-dark));
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
+            background: linear-gradient(270deg, var(--primary-green), var(--primary-dark), #81C784, var(--accent-gold));
+background-size: 400% 400%;
+-webkit-background-clip: text;
+-webkit-text-fill-color: transparent;
+animation: gradientShift 6s ease infinite;
             margin: 0;
         }
+
+        @keyframes gradientShift {
+    0% { background-position: 0% 50%; }
+    50% { background-position: 100% 50%; }
+    100% { background-position: 0% 50%; }
+}
         .hero-controls {
             display: flex;
             gap: 0.5rem;
@@ -682,6 +694,28 @@ $conn->close();
         font-size: 0.8rem !important;      /* Smaller text */
         line-height: 1.2;
     }
+    .hero-medal-icons span {
+        display: inline-block;
+        font-size: 1.8rem;
+        animation: bobble 2s ease-in-out infinite;
+    }
+    @keyframes bobble {
+        0%, 100% { transform: translateY(0); }
+        50% { transform: translateY(-8px); }
+    }
+    .live-dot {
+        display: inline-block;
+        width: 8px;
+        height: 8px;
+        background: #4CAF50;
+        border-radius: 50%;
+        margin-right: 8px;
+        animation: livePulse 1.5s ease-in-out infinite;
+    }
+    @keyframes livePulse {
+        0%, 100% { opacity: 1; transform: scale(1); box-shadow: 0 0 0 0 rgba(76,175,80,0.6); }
+        50% { opacity: 0.8; transform: scale(1.2); box-shadow: 0 0 0 6px rgba(76,175,80,0); }
+    }
 }
 
 </style>
@@ -776,17 +810,19 @@ $conn->close();
                 </div>
                 <div class="hero-header">
                     <div class="hero-title-group">
-                        <img src="images/SIGLAKASTEST.png" alt="Logo">
-                        <h1>Live Medal Standings</h1>
-                    </div>
+    <img src="images/SIGLAKASTEST.png" alt="Logo">
+    <h1>Live Medal Standings</h1>
+    
+</div>
                     <div class="hero-controls">
                         <div class="last-updated" id="last-updated-display">
-                            <i class="far fa-clock me-2"></i><?= $formattedTime ?>
-                        </div>
+    <span class="live-dot"></span>
+    <i class="far fa-clock me-2"></i><?= $formattedTime ?>
+</div>
                         <span id="refresh-timer" class="badge bg-danger"></span>
                         <a href="print_standings.php" target="_blank" class="btn btn-primary print-btn text-decoration-none">
-    <i class="fas fa-print me-2"></i>Print
-</a>
+                            <i class="fas fa-print me-2"></i>Print
+                        </a>
                     </div>
                 </div>
 

@@ -24,7 +24,6 @@ $ongoing_events = 0;
 $sql_fetch_events = "
     SELECT 
         c.category_id AS event_id,
-        c.category_type,
         c.category_name AS event_name,
         c.division_name,
         
@@ -44,7 +43,7 @@ $sql_fetch_events = "
     JOIN game_events ge ON c.event_id = ge.event_id
     JOIN games g ON ge.game_id = g.game_id
     
-    LEFT JOIN event_manager_assignments ema ON ge.event_id = ema.event_id
+    LEFT JOIN tournament_manager_assignments ema ON ge.event_id = ema.event_id
     LEFT JOIN users u ON ema.user_id = u.id 
     
     WHERE c.status != 'Draft' AND c.status IS NOT NULL 
@@ -1917,7 +1916,6 @@ $conn->close();
                                 <a href="#" class="check-event btn btn-sm btn-primary rounded-pill px-4 fw-bold" 
                                 data-bs-toggle="modal" data-bs-target="#viewEventModal" 
                                 data-id="${event.event_id}" 
-                                data-category-type="${event.category_type || 'medal'}"
                                 data-status="${(originalStatus).toLowerCase()}">
                                     View Details <i class="fas fa-arrow-right ms-2"></i>
                                 </a>
@@ -2010,7 +2008,6 @@ $conn->close();
                     e.preventDefault(); 
                     const button = e.target.closest('.check-event');
                     const eventId = button.dataset.id;
-                    const categoryType = button.dataset.categoryType || 'medal'; 
                     const status = button.dataset.status;
 
                     currentEventIdForRefresh = eventId;
@@ -2190,7 +2187,7 @@ $conn->close();
                 if (!medalWinnersBody) return;
                 medalWinnersBody.innerHTML = `<div class="text-center p-5 text-muted"><div class="spinner-border spinner-border-sm" role="status"></div><span class="ms-2">Loading Winners...</span></div>`;
                 
-                fetch(`event_manager_api.php?action=get_medal_results&category_id=${categoryId}`)
+                fetch(`tournament_manager_api.php?action=get_medal_results&category_id=${categoryId}`)
                     .then(response => response.json())
                     .then(result => {
                         if (result.success) {

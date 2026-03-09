@@ -989,7 +989,7 @@ $pending_results_count = $conn->query("SELECT COUNT(*) FROM categories WHERE sta
                                                     </span>';
                                             } else {
                                                 echo '<span class="fw-bold text-secondary" style="font-size: 0.9rem;">
-                                                        <i class="fas fa-user-tie me-1"></i>Event Manager
+                                                        <i class="fas fa-user-tie me-1"></i>Tournament Manager
                                                     </span>';
                                             }
                                         ?>
@@ -1117,7 +1117,7 @@ $pending_results_count = $conn->query("SELECT COUNT(*) FROM categories WHERE sta
                             <div class="col-md-6 mb-3">
                                 <label for="role" class="form-label">Role</label>
                                 <select class="form-select" id="role" name="role" required>
-                                    <option value="Event Manager">Event Manager</option>
+                                    <option value="Tournament Manager">Tournament Manager</option>
                                     <option value="Sports Director">Sports Director</option>
                                 </select>
                             </div>
@@ -1165,7 +1165,7 @@ $pending_results_count = $conn->query("SELECT COUNT(*) FROM categories WHERE sta
                             <div class="col-md-6 mb-3">
                                 <label for="edit_role" class="form-label">Role</label>
                                 <select class="form-select" id="edit_role" name="edit_role" required>
-                                    <option value="Event Manager">Event Manager</option>
+                                    <option value="Tournament Manager">Tournament Manager</option>
                                     <option value="Sports Director">Sports Director</option>
                                 </select>
                             </div>

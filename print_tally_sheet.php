@@ -3,7 +3,7 @@ session_start();
 require_once 'config.php';
 
 // 1. SECURITY
-if (!isset($_SESSION['logged_in']) || $_SESSION['role'] !== 'Event Manager') {
+if (!isset($_SESSION['logged_in']) || $_SESSION['role'] !== 'Tournament Manager') {
     die("Access Denied");
 }
 
@@ -234,7 +234,7 @@ $bronze_cnt = ($data['bronze_count'] > 0) ? $data['bronze_count'] : '';
             <div class="sig-block">
                 <div class="sig-line"></div>
                 <div class="sig-name"><?= htmlspecialchars($data['manager_name'] ?? '__________________________') ?></div>
-                <div class="sig-role">Event Manager (Verified By)</div>
+                <div class="sig-role">Tournament Manager (Verified By)</div>
             </div>
         </div>
 

@@ -28,7 +28,7 @@ try {
             c.category_id AS event_id,
             c.category_name AS event_name,
             c.status AS event_status,
-            c.category_type, 
+             
             c.notes AS description, 
             
             c.event_date,
@@ -44,7 +44,7 @@ try {
         FROM categories c
         JOIN game_events ge ON c.event_id = ge.event_id
         JOIN games g ON ge.game_id = g.game_id
-        LEFT JOIN event_manager_assignments ema ON ge.event_id = ema.event_id
+        LEFT JOIN tournament_manager_assignments ema ON ge.event_id = ema.event_id
         LEFT JOIN users u ON ema.user_id = u.id
         WHERE c.category_id = ?
         LIMIT 1

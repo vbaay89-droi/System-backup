@@ -60,13 +60,22 @@ if (isset($_POST['delete_game'])) {
 
 // L2 - EVENTS (CREATE)
 if (isset($_POST['add_event'])) {
-    $game_id = (int)$_POST['game_id']; $event_name = trim($_POST['event_name']); // We default everything to 'Standard' since we removed the toggle
-$structure_db_value = 'Standard';
+    $game_id = (int)$_POST['game_id']; 
+    $event_name = trim($_POST['event_name']); 
+    $structure_db_value = 'Standard';
+    
+    // NEW: Capture Fixed Medal Count
+    $fixed_medal_count = !empty($_POST['fixed_medal_count']) ? (int)$_POST['fixed_medal_count'] : null;
+
     try {
-        $stmt = $conn->prepare("INSERT INTO game_events (game_id, event_name, event_structure) VALUES (?, ?, ?)");
-        $stmt->bind_param("iss", $game_id, $event_name, $structure_db_value); $stmt->execute(); $stmt->close();
-        $msg_extra = ($structure_type === 'single') ? " (Single Mode)" : "";
-        $_SESSION['message'] = "Event added successfully." . $msg_extra; $_SESSION['message_type'] = "success";
+        $stmt = $conn->prepare("INSERT INTO game_events (game_id, event_name, event_structure, fixed_medal_count) VALUES (?, ?, ?, ?)");
+        // Note: Changed "iss" to "issi" to include the integer for fixed_medal_count
+        $stmt->bind_param("issi", $game_id, $event_name, $structure_db_value, $fixed_medal_count); 
+        $stmt->execute(); 
+        $stmt->close();
+        
+        $_SESSION['message'] = "Event added successfully."; 
+        $_SESSION['message_type'] = "success";
     } catch (mysqli_sql_exception $e) {
         if ($e->getCode() == 1062) { $_SESSION['message'] = "Event '$event_name' already exists."; $_SESSION['message_type'] = "warning"; } 
         else { $_SESSION['message'] = "Error: " . $e->getMessage(); $_SESSION['message_type'] = "danger"; }
@@ -75,10 +84,21 @@ $structure_db_value = 'Standard';
 }
 // L2 - EVENTS (UPDATE)
 if (isset($_POST['update_event'])) {
-    $event_id = (int)$_POST['event_id']; $game_id = (int)$_POST['game_id']; $event_name = $_POST['event_name'];
-    $stmt = $conn->prepare("UPDATE game_events SET game_id = ?, event_name = ? WHERE event_id = ?");
-    $stmt->bind_param("isi", $game_id, $event_name, $event_id); $stmt->execute();
-    $_SESSION['message'] = "Event updated successfully."; $_SESSION['message_type'] = "success"; header("Location: events.php?tab=events"); exit();
+    $event_id = (int)$_POST['event_id']; 
+    $game_id = (int)$_POST['game_id']; 
+    $event_name = $_POST['event_name'];
+    
+    // NEW: Capture Fixed Medal Count
+    $fixed_medal_count = !empty($_POST['fixed_medal_count']) ? (int)$_POST['fixed_medal_count'] : null;
+
+    $stmt = $conn->prepare("UPDATE game_events SET game_id = ?, event_name = ?, fixed_medal_count = ? WHERE event_id = ?");
+    // Note: Changed "isi" to "isii"
+    $stmt->bind_param("isii", $game_id, $event_name, $fixed_medal_count, $event_id); 
+    $stmt->execute();
+    
+    $_SESSION['message'] = "Event updated successfully."; 
+    $_SESSION['message_type'] = "success"; 
+    header("Location: events.php?tab=events"); exit();
 }
 // L2 - EVENTS (DELETE)
 if (isset($_POST['delete_event'])) {
@@ -101,7 +121,7 @@ if (isset($_POST['delete_event'])) {
         $conn->begin_transaction();
         try {
             // Delete manager link first
-            $conn->query("DELETE FROM event_manager_assignments WHERE event_id = $event_id");
+            $conn->query("DELETE FROM tournament_manager_assignments WHERE event_id = $event_id");
 
             // Try to delete the event
             if (!$conn->query("DELETE FROM game_events WHERE event_id = $event_id")) {
@@ -168,7 +188,7 @@ if (isset($_POST['assign_manager'])) {
 
     // 1. Check if this user is ALREADY assigned to another event (and it's not THIS event)
     if ($user_id > 0) {
-        $check = $conn->query("SELECT event_id FROM event_manager_assignments WHERE user_id = $user_id AND event_id != $event_id");
+        $check = $conn->query("SELECT event_id FROM tournament_manager_assignments WHERE user_id = $user_id AND event_id != $event_id");
         if ($check->num_rows > 0) {
             $_SESSION['message'] = "Error: That manager is already assigned to another event."; 
             $_SESSION['message_type'] = "danger"; 
@@ -178,10 +198,10 @@ if (isset($_POST['assign_manager'])) {
     }
 
     // 2. Proceed with assignment
-    $conn->query("DELETE FROM event_manager_assignments WHERE event_id = $event_id");
+    $conn->query("DELETE FROM tournament_manager_assignments WHERE event_id = $event_id");
     
     if ($user_id > 0) {
-        $stmt_ins = $conn->prepare("INSERT INTO event_manager_assignments (event_id, user_id) VALUES (?, ?)");
+        $stmt_ins = $conn->prepare("INSERT INTO tournament_manager_assignments (event_id, user_id) VALUES (?, ?)");
         $stmt_ins->bind_param("ii", $event_id, $user_id); 
         $stmt_ins->execute();
     }
@@ -195,13 +215,13 @@ if (isset($_POST['assign_manager'])) {
 // --- FETCH DATA ---
 $games = $conn->query("SELECT * FROM games ORDER BY game_name")->fetch_all(MYSQLI_ASSOC);
 $events = $conn->query("SELECT e.*, g.game_name FROM game_events e JOIN games g ON e.game_id = g.game_id ORDER BY g.game_name, e.event_name")->fetch_all(MYSQLI_ASSOC);
-$categories = $conn->query("SELECT c.*, e.event_name, g.game_name, u.full_name as manager_name FROM categories c JOIN game_events e ON c.event_id = e.event_id JOIN games g ON e.game_id = g.game_id LEFT JOIN event_manager_assignments ema ON e.event_id = ema.event_id LEFT JOIN users u ON ema.user_id = u.id ORDER BY g.game_name, e.event_name, c.category_name")->fetch_all(MYSQLI_ASSOC);
-$events_with_managers = $conn->query("SELECT e.*, g.game_name, u.full_name as manager_name, ema.user_id FROM game_events e JOIN games g ON e.game_id = g.game_id LEFT JOIN event_manager_assignments ema ON e.event_id = ema.event_id LEFT JOIN users u ON ema.user_id = u.id ORDER BY g.game_name, e.event_name")->fetch_all(MYSQLI_ASSOC);
-$event_managers = $conn->query("SELECT id, full_name FROM users WHERE role = 'Event Manager' ORDER BY full_name")->fetch_all(MYSQLI_ASSOC);
+$categories = $conn->query("SELECT c.*, e.event_name, g.game_name, u.full_name as manager_name FROM categories c JOIN game_events e ON c.event_id = e.event_id JOIN games g ON e.game_id = g.game_id LEFT JOIN tournament_manager_assignments ema ON e.event_id = ema.event_id LEFT JOIN users u ON ema.user_id = u.id ORDER BY g.game_name, e.event_name, c.category_name")->fetch_all(MYSQLI_ASSOC);
+$events_with_managers = $conn->query("SELECT e.*, g.game_name, u.full_name as manager_name, ema.user_id FROM game_events e JOIN games g ON e.game_id = g.game_id LEFT JOIN tournament_manager_assignments ema ON e.event_id = ema.event_id LEFT JOIN users u ON ema.user_id = u.id ORDER BY g.game_name, e.event_name")->fetch_all(MYSQLI_ASSOC);
+$event_managers = $conn->query("SELECT id, full_name FROM users WHERE role = 'Tournament Manager' ORDER BY full_name")->fetch_all(MYSQLI_ASSOC);
 
 // [NEW] Get a simple list of User IDs that are ALREADY assigned to ANY event
 $assigned_ids = [];
-$assigned_q = $conn->query("SELECT user_id FROM event_manager_assignments");
+$assigned_q = $conn->query("SELECT user_id FROM tournament_manager_assignments");
 while($row = $assigned_q->fetch_assoc()) {
     $assigned_ids[] = $row['user_id'];
 }
@@ -209,6 +229,11 @@ while($row = $assigned_q->fetch_assoc()) {
 $message = $_SESSION['message'] ?? null;
 $message_type = $_SESSION['message_type'] ?? 'info';
 unset($_SESSION['message'], $_SESSION['message_type']);
+
+$grouped_events = [];
+    foreach ($events as $event) {
+        $grouped_events[$event['game_name']][] = $event;
+    }
 
 // Counts
 $pending_requests_count = $conn->query("SELECT COUNT(*) FROM users WHERE is_approved = 0")->fetch_row()[0] ?? 0;
@@ -389,10 +414,7 @@ $pending_results_count = $conn->query("SELECT COUNT(*) FROM categories WHERE sta
         flex-direction: column;
         justify-content: space-between;
     }
-    .game-card:hover {
-        transform: translateY(-5px);
-        box-shadow: 0 12px 24px rgba(0,0,0,0.08);
-    }
+    
     .game-card::before {
         content: '';
         position: absolute;
@@ -400,7 +422,7 @@ $pending_results_count = $conn->query("SELECT COUNT(*) FROM categories WHERE sta
         background: #e9ecef;
         transition: 0.3s;
     }
-    .game-card:hover::before { background: var(--accent-color); }
+    
     
     .game-icon-wrapper {
         width: 50px; height: 50px;
@@ -771,16 +793,6 @@ $pending_results_count = $conn->query("SELECT COUNT(*) FROM categories WHERE sta
     height: 100%;
     background: #e9ecef;
     transition: 0.3s;
-}
-
-.game-card-compact:hover {
-    transform: translateY(-3px);
-    box-shadow: 0 8px 20px rgba(0,0,0,0.08);
-    border-color: var(--accent-color);
-}
-
-.game-card-compact:hover::before {
-    background: var(--accent-color);
 }
 
 .game-icon-compact {
@@ -1393,7 +1405,7 @@ $pending_results_count = $conn->query("SELECT COUNT(*) FROM categories WHERE sta
             <div class="tab-pane fade show active" id="games" role="tabpanel">
     
                 <div class="d-flex justify-content-between align-items-center mb-3">
-                    <h5 class="fw-bold text-secondary m-0">Game Categories</h5>
+                    <h5 class="fw-bold text-secondary m-0">Games</h5>
                     <button class="btn btn-primary rounded-pill px-4" data-bs-toggle="modal" data-bs-target="#addGameModal">
                         <i class="fas fa-plus me-2"></i> New Game
                     </button>
@@ -1456,24 +1468,16 @@ $pending_results_count = $conn->query("SELECT COUNT(*) FROM categories WHERE sta
                             <table class="table table-hover align-middle mb-0">
                                 <thead class="bg-light text-secondary">
                                     <tr>
-                                        <th class="ps-4 py-3" style="width: 40%;">Event Name</th>
-                                        <th class="py-3" style="width: 35%;">Assigned Manager</th>
-                                        <th class="text-end pe-4 py-3" style="width: 25%;">Actions</th>
+                                        <th class="ps-4 py-3" style="width: 35%;">Event Name</th>
+                                        <th class="py-3 text-center" style="width: 20%;">Medal Counts</th>
+                                        <th class="py-3" style="width: 25%;">Assigned Manager</th>
+                                        <th class="text-end pe-4 py-3" style="width: 20%;">Actions</th>
                                     </tr>
                                 </thead>
                                 <tbody id="eventsGrid">
-                                    <?php if (empty($events_with_managers)): ?>
-                                        <tr class="event-row">
-                                        <tr>
-                                            <td colspan="3" class="text-center py-5 text-muted">
-                                                <i class="fas fa-calendar-day fa-3x mb-3 opacity-25"></i>
-                                                <p class="mb-0">No events found.</p>
-                                            </td>
-                                        </tr>
-                                    <?php else: ?>
-                                        <?php foreach ($events_with_managers as $event): ?>
-                                        <tr>
-                                            <tr class="event-row"> <td class="ps-4 py-3">
+                                    <?php foreach ($events_with_managers as $event): ?>
+                                        <tr class="event-row"> 
+                                            <td class="ps-4 py-3">
                                                 <div class="d-flex flex-column">
                                                     <span class="fw-bold text-dark fs-6"><?= htmlspecialchars($event['event_name']) ?></span>
                                                     <small class="text-muted mt-1">
@@ -1481,6 +1485,14 @@ $pending_results_count = $conn->query("SELECT COUNT(*) FROM categories WHERE sta
                                                         <?= htmlspecialchars($event['game_name']) ?>
                                                     </small>
                                                 </div>
+                                            </td>
+
+                                            <td class="py-3 text-center align-middle">
+                                                <?php if (!empty($event['fixed_medal_count'])): ?>
+                                                    <span class="fw-bold text-dark fs-5"><?= htmlspecialchars($event['fixed_medal_count']) ?></span>
+                                                <?php else: ?>
+                                                    <span class="text-muted fst-italic">N/A</span>
+                                                <?php endif; ?>
                                             </td>
 
                                             <td class="py-3">
@@ -1492,7 +1504,7 @@ $pending_results_count = $conn->query("SELECT COUNT(*) FROM categories WHERE sta
                                                         </div>
                                                         <div>
                                                             <span class="d-block text-dark fw-medium small"><?= htmlspecialchars($event['manager_name']) ?></span>
-                                                            <span class="d-block text-muted" style="font-size: 11px;">Event Manager</span>
+                                                            
                                                         </div>
                                                     </div>
                                                 <?php else: ?>
@@ -1520,6 +1532,7 @@ $pending_results_count = $conn->query("SELECT COUNT(*) FROM categories WHERE sta
                                                             data-event-id="<?= $event['event_id'] ?>" 
                                                             data-event-name="<?= htmlspecialchars($event['event_name']) ?>"
                                                             data-game-id="<?= $event['game_id'] ?>" 
+                                                            data-fixed-count="<?= htmlspecialchars($event['fixed_medal_count'] ?? '') ?>"
                                                             title="Edit">
                                                         <i class="fas fa-pen"></i>
                                                     </button>
@@ -1536,7 +1549,6 @@ $pending_results_count = $conn->query("SELECT COUNT(*) FROM categories WHERE sta
                                             </td>
                                         </tr>
                                         <?php endforeach; ?>
-                                    <?php endif; ?>
                                 </tbody>
                             </table>
                         </div>
@@ -1634,7 +1646,7 @@ $pending_results_count = $conn->query("SELECT COUNT(*) FROM categories WHERE sta
             <div class="modal-dialog">
                 <div class="modal-content">
                     <div class="modal-header">
-                        <h5 class="modal-title"><i class="fas fa-plus-circle"></i>Add New Game Category</h5>
+                        <h5 class="modal-title"><i class="fas fa-plus-circle"></i>Add New Game </h5>
                         <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
                     </div>
                     <form action="events.php" method="POST">
@@ -1681,6 +1693,18 @@ $pending_results_count = $conn->query("SELECT COUNT(*) FROM categories WHERE sta
                                 <input type="text" class="form-control" name="event_name" placeholder="e.g. Basketball, Chess, 100m Dash" required>
                             </div>
                             
+                            <div class="mb-3 border rounded p-3 bg-light">
+                                <div class="form-check form-switch mb-2">
+                                    <input class="form-check-input toggle-fixed-medal" type="checkbox" id="add_enable_fixed_medal">
+                                    <label class="form-check-label fw-bold text-dark" for="add_enable_fixed_medal">Set A fixed Medal Count?</label>
+                                </div>
+                                <div class="fixed-medal-input-container mt-2" id="add_fixed_medal_container" style="display: none;">
+                                    <label class="form-label text-muted small mb-1">Medal counts awarded per team (e.g., 5 for Basketball, 11 for Football)</label>
+                                    <input type="number" class="form-control border-primary" name="fixed_medal_count" id="add_fixed_medal_count" min="1" placeholder="Enter a fixed medal count per team">
+                                </div>
+                                <small class="text-success d-block mt-2 fw-medium"><i class="fas fa-lock me-1"></i> Tournament managers will be locked into this exact medal count during submission.</small>
+                            </div>
+                            
                         </div>
                         <div class="modal-footer">
                             <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
@@ -1695,7 +1719,7 @@ $pending_results_count = $conn->query("SELECT COUNT(*) FROM categories WHERE sta
             <div class="modal-dialog">
                 <div class="modal-content">
                     <div class="modal-header">
-                        <h5 class="modal-title"><i class="fas fa-plus-circle"></i>Add Specific Division</h5>
+                        <h5 class="modal-title"><i class="fas fa-plus-circle"></i>Add Category/Division</h5>
                         <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
                     </div>
                     <form action="events.php" method="POST">
@@ -1704,24 +1728,35 @@ $pending_results_count = $conn->query("SELECT COUNT(*) FROM categories WHERE sta
                             
                             <div class="mb-3">
                                 <label class="form-label fw-bold">Select Event</label>
-                                <select class="form-select" name="event_id" required>
+                                <select class="form-select fw-medium" name="event_id" required>
                                     <option value="" disabled selected>-- Select Event --</option>
-                                    <?php foreach ($events as $event): ?>
-                                    <option value="<?= $event['event_id'] ?>">
-                                        <?= htmlspecialchars($event['game_name']) ?> &raquo; <?= htmlspecialchars($event['event_name']) ?>
-                                    </option>
+                                    
+                                    <?php foreach ($grouped_events as $game_name => $game_events): ?>
+                                        <optgroup label="<?= htmlspecialchars($game_name) ?>">
+                                            
+                                            <?php foreach ($game_events as $ev): ?>
+                                                <option value="<?= $ev['event_id'] ?>">
+                                                    <?= htmlspecialchars($ev['event_name']) ?>
+                                                </option>
+                                            <?php endforeach; ?>
+                                            
+                                        </optgroup>
                                     <?php endforeach; ?>
                                 </select>
                             </div>
                             
+                            <div class="alert alert-info py-2 small mb-3 border-0 bg-light text-primary">
+                                <strong>Please enter at least one detail below: Category, Division, or both.</strong>
+                            </div>
+
                             <div class="mb-3">
                                 <label class="form-label fw-bold">Category Name</label>
-                                <input type="text" class="form-control" name="category_name" placeholder="e.g. Singles, Doubles, 100m Dash" required>
+                                <input type="text" class="form-control" id="add_category_name" name="category_name" placeholder="e.g. Singles, 100m Dash (Leave if Event has no Category)">
                             </div>
                             
                             <div class="mb-3">
-                                <label class="form-label fw-bold">Division Name (Optional)</label>
-                                <input type="text" class="form-control" name="division_name" placeholder="e.g. Men's Division, Women's, Lightweight">
+                                <label class="form-label fw-bold">Division Name</label>
+                                <input type="text" class="form-control" id="add_division_name" name="division_name" placeholder="e.g. Men's Division (Leave if Category has no Division)">
                             </div>
                             
                         </div>
@@ -1738,7 +1773,7 @@ $pending_results_count = $conn->query("SELECT COUNT(*) FROM categories WHERE sta
             <div class="modal-dialog">
                 <div class="modal-content">
                     <div class="modal-header">
-                        <h5 class="modal-title">Assign Event Manager</h5>
+                        <h5 class="modal-title">Assign Tournament Manager</h5>
                         <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
                     </div>
                     <form action="events.php" method="POST">
@@ -1831,7 +1866,7 @@ $pending_results_count = $conn->query("SELECT COUNT(*) FROM categories WHERE sta
             <div class="modal-dialog">
                 <div class="modal-content">
                     <div class="modal-header">
-                        <h5 class="modal-title"><i class="fas fa-edit"></i>Edit Sport / Event</h5>
+                        <h5 class="modal-title"><i class="fas fa-edit"></i>Edit Event</h5>
                         <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
                     </div>
                     <form action="events.php" method="POST">
@@ -1850,6 +1885,23 @@ $pending_results_count = $conn->query("SELECT COUNT(*) FROM categories WHERE sta
                             <div class="mb-3">
                                 <label for="edit_event_name" class="form-label fw-bold">Event Name</label>
                                 <input type="text" class="form-control" id="edit_event_name" name="event_name" required>
+                            </div>
+
+                            <div class="mb-3 border rounded p-3 bg-light">
+                                <div class="form-check form-switch mb-2">
+                                    <input class="form-check-input toggle-fixed-medal" type="checkbox" id="edit_enable_fixed_medal" style="cursor: pointer;">
+                                    <label class="form-check-label fw-bold text-dark" for="edit_enable_fixed_medal" style="cursor: pointer;">Set A fixed Medal Count?</label>
+                                </div>
+                                
+                                <div class="fixed-medal-input-container mt-2" id="edit_fixed_medal_container" style="display: none;">
+                                    
+                                    <label class="form-label text-muted small mb-1">Medal counts awarded per team (e.g., 5 for Basketball, 11 for Football)</label>
+                                    <input type="number" class="form-control border-primary" name="fixed_medal_count" id="edit_fixed_medal_count" min="1" placeholder="Enter a fixed medal count per team">
+
+                                    <p class="text-success small fw-medium mb-2">
+                                        <i class="fas fa-lock me-1"></i> Tournament managers will be locked into this exact medal count during submission.
+                                    </p>
+                                </div>
                             </div>
                         </div>
                         <div class="modal-footer">
@@ -1888,7 +1940,7 @@ $pending_results_count = $conn->query("SELECT COUNT(*) FROM categories WHERE sta
             <div class="modal-dialog">
                 <div class="modal-content">
                     <div class="modal-header">
-                        <h5 class="modal-title"><i class="fas fa-edit"></i>Edit Category</h5>
+                        <h5 class="modal-title"><i class="fas fa-edit"></i>Edit Category/Division</h5>
                         <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
                     </div>
                     <form action="events.php" method="POST">
@@ -1908,12 +1960,12 @@ $pending_results_count = $conn->query("SELECT COUNT(*) FROM categories WHERE sta
                                 </select>
                             </div>
                             <div class="mb-3">
-                                <label for="edit_category_name" class="form-label fw-bold">Event Category </label>
-                                <input type="text" class="form-control" id="edit_category_name" name="category_name" required>
+                                <label for="edit_category_name" class="form-label fw-bold">Event Category <span class="text-muted fw-normal">(Optional)</span></label>
+                                <input type="text" class="form-control" id="edit_category_name" name="category_name" placeholder="Leave blank if Division only">
                             </div>
                             <div class="mb-3">
-                                <label class="form-label fw-bold">Division Name (Optional)</label>
-                                <input type="text" class="form-control" id="edit_division_name" name="division_name" placeholder="e.g. Men's Division, Women's, Lightweight">
+                                <label for="edit_division_name" class="form-label fw-bold">Division Name <span class="text-muted fw-normal">(Optional)</span></label>
+                                <input type="text" class="form-control" id="edit_division_name" name="division_name" placeholder="Leave blank if Category only">
                             </div>
                         </div>
                         <div class="modal-footer">
@@ -1972,7 +2024,7 @@ $pending_results_count = $conn->query("SELECT COUNT(*) FROM categories WHERE sta
                             <div class="col-md-6">
                                 <div class="p-3 bg-light rounded h-100 border">
                                     <h6 class="fw-bold text-info text-dark mb-2"><i class="fas fa-user-plus me-2"></i>3. Assign Managers</h6>
-                                    <p class="small text-muted mb-0">Back in the <strong>Events</strong> tab, click the <span class="badge bg-light text-primary border"><i class="fas fa-user-plus"></i></span> icon to delegate an Event Manager to handle the live scoring.</p>
+                                    <p class="small text-muted mb-0">Back in the <strong>Events</strong> tab, click the <span class="badge bg-light text-primary border"><i class="fas fa-user-plus"></i></span> icon to delegate an Tournament Manager to handle the live scoring.</p>
                                 </div>
                             </div>
                             <div class="col-md-6">
@@ -2032,296 +2084,377 @@ $pending_results_count = $conn->query("SELECT COUNT(*) FROM categories WHERE sta
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
     <script>
-    document.addEventListener('DOMContentLoaded', function() {
-        
-        // --- JS FEATURES ---
-        
-        // Updated Search for Grid Cards
-function setupGridSearch(inputId, gridId, itemClass) {
-    const searchInput = document.getElementById(inputId);
-    const grid = document.getElementById(gridId);
-    
-    if (!searchInput || !grid) return;
-
-    // Create a "No Results" row dynamically for tables
-    let noResultsRow = document.createElement('tr');
-    noResultsRow.innerHTML = '<td colspan="100%" class="text-center py-4 text-muted">No matches found</td>';
-    noResultsRow.style.display = 'none';
-    noResultsRow.id = gridId + '-no-results';
-    
-    // Only append if it's a table body
-    if (grid.tagName === 'TBODY') {
-        grid.appendChild(noResultsRow);
-    }
-
-    searchInput.addEventListener('keyup', function() {
-        const searchTerm = this.value.toLowerCase();
-        // Default to 'tr' if it's a table, otherwise use the class provided
-        const selector = itemClass || (grid.tagName === 'TBODY' ? 'tr:not([id*="-no-results"])' : '[class*="-item"]');
-        const items = grid.querySelectorAll(selector);
-        
-        let hasVisibleItems = false;
-
-        items.forEach(item => {
-            const itemText = item.textContent.toLowerCase();
-            if (itemText.includes(searchTerm)) {
-                item.style.display = ''; // Show
-                hasVisibleItems = true;
-            } else {
-                item.style.display = 'none'; // Hide
-            }
-        });
-
-        // Toggle "No Results" message
-        if (grid.tagName === 'TBODY') {
-            noResultsRow.style.display = hasVisibleItems ? 'none' : 'table-row';
-        }
-    });
-}
-
-// === UPDATE YOUR CALLS HERE ===
-
-// 1. For the new Table (Target the specific class we added)
-setupGridSearch('searchEvents', 'eventsGrid', '.event-row');
-
-// 2. Keep these the same (Assuming they are still Grid/Cards)
-setupGridSearch('searchCategories', 'categoriesGrid', '.category-item');
-
-        // JS for Assign Manager Modal
-        const assignModal = document.getElementById('assignManagerModal');
-        if (assignModal) {
-            assignModal.addEventListener('show.bs.modal', function(event) {
-                const button = event.relatedTarget;
-                document.getElementById('assign_event_id').value = button.dataset.eventId;
-                document.getElementById('assign_event_name').textContent = button.dataset.eventName;
+        document.addEventListener('DOMContentLoaded', function() {
+            
+            // --- JS FEATURES ---
+            
+            // Updated Search for Grid Cards
+            function setupGridSearch(inputId, gridId, itemClass) {
+                const searchInput = document.getElementById(inputId);
+                const grid = document.getElementById(gridId);
                 
-                const currentUserId = button.dataset.userId || '0';
-                const selectBox = document.getElementById('assign_user_id');
+                if (!searchInput || !grid) return;
 
-                // 1. Reset: Ensure all options respect their HTML 'disabled' state first
-                Array.from(selectBox.options).forEach(opt => {
-                    // If the text contains "(Already Assigned)", keep it disabled
-                    if (opt.text.includes('(Already Assigned)')) {
-                        opt.disabled = true;
-                    }
-                });
-
-                // 2. UNLOCK current user: If the manager is assigned to THIS event, enable them
-                if (currentUserId !== '0') {
-                    const currentOption = selectBox.querySelector(`option[value="${currentUserId}"]`);
-                    if (currentOption) {
-                        currentOption.disabled = false; // Allow selecting the current person
-                    }
+                // Create a "No Results" row dynamically for tables
+                let noResultsRow = document.createElement('tr');
+                noResultsRow.innerHTML = '<td colspan="100%" class="text-center py-4 text-muted">No matches found</td>';
+                noResultsRow.style.display = 'none';
+                noResultsRow.id = gridId + '-no-results';
+                
+                // Only append if it's a table body
+                if (grid.tagName === 'TBODY') {
+                    grid.appendChild(noResultsRow);
                 }
 
-                // 3. Set the value
-                selectBox.value = currentUserId;
-            });
-        }
-
-        // JS to keep the correct tab active after page reload
-        const urlParams = new URLSearchParams(window.location.search);
-        const tab = urlParams.get('tab');
-        if (tab) {
-            const tabElement = document.querySelector('#' + tab + '-tab');
-            if (tabElement) {
-                new bootstrap.Tab(tabElement).show();
-            }
-        }
-
-        // Edit/Delete Modals JS...
-        const editGameModal = document.getElementById('editGameModal');
-        if (editGameModal) {
-            editGameModal.addEventListener('show.bs.modal', function(event) {
-                const button = event.relatedTarget;
-                editGameModal.querySelector('#edit_game_id').value = button.dataset.gameId;
-                editGameModal.querySelector('#edit_game_name').value = button.dataset.gameName;
-            });
-        }
-        
-        const deleteGameModal = document.getElementById('deleteGameModal');
-        if (deleteGameModal) {
-            deleteGameModal.addEventListener('show.bs.modal', function(event) {
-                const button = event.relatedTarget;
-                deleteGameModal.querySelector('#delete_game_id').value = button.dataset.gameId;
-                deleteGameModal.querySelector('#delete_game_name').textContent = button.dataset.gameName;
-            });
-        }
-        
-        const editEventModal = document.getElementById('editEventModal');
-        if (editEventModal) {
-            editEventModal.addEventListener('show.bs.modal', function(event) {
-                const button = event.relatedTarget;
-                editEventModal.querySelector('#edit_event_id').value = button.dataset.eventId;
-                editEventModal.querySelector('#edit_event_name').value = button.dataset.eventName;
-                editEventModal.querySelector('#edit_game_id_select').value = button.dataset.gameId;
-            });
-        }
-
-        const deleteEventModal = document.getElementById('deleteEventModal');
-        if (deleteEventModal) {
-            deleteEventModal.addEventListener('shown.bs.modal', function() {
-                // 1. Auto-Focus the Delete Button so "Enter" works immediately
-                const submitBtn = deleteEventModal.querySelector('button[type="submit"]');
-                if(submitBtn) submitBtn.focus();
-            });
-
-            deleteEventModal.addEventListener('show.bs.modal', function(event) {
-                const button = event.relatedTarget;
-                // 2. Populate the data
-                deleteEventModal.querySelector('#delete_event_id').value = button.dataset.eventId;
-                deleteEventModal.querySelector('#delete_event_name').textContent = button.dataset.eventName;
-            });
-        }
-
-        const editCategoryModal = document.getElementById('editCategoryModal');
-        if (editCategoryModal) {
-            editCategoryModal.addEventListener('show.bs.modal', function(event) {
-                const button = event.relatedTarget;
-                editCategoryModal.querySelector('#edit_category_id').value = button.dataset.categoryId;
-                editCategoryModal.querySelector('#edit_category_name').value = button.dataset.categoryName;
-                
-                // NEW: Populate the Division Name
-                editCategoryModal.querySelector('#edit_division_name').value = button.dataset.divisionName || '';
-                
-                editCategoryModal.querySelector('#edit_event_id_select_cat').value = button.dataset.eventId;
-            });
-        }
-
-        const deleteCategoryModal = document.getElementById('deleteCategoryModal');
-        if (deleteCategoryModal) {
-            deleteCategoryModal.addEventListener('show.bs.modal', function(event) {
-                const button = event.relatedTarget;
-                deleteCategoryModal.querySelector('#delete_category_id').value = button.dataset.categoryId;
-                deleteCategoryModal.querySelector('#delete_category_name').textContent = button.dataset.categoryName;
-            });
-        }
-
-        // Table Sorting
-        function setupTableSorting() {
-            document.querySelectorAll('.sortable').forEach(header => {
-                header.addEventListener('click', function() {
-                    const table = this.closest('table');
-                    const tbody = table.querySelector('tbody');
-                    if (!tbody) return;
+                searchInput.addEventListener('keyup', function() {
+                    const searchTerm = this.value.toLowerCase();
+                    // Default to 'tr' if it's a table, otherwise use the class provided
+                    const selector = itemClass || (grid.tagName === 'TBODY' ? 'tr:not([id*="-no-results"])' : '[class*="-item"]');
+                    const items = grid.querySelectorAll(selector);
                     
-                    const colIndex = Array.from(this.parentElement.children).indexOf(this);
-                    const sortDir = this.dataset.sortDir === 'asc' ? 'desc' : 'asc';
-                    
-                    table.querySelectorAll('th.sortable').forEach(th => {
-                        if (th !== this) {
-                            th.dataset.sortDir = 'asc';
-                            th.querySelector('i').className = 'fas fa-sort fa-xs';
+                    let hasVisibleItems = false;
+
+                    items.forEach(item => {
+                        const itemText = item.textContent.toLowerCase();
+                        if (itemText.includes(searchTerm)) {
+                            item.style.display = ''; // Show
+                            hasVisibleItems = true;
+                        } else {
+                            item.style.display = 'none'; // Hide
                         }
                     });
-                    
-                    this.dataset.sortDir = sortDir;
-                    this.querySelector('i').className = sortDir === 'asc' ? 'fas fa-sort-up fa-xs' : 'fas fa-sort-down fa-xs';
 
-                    const rows = Array.from(tbody.querySelectorAll('tr'));
-                    
-                    const sortedRows = rows.sort((a, b) => {
-                        const aVal = a.querySelector(`td:nth-child(${colIndex + 1})`).textContent.trim().toLowerCase();
-                        const bVal = b.querySelector(`td:nth-child(${colIndex + 1})`).textContent.trim().toLowerCase();
-                        let comparison = aVal.localeCompare(bVal, undefined, {numeric: true});
-                        return sortDir === 'asc' ? comparison : -comparison;
-                    });
-                    
-                    sortedRows.forEach(row => tbody.appendChild(row));
+                    // Toggle "No Results" message
+                    if (grid.tagName === 'TBODY') {
+                        noResultsRow.style.display = hasVisibleItems ? 'none' : 'table-row';
+                    }
                 });
-            });
-        }
-        setupTableSorting();
+            }
 
-        // Auto-dismiss alerts
-        const autoDismissAlert = document.querySelector('.alert-dismissible');
-        if (autoDismissAlert) {
-            setTimeout(() => {
-                new bootstrap.Alert(autoDismissAlert).close();
-            }, 5000);
-        }
+                // === UPDATE YOUR CALLS HERE ===
 
-        // Sidebar Toggle
-        const mobileToggle = document.getElementById('mobileToggle');
-        if(mobileToggle) {
-            mobileToggle.addEventListener('click', function() {
-                document.getElementById('sidebar').classList.toggle('show');
-            });
-        }
+                // 1. For the new Table (Target the specific class we added)
+                setupGridSearch('searchEvents', 'eventsGrid', '.event-row');
 
-        let resizeTimer;
-        window.addEventListener('resize', function() {
-            clearTimeout(resizeTimer);
-            resizeTimer = setTimeout(function() {
-                if (window.innerWidth > 992) {
-                    document.getElementById('sidebar').classList.remove('show');
+                // 2. Keep these the same (Assuming they are still Grid/Cards)
+                setupGridSearch('searchCategories', 'categoriesGrid', '.category-item');
+
+                // JS for Assign Manager Modal
+                const assignModal = document.getElementById('assignManagerModal');
+                if (assignModal) {
+                    assignModal.addEventListener('show.bs.modal', function(event) {
+                        const button = event.relatedTarget;
+                        document.getElementById('assign_event_id').value = button.dataset.eventId;
+                        document.getElementById('assign_event_name').textContent = button.dataset.eventName;
+                        
+                        const currentUserId = button.dataset.userId || '0';
+                        const selectBox = document.getElementById('assign_user_id');
+
+                        // 1. Reset: Ensure all options respect their HTML 'disabled' state first
+                        Array.from(selectBox.options).forEach(opt => {
+                            // If the text contains "(Already Assigned)", keep it disabled
+                            if (opt.text.includes('(Already Assigned)')) {
+                                opt.disabled = true;
+                            }
+                        });
+
+                        // 2. UNLOCK current user: If the manager is assigned to THIS event, enable them
+                        if (currentUserId !== '0') {
+                            const currentOption = selectBox.querySelector(`option[value="${currentUserId}"]`);
+                            if (currentOption) {
+                                currentOption.disabled = false; // Allow selecting the current person
+                            }
+                        }
+
+                        // 3. Set the value
+                        selectBox.value = currentUserId;
+                    });
                 }
-            }, 250);
+
+                // JS: Toggle Add Modal Input
+                const addToggle = document.getElementById('add_enable_fixed_medal');
+                const addContainer = document.getElementById('add_fixed_medal_container');
+                const addInput = document.getElementById('add_fixed_medal_count');
+                
+                if(addToggle) {
+                    addToggle.addEventListener('change', function() {
+                        if (this.checked) {
+                            addContainer.style.display = 'block';
+                            addInput.required = true;
+                        } else {
+                            addContainer.style.display = 'none';
+                            addInput.required = false;
+                            addInput.value = ''; // Clear value if unchecked
+                        }
+                    });
+                }
+
+                // JS: Toggle Edit Modal Input
+                const editToggle = document.getElementById('edit_enable_fixed_medal');
+                const editContainer = document.getElementById('edit_fixed_medal_container');
+                const editInput = document.getElementById('edit_fixed_medal_count');
+                
+                if(editToggle) {
+                    editToggle.addEventListener('change', function() {
+                        if (this.checked) {
+                            editContainer.style.display = 'block';
+                            editInput.required = true;
+                        } else {
+                            editContainer.style.display = 'none';
+                            editInput.required = false;
+                            editInput.value = ''; // Clear value if unchecked
+                        }
+                    });
+                }
+
+                // JS to keep the correct tab active after page reload
+                const urlParams = new URLSearchParams(window.location.search);
+                const tab = urlParams.get('tab');
+                if (tab) {
+                    const tabElement = document.querySelector('#' + tab + '-tab');
+                    if (tabElement) {
+                        new bootstrap.Tab(tabElement).show();
+                    }
+                }
+
+                // Edit/Delete Modals JS...
+                const editGameModal = document.getElementById('editGameModal');
+                if (editGameModal) {
+                    editGameModal.addEventListener('show.bs.modal', function(event) {
+                        const button = event.relatedTarget;
+                        editGameModal.querySelector('#edit_game_id').value = button.dataset.gameId;
+                        editGameModal.querySelector('#edit_game_name').value = button.dataset.gameName;
+                    });
+                }
+                
+                const deleteGameModal = document.getElementById('deleteGameModal');
+                if (deleteGameModal) {
+                    deleteGameModal.addEventListener('show.bs.modal', function(event) {
+                        const button = event.relatedTarget;
+                        deleteGameModal.querySelector('#delete_game_id').value = button.dataset.gameId;
+                        deleteGameModal.querySelector('#delete_game_name').textContent = button.dataset.gameName;
+                    });
+                }
+                
+                const editEventModal = document.getElementById('editEventModal');
+                if (editEventModal) {
+                    editEventModal.addEventListener('show.bs.modal', function(event) {
+                        const button = event.relatedTarget;
+                        editEventModal.querySelector('#edit_event_id').value = button.dataset.eventId;
+                        editEventModal.querySelector('#edit_event_name').value = button.dataset.eventName;
+                        editEventModal.querySelector('#edit_game_id_select').value = button.dataset.gameId;
+                        
+                        // NEW: Populate the Fixed Medal Count Toggle
+                        const fixedCount = button.dataset.fixedCount;
+                        if (fixedCount && fixedCount !== '') {
+                            editToggle.checked = true;
+                            editContainer.style.display = 'block';
+                            editInput.value = fixedCount;
+                            editInput.required = true;
+                        } else {
+                            editToggle.checked = false;
+                            editContainer.style.display = 'none';
+                            editInput.value = '';
+                            editInput.required = false;
+                        }
+                    });
+                }
+
+                const deleteEventModal = document.getElementById('deleteEventModal');
+                if (deleteEventModal) {
+                    deleteEventModal.addEventListener('shown.bs.modal', function() {
+                        // 1. Auto-Focus the Delete Button so "Enter" works immediately
+                        const submitBtn = deleteEventModal.querySelector('button[type="submit"]');
+                        if(submitBtn) submitBtn.focus();
+                    });
+
+                    deleteEventModal.addEventListener('show.bs.modal', function(event) {
+                        const button = event.relatedTarget;
+                        // 2. Populate the data
+                        deleteEventModal.querySelector('#delete_event_id').value = button.dataset.eventId;
+                        deleteEventModal.querySelector('#delete_event_name').textContent = button.dataset.eventName;
+                    });
+                }
+
+                const editCategoryModal = document.getElementById('editCategoryModal');
+                if (editCategoryModal) {
+                    editCategoryModal.addEventListener('show.bs.modal', function(event) {
+                        const button = event.relatedTarget;
+                        editCategoryModal.querySelector('#edit_category_id').value = button.dataset.categoryId;
+                        editCategoryModal.querySelector('#edit_category_name').value = button.dataset.categoryName;
+                        
+                        // NEW: Populate the Division Name
+                        editCategoryModal.querySelector('#edit_division_name').value = button.dataset.divisionName || '';
+                        
+                        editCategoryModal.querySelector('#edit_event_id_select_cat').value = button.dataset.eventId;
+                    });
+                }
+
+                const deleteCategoryModal = document.getElementById('deleteCategoryModal');
+                if (deleteCategoryModal) {
+                    deleteCategoryModal.addEventListener('show.bs.modal', function(event) {
+                        const button = event.relatedTarget;
+                        deleteCategoryModal.querySelector('#delete_category_id').value = button.dataset.categoryId;
+                        deleteCategoryModal.querySelector('#delete_category_name').textContent = button.dataset.categoryName;
+                    });
+                }
+
+                // Table Sorting
+                function setupTableSorting() {
+                    document.querySelectorAll('.sortable').forEach(header => {
+                        header.addEventListener('click', function() {
+                            const table = this.closest('table');
+                            const tbody = table.querySelector('tbody');
+                            if (!tbody) return;
+                            
+                            const colIndex = Array.from(this.parentElement.children).indexOf(this);
+                            const sortDir = this.dataset.sortDir === 'asc' ? 'desc' : 'asc';
+                            
+                            table.querySelectorAll('th.sortable').forEach(th => {
+                                if (th !== this) {
+                                    th.dataset.sortDir = 'asc';
+                                    th.querySelector('i').className = 'fas fa-sort fa-xs';
+                                }
+                            });
+                            
+                            this.dataset.sortDir = sortDir;
+                            this.querySelector('i').className = sortDir === 'asc' ? 'fas fa-sort-up fa-xs' : 'fas fa-sort-down fa-xs';
+
+                            const rows = Array.from(tbody.querySelectorAll('tr'));
+                            
+                            const sortedRows = rows.sort((a, b) => {
+                                const aVal = a.querySelector(`td:nth-child(${colIndex + 1})`).textContent.trim().toLowerCase();
+                                const bVal = b.querySelector(`td:nth-child(${colIndex + 1})`).textContent.trim().toLowerCase();
+                                let comparison = aVal.localeCompare(bVal, undefined, {numeric: true});
+                                return sortDir === 'asc' ? comparison : -comparison;
+                            });
+                            
+                            sortedRows.forEach(row => tbody.appendChild(row));
+                        });
+                    });
+                }
+                setupTableSorting();
+
+                // Auto-dismiss alerts
+                const autoDismissAlert = document.querySelector('.alert-dismissible');
+                if (autoDismissAlert) {
+                    setTimeout(() => {
+                        new bootstrap.Alert(autoDismissAlert).close();
+                    }, 5000);
+                }
+
+                // Sidebar Toggle
+                const mobileToggle = document.getElementById('mobileToggle');
+                if(mobileToggle) {
+                    mobileToggle.addEventListener('click', function() {
+                        document.getElementById('sidebar').classList.toggle('show');
+                    });
+                }
+
+                let resizeTimer;
+                window.addEventListener('resize', function() {
+                    clearTimeout(resizeTimer);
+                    resizeTimer = setTimeout(function() {
+                        if (window.innerWidth > 992) {
+                            document.getElementById('sidebar').classList.remove('show');
+                        }
+                    }, 250);
+                });
+
+                // Sidebar/Footer Fix
+                const footer = document.querySelector('footer');
+                const navbar = document.querySelector('.navbar');
+                const sidebar = document.getElementById('sidebar');
+
+                if (sidebar && footer && navbar) {
+                    function adjustSidebarHeight() {
+                        if (window.innerWidth <= 992) {
+                            sidebar.style.height = ''; 
+                            return;
+                        }
+                        const navbarHeight = navbar.offsetHeight;
+                        const footerTop = footer.getBoundingClientRect().top;
+                        const viewportHeight = window.innerHeight;
+                        const maxSidebarHeight = viewportHeight - navbarHeight;
+                        const availableHeight = footerTop - navbarHeight;
+                        const newHeight = Math.max(0, Math.min(maxSidebarHeight, availableHeight));
+                        sidebar.style.height = `${newHeight}px`;
+                    }
+                    window.addEventListener('scroll', adjustSidebarHeight, { passive: true });
+                    window.addEventListener('resize', adjustSidebarHeight);
+                    setTimeout(adjustSidebarHeight, 100);
+                }
+
+                // ==========================================
+                // 2. REAL-TIME BADGE UPDATER
+                // ==========================================
+                function updateSidebarBadges() {
+                    fetch('../api_notifications.php?t=' + new Date().getTime())
+                        .then(response => response.json())
+                        .then(data => {
+                            if (data.success) {
+                                // Update "Approve Results" (Yellow)
+                                updateSingleBadge('results.php', data.pending_results, 'bg-warning text-dark');
+
+                                // Update "Account Requests" (Red)
+                                updateSingleBadge('Manage_Requests.php', data.pending_requests, 'bg-danger');
+                            }
+                        })
+                        .catch(err => console.error('Badge update error:', err));
+                }
+
+                function updateSingleBadge(hrefKeyword, count, colorClasses) {
+                    const link = document.querySelector(`.sidebar-nav .nav-link[href*="${hrefKeyword}"]`);
+                    if (link) {
+                        let badge = link.querySelector('.badge');
+                        if (count > 0) {
+                            if (!badge) {
+                                badge = document.createElement('span');
+                                link.appendChild(badge);
+                            }
+                            badge.className = `badge ${colorClasses} ms-auto rounded-pill`;
+                            badge.textContent = count;
+                        } else {
+                            if (badge) badge.remove();
+                        }
+                    }
+                }
+
+                // Run Badges
+                updateSidebarBadges();
+                setInterval(updateSidebarBadges, 5000);
+
+                // ==========================================
+                // 3. CATEGORY & DIVISION VALIDATION
+                // Ensures at least one field is filled before submitting
+                // ==========================================
+                
+                const addCategoryForm = document.querySelector('#addCategoryModal form');
+                if (addCategoryForm) {
+                    addCategoryForm.addEventListener('submit', function(e) {
+                        const catName = document.getElementById('add_category_name').value.trim();
+                        const divName = document.getElementById('add_division_name').value.trim();
+                        
+                        if (catName === '' && divName === '') {
+                            e.preventDefault(); // Stop form submission
+                            alert('Please enter either a Category Name or a Division Name (or both) to continue.');
+                        }
+                    });
+                }
+
+                const editCategoryForm = document.querySelector('#editCategoryModal form');
+                if (editCategoryForm) {
+                    editCategoryForm.addEventListener('submit', function(e) {
+                        const catName = document.getElementById('edit_category_name').value.trim();
+                        const divName = document.getElementById('edit_division_name').value.trim();
+                        
+                        if (catName === '' && divName === '') {
+                            e.preventDefault(); // Stop form submission
+                            alert('Please enter either a Category Name or a Division Name (or both) to continue.');
+                        }
+                    });
+                }
         });
-
-        // Sidebar/Footer Fix
-        const footer = document.querySelector('footer');
-        const navbar = document.querySelector('.navbar');
-        const sidebar = document.getElementById('sidebar');
-
-        if (sidebar && footer && navbar) {
-            function adjustSidebarHeight() {
-                if (window.innerWidth <= 992) {
-                    sidebar.style.height = ''; 
-                    return;
-                }
-                const navbarHeight = navbar.offsetHeight;
-                const footerTop = footer.getBoundingClientRect().top;
-                const viewportHeight = window.innerHeight;
-                const maxSidebarHeight = viewportHeight - navbarHeight;
-                const availableHeight = footerTop - navbarHeight;
-                const newHeight = Math.max(0, Math.min(maxSidebarHeight, availableHeight));
-                sidebar.style.height = `${newHeight}px`;
-            }
-            window.addEventListener('scroll', adjustSidebarHeight, { passive: true });
-            window.addEventListener('resize', adjustSidebarHeight);
-            setTimeout(adjustSidebarHeight, 100);
-        }
-
-        // ==========================================
-        // 2. REAL-TIME BADGE UPDATER
-        // ==========================================
-        function updateSidebarBadges() {
-            fetch('../api_notifications.php?t=' + new Date().getTime())
-                .then(response => response.json())
-                .then(data => {
-                    if (data.success) {
-                        // Update "Approve Results" (Yellow)
-                        updateSingleBadge('results.php', data.pending_results, 'bg-warning text-dark');
-
-                        // Update "Account Requests" (Red)
-                        updateSingleBadge('Manage_Requests.php', data.pending_requests, 'bg-danger');
-                    }
-                })
-                .catch(err => console.error('Badge update error:', err));
-        }
-
-        function updateSingleBadge(hrefKeyword, count, colorClasses) {
-            const link = document.querySelector(`.sidebar-nav .nav-link[href*="${hrefKeyword}"]`);
-            if (link) {
-                let badge = link.querySelector('.badge');
-                if (count > 0) {
-                    if (!badge) {
-                        badge = document.createElement('span');
-                        link.appendChild(badge);
-                    }
-                    badge.className = `badge ${colorClasses} ms-auto rounded-pill`;
-                    badge.textContent = count;
-                } else {
-                    if (badge) badge.remove();
-                }
-            }
-        }
-
-        // Run Badges
-        updateSidebarBadges();
-        setInterval(updateSidebarBadges, 5000);
-    });
     </script>
 </body>
 </html>

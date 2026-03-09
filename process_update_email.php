@@ -22,11 +22,9 @@ if (!isset($_SESSION['user_id']) || !isset($_SESSION['role'])) {
 // This ensures users are redirected to their correct settings page
 $settings_page = 'login.php'; // Default fallback
 switch ($_SESSION['role']) {
-    case 'Administrator':
-        $settings_page = 'admin_settings.php';
-        break;
-    case 'Event Manager':
-        $settings_page = 'event_manager_settings.php'; // Assuming this is the name
+    
+    case 'Tournament Manager':
+        $settings_page = 'tournamentmanager_settings.php'; // Assuming this is the name
         break;
     case 'Sports Director':
         $settings_page = 'sd/sports_director_settings.php'; // Assuming this path based on your dashboard

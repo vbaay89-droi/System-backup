@@ -21,8 +21,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $full_name = trim($_POST['full_name'] ?? '');
     $email = trim($_POST['email'] ?? '');
     $username = $email; 
-    // FIXED: Role is hardcoded to Event Manager
-    $requested_role = 'Event Manager';
+    // FIXED: Role is hardcoded to Tournament Manager
+    $requested_role = 'Tournament Manager';
     $password = $_POST['password'] ?? '';
     $confirm_password = $_POST['confirm_password'] ?? '';
     
@@ -341,7 +341,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
           <div class="login-container">
             <div class="text-center">
               <h2>Request Account</h2>
-              <p class="text-muted mb-4" style="font-size: 0.9rem;">Join as an Event Manager</p>
+              <p class="text-muted mb-4" style="font-size: 0.9rem;">Join as an Tournament Manager</p>
             </div>
 
             <?php if (!empty($message)): ?>

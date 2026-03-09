@@ -6,13 +6,13 @@ require_once 'config.php'; // Your DB connection
 require_once 'my_events_view.php'; 
 
 // 1. SECURITY & ACCESS CONTROL
-if (!isset($_SESSION['logged_in']) || $_SESSION['logged_in'] !== true || !isset($_SESSION['role']) || $_SESSION['role'] !== 'Event Manager') {
+if (!isset($_SESSION['logged_in']) || $_SESSION['logged_in'] !== true || !isset($_SESSION['role']) || $_SESSION['role'] !== 'Tournament Manager') {
     header('Location: login.php');
     exit();
 }
 
 $user_id = (int)$_SESSION['user_id'];
-$username = isset($_SESSION['username']) ? $_SESSION['username'] : 'Event Manager';
+$username = isset($_SESSION['username']) ? $_SESSION['username'] : 'Tournament Manager';
 $current_page = basename($_SERVER['PHP_SELF']);
 
 // --- NEW: FETCH FULL NAME FROM DB ---
@@ -55,7 +55,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $venue = trim($_POST['venue']);
 
                 // Security Check: Verify this manager is assigned to this event
-                $stmt_check = $conn->prepare("SELECT event_id FROM event_manager_assignments WHERE event_id = ? AND user_id = ?");
+                $stmt_check = $conn->prepare("SELECT event_id FROM tournament_manager_assignments WHERE event_id = ? AND user_id = ?");
                 $stmt_check->bind_param("ii", $event_id, $current_user_id);
                 $stmt_check->execute();
                 if ($stmt_check->get_result()->num_rows == 0) {
@@ -65,17 +65,18 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
                 if (empty($category_id)) {
                     // --- THIS IS AN ADD OPERATION ---
-                    $category_type = 'medal';
                     
-                    if (empty($category_name) || empty($status) || empty($event_id) || empty($category_type)) {
-                        throw new Exception("All fields are required.");
+                    // SMART CHECK: Allow category_name to be empty ONLY IF division_name has text.
+                    if ((empty($category_name) && empty($division_name)) || empty($status) || empty($event_id)) {
+                        throw new Exception("Please provide either a Category Name or a Division Name.");
                     }
                     
                     $stmt = $conn->prepare(
-                        "INSERT INTO categories (event_id, category_name, division_name, status, category_type, event_date, event_time, venue) 
-                         VALUES (?, ?, ?, ?, ?, ?, ?, ?)"
+                        "INSERT INTO categories (event_id, category_name, division_name, status, event_date, event_time, venue) 
+                         VALUES (?, ?, ?, ?, ?, ?, ?)"
                     );
-                    $stmt->bind_param("isssssss", $event_id, $category_name, $division_name, $status, $category_type, $event_date, $event_time, $venue);
+                    // Note: Changed "isssssss" to "issssss" (7 parameters now)
+                    $stmt->bind_param("issssss", $event_id, $category_name, $division_name, $status, $event_date, $event_time, $venue);
                     $stmt->execute();
                     
                     $new_category_id = (int)$conn->insert_id; 
@@ -84,7 +85,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                         $context = [
                             'category_name' => $category_name,
                             'status' => $status,
-                            'category_type' => $category_type,
                             'event_date' => $event_date,
                             'event_time' => $event_time,
                             'venue' => $venue
@@ -103,8 +103,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     
                 } else {
                     // --- THIS IS AN UPDATE OPERATION ---
-                    if (empty($category_name) || empty($status) || empty($event_id)) {
-                        throw new Exception("Category Name and Status are required.");
+                    if ((empty($category_name) && empty($division_name)) || empty($status) || empty($event_id)) {
+                        throw new Exception("Please provide either a Category Name or a Division Name.");
                     }
                     
                     $old_data_stmt = $conn->prepare("SELECT status, event_date, event_time, venue FROM categories WHERE category_id = ?");
@@ -158,7 +158,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $stmt_check = $conn->prepare("
                     SELECT c.event_id, c.category_name 
                     FROM categories c
-                    JOIN event_manager_assignments ema ON c.event_id = ema.event_id
+                    JOIN tournament_manager_assignments ema ON c.event_id = ema.event_id
                     WHERE c.category_id = ? AND ema.user_id = ? AND (c.status = 'Upcoming' OR c.status = 'Cancelled')
                 ");
                 $stmt_check->bind_param("ii", $category_id, $current_user_id);
@@ -252,13 +252,13 @@ try {
     
         -- END NEW LOGIC --
         
-        c.category_type,
+        
         c.event_date, c.event_time, c.venue,
         c.gold_winner_college_id, c.gold_count,
         c.silver_winner_college_id, c.silver_count,
         c.bronze_winner_college_id, c.bronze_count,
         c.notes
-    FROM event_manager_assignments ema
+    FROM tournament_manager_assignments ema
     JOIN game_events ge ON ema.event_id = ge.event_id
     JOIN games g ON ge.game_id = g.game_id
     LEFT JOIN categories c ON ge.event_id = c.event_id
@@ -290,9 +290,6 @@ try {
                 ];
             }
             if ($row['category_id']) {
-                if (empty($row['category_type'])) {
-                    $row['category_type'] = 'medal';
-                }
                 $managed_data[$game_name][$event_id]['categories'][] = $row;
             }
         }
@@ -313,7 +310,7 @@ try {
 if (isset($_GET['partial']) && $_GET['partial'] == '1') {
     
     // 1. Re-check session for security on AJAX requests
-    if (!isset($_SESSION['logged_in']) || $_SESSION['logged_in'] !== true || $_SESSION['role'] !== 'Event Manager') {
+    if (!isset($_SESSION['logged_in']) || $_SESSION['logged_in'] !== true || $_SESSION['role'] !== 'Tournament Manager') {
         http_response_code(401); // Unauthorized
         // Send a message that the JavaScript can display
         echo '<div class="alert alert-danger">Your session has expired. Please <a href="login.php" class="alert-link">log in again</a>.</div>';
@@ -1048,7 +1045,7 @@ $status_options = [
 
     <nav class="navbar navbar-dark bg-dark">
         <div class="container-fluid d-flex align-items-center justify-content-between">
-            <a class="navbar-brand d-flex align-items-center" href="event_manager_dashboard.php">
+            <a class="navbar-brand d-flex align-items-center" href="tournamentmanager_dashboard.php">
                 <img src="images/PIT.png" alt="Logo" class="me-2" style="height: 50px; width: 48px; object-fit: contain;">
                 <div class="d-flex flex-column lh-sm">
                     <strong class="text-white brand-heading" style="font-size: 1.25rem;">PIT SIGLAKAS MEDAL TALLY</strong>
@@ -1072,7 +1069,7 @@ $status_options = [
     <div class="sidebar" id="sidebar">
         <ul class="nav flex-column sidebar-nav">
             <li class="nav-item">
-                <a class="nav-link" href="event_manager_dashboard.php">
+                <a class="nav-link" href="tournamentmanager_dashboard.php">
                     <i class="fas fa-tachometer-alt me-2"></i> <span>Dashboard</span>
                 </a>
             </li>
@@ -1102,7 +1099,7 @@ $status_options = [
                 <div class="page-header-content">
                     <nav aria-label="breadcrumb">
                         <ol class="breadcrumb">
-                            <li class="breadcrumb-item"><a href="event_manager_dashboard.php">Dashboard</a></li>
+                            <li class="breadcrumb-item"><a href="tournamentmanager_dashboard.php">Dashboard</a></li>
                             <li class="breadcrumb-item active" aria-current="page">My Assigned Events</li>
                         </ol>
                     </nav>
@@ -1193,14 +1190,18 @@ $status_options = [
                             <input type="text" class="form-control bg-light" id="modal_event_name" disabled readonly>
                         </div>
 
+                        <div class="alert alert-info py-2 small mb-3 border-0 bg-light text-primary">
+                            <strong>Please enter at least one detail below: Category, Division, or both.</strong>
+                        </div>
+
                         <div class="row">
                             <div class="col-md-6 mb-3">
                                 <label for="modal_category_name" class="form-label fw-bold">Category Name</label>
-                                <input type="text" class="form-control" id="modal_category_name" name="category_name" required>
+                                <input type="text" class="form-control" id="modal_category_name" name="category_name" placeholder="Leave  if Division only">
                             </div>
                             <div class="col-md-6 mb-3">
-                                <label for="modal_division_name" class="form-label fw-bold">Division Name (Optional)</label>
-                                <input type="text" class="form-control" id="modal_division_name" name="division_name" placeholder="e.g. Men's Division">
+                                <label for="modal_division_name" class="form-label fw-bold">Division Name</label>
+                                <input type="text" class="form-control" id="modal_division_name" name="division_name" placeholder="Leave  if Category only">
                             </div>
                         </div>
                         
@@ -1549,7 +1550,7 @@ $status_options = [
                 const categoryNameInput = categoryModal.querySelector('#modal_category_name');
                 const divisionNameInput = categoryModal.querySelector('#modal_division_name');
                 const categoryStatusSelect = categoryModal.querySelector('#modal_category_status');
-                const categoryTypeSelect = categoryModal.querySelector('#modal_category_type');
+                
                 
                 const eventDateInput = categoryModal.querySelector('#modal_event_date');
                 const eventTimeInput = categoryModal.querySelector('#modal_event_time');
@@ -1631,6 +1632,24 @@ $status_options = [
                     venueInput.value = '';
                 }
             });
+
+            // ==========================================
+            // NEW: CATEGORY & DIVISION VALIDATION
+            // Ensures at least one field is filled before submitting
+            // ==========================================
+            const modalForm = categoryModal.querySelector('form');
+            if (modalForm) {
+                modalForm.addEventListener('submit', function(e) {
+                    const catName = document.getElementById('modal_category_name').value.trim();
+                    const divName = document.getElementById('modal_division_name').value.trim();
+                    
+                    // If they are BOTH blank, stop the form and show an error
+                    if (catName === '' && divName === '') {
+                        e.preventDefault(); // Stop form submission
+                        alert('Please enter either a Category Name or a Division Name (or both) to continue.');
+                    }
+                });
+            }
 
             // --- Modal logic for Delete Category ---
             const deleteModal = document.getElementById('deleteModal');

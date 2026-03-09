@@ -12,7 +12,7 @@ switch ($action) {
     // --- ACTION: GET STATS FOR THE DASHBOARD (PRIVATE) ---
     case 'get_dashboard_stats':
         // Security Check
-        if (!isset($_SESSION['logged_in']) || $_SESSION['logged_in'] !== true || !isset($_SESSION['role']) || $_SESSION['role'] !== 'Event Manager') {
+        if (!isset($_SESSION['logged_in']) || $_SESSION['logged_in'] !== true || !isset($_SESSION['role']) || $_SESSION['role'] !== 'Tournament Manager') {
             echo json_encode(['success' => false, 'message' => 'Authentication required.']);
             exit();
         }
@@ -27,7 +27,7 @@ switch ($action) {
             ];
 
             // 1. Get assigned event IDs
-            $stmt_events = $conn->prepare("SELECT DISTINCT event_id FROM event_manager_assignments WHERE user_id = ?");
+            $stmt_events = $conn->prepare("SELECT DISTINCT event_id FROM tournament_manager_assignments WHERE user_id = ?");
             $stmt_events->bind_param("i", $user_id);
             $stmt_events->execute();
             $result_events = $stmt_events->get_result();

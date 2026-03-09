@@ -112,7 +112,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
                     $teams_data = $conn->query("SELECT college_name, college_code, logo_url, team_manager, slogan FROM colleges ORDER BY college_name")->fetch_all(MYSQLI_ASSOC);
                     
                     // 4. Gather Officials Data
-                    $officials_data = $conn->query("SELECT full_name, role, email FROM users WHERE role IN ('Sports Director', 'Event Manager') ORDER BY FIELD(role, 'Sports Director', 'Event Manager'), full_name")->fetch_all(MYSQLI_ASSOC);
+                    $officials_data = $conn->query("SELECT full_name, role, email FROM users WHERE role IN ('Sports Director', 'Tournament Manager') ORDER BY FIELD(role, 'Sports Director', 'Tournament Manager'), full_name")->fetch_all(MYSQLI_ASSOC);
 
                     // 5. Gather Statistics & Chart Data
                     

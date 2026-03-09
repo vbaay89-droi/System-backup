@@ -94,8 +94,8 @@ $sql_events = "SELECT
                     gold_col.college_name AS gold_winner,
                     silver_col.college_name AS silver_winner,
                     bronze_col.college_name AS bronze_winner,
-                    c.gold_count, c.silver_count, c.bronze_count,
-                    c.category_type
+                    c.gold_count, c.silver_count, c.bronze_count
+                    
                 FROM categories c
                 LEFT JOIN game_events ge ON c.event_id = ge.event_id
                 LEFT JOIN games g ON ge.game_id = g.game_id

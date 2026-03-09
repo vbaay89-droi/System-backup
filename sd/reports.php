@@ -66,7 +66,7 @@ if($result_summary) {
 // --- 2. FETCH DETAILED DATA (FOR BOTTOM TABLE) ---
 $detailed_results = [];
 $sql_detailed = "SELECT 
-                    g.game_name, ge.event_name, c.category_name, c.division_name, c.category_type,
+                    g.game_name, ge.event_name, c.category_name, c.division_name, 
                     c.gold_count, c.silver_count, c.bronze_count,
                     gold_col.college_name AS gold_winner,
                     silver_col.college_name AS silver_winner,

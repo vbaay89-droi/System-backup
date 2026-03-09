@@ -90,8 +90,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && !isset($_POST['resend_otp'])) {
                 case 'Sports Director':
                     header("Location: sd/sports_director_dashboard.php");
                     break;
-                case 'Event Manager':
-                    header("Location: event_manager_dashboard.php");
+                case 'Tournament Manager':
+                    header("Location: tournamentmanager_dashboard.php");
                     break;
                 default:
                     header("Location: index.php");

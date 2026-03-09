@@ -762,7 +762,7 @@ $pending_results_count = $conn->query("SELECT COUNT(*) FROM categories WHERE sta
                                 <div class="text-center p-5">
                                     <i class="fas fa-camera fa-4x text-muted mb-3 opacity-50"></i>
                                     <h5 class="text-muted">No podium photos available yet.</h5>
-                                    <p class="text-secondary small">Photos are added when Event Managers submit Gold Medal results.</p>
+                                    <p class="text-secondary small">Photos are added when Tournament Managers submit Gold Medal results.</p>
                                 </div>
                             <?php else: ?>
                                 <div class="row g-4">
