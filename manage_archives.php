@@ -73,9 +73,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
         
         // --- ACTION A: ARCHIVE (Snapshot Only) ---
         if ($_POST['action'] === 'archive_season') {
-            $season_name = trim($_POST['season_name']);
             
-            if (empty($season_name)) {
+            // Combine the Event Name and Academic Year
+            $raw_name = trim($_POST['season_name'] ?? '');
+            $acad_year = trim($_POST['season_year'] ?? '');
+            $season_name = $raw_name . ' ' . $acad_year; 
+            
+            if (empty($raw_name)) {
                 $alert_message = "Error: Please provide a season name.";
                 $alert_type = "danger";
             } else {
@@ -95,7 +99,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
                             g.game_name, 
                             ge.event_name, 
                             c.category_name, 
-                            c.category_type,
                             gold_col.college_name AS gold_winner, c.gold_count,
                             silver_col.college_name AS silver_winner, c.silver_count,
                             bronze_col.college_name AS bronze_winner, c.bronze_count
@@ -158,20 +161,29 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
                     ];
 
                     // Insert Archive
-                    $stmt_arch = $conn->prepare("INSERT INTO archived_seasons (season_name, archived_by_user_id, medal_standing_json, matches_json, events_json, teams_json, officials_json, stats_json) VALUES (?, ?, ?, ?, ?, ?, ?, ?)");
+                    $stmt_arch = $conn->prepare("INSERT INTO archived_seasons (season_name, archived_by_user_id, medal_standing_json, events_json, teams_json, officials_json, stats_json) VALUES (?, ?, ?, ?, ?, ?, ?)");
+                    
                     $json_medals = json_encode($medal_tally);
-                    $json_matches = json_encode([]); 
                     $json_events = json_encode($events_structure);
                     $json_teams = json_encode($teams_data);
                     $json_officials = json_encode($officials_data);
                     $json_stats = json_encode($stats);
 
-                    $stmt_arch->bind_param("sissssss", $season_name, $current_user_id, $json_medals, $json_matches, $json_events, $json_teams, $json_officials, $json_stats);
+                    // FIX: Changed "sissssss" to "sisssss" (7 characters) 
+                    // and completely removed $json_matches from the variables list
+                    $stmt_arch->bind_param("sisssss", $season_name, $current_user_id, $json_medals, $json_events, $json_teams, $json_officials, $json_stats);
                     $stmt_arch->execute();
                     $stmt_arch->close();
 
+                    // --- NEW: AUTOMATIC SYSTEM RESET AFTER ARCHIVING ---
+                    $conn->query("DELETE FROM tournament_manager_assignments");
+                    $conn->query("DELETE FROM categories");
+                    $conn->query("DELETE FROM game_events");
+                    $conn->query("DELETE FROM games");
+                    // ---------------------------------------------------
+
                     $conn->commit();
-                    $alert_message = "SUCCESS: Season '$season_name' archived successfully.";
+                    $alert_message = "SUCCESS: Season '$season_name' archived and active system data has been reset.";
                     $alert_type = "success";
                 } catch (Exception $e) {
                     $conn->rollback();
@@ -181,24 +193,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
             }
         }
 
-        // --- ACTION B: RESET (Delete Only) ---
-        elseif ($_POST['action'] === 'reset_system') {
-            $conn->begin_transaction();
-            try {
-                $conn->query("DELETE FROM event_manager_assignments");
-                $conn->query("DELETE FROM categories");
-                $conn->query("DELETE FROM game_events");
-                $conn->query("DELETE FROM games");
-                
-                $conn->commit();
-                $alert_message = "SUCCESS: System has been fully reset.";
-                $alert_type = "warning";
-            } catch (Exception $e) {
-                $conn->rollback();
-                $alert_message = "ERROR: Reset failed. " . $e->getMessage();
-                $alert_type = "danger";
-            }
-        }
     }
 }
 
@@ -218,1123 +212,336 @@ $pending_results_count = $conn->query("SELECT COUNT(*) FROM categories WHERE sta
     <title>Season Archives - Sports Director Panel</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=Poppins:wght@400;500;600;700;800&display=swap" rel="stylesheet">
     <style>
-
         /* ========================================
-        ENHANCED PAGE HEADER
-        ======================================== */
-        .page-header {
-            position: relative;
-            margin-bottom: 2rem;
-        }
-
-        .page-header .section-title {
-            font-family: 'Poppins', sans-serif;
-            font-weight: 800;
-            font-size: 2.2rem;
-            color: #2c3e50;
-            margin-bottom: 0.5rem;
-            display: flex;
-            align-items: center;
-        }
-
-        .page-header .section-title i {
-            background: linear-gradient(135deg, var(--accent-color) 0%, #16a085 100%);
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
-            background-clip: text;
-        }
-
-        /* --- CORE STYLES --- */
+           1. CORE LAYOUT & NAVIGATION
+           ======================================== */
         :root { --sidebar-width: 260px; --header-height: 82px; --bg-light: #F8F9FA; --accent-color: #1abc9c; }
         body { background-color: var(--bg-light); margin: 0; padding: 0; min-height: 100vh; font-family: 'Inter', sans-serif; display: flex; flex-direction: column; }
+        
         .navbar { background: linear-gradient(135deg, #1a1a1a 0%, #2d2d2d 100%) !important; height: var(--header-height); position: fixed; top: 0; left: 0; right: 0; z-index: 1050; padding: 1rem 1.5rem; }
+        .navbar-brand img { height: 50px; width: 48px; object-fit: contain; }
+        
         .sidebar { width: var(--sidebar-width); position: fixed; top: var(--header-height); left: 0; height: calc(100vh - var(--header-height)); background: #2c3e50; color: white; z-index: 1040; transition: width 0.3s ease; overflow-y: auto; }
         .sidebar-nav { padding: 20px 0; }
         .sidebar-nav .nav-link { color: rgba(255, 255, 255, 0.7); font-size: 1.05rem; padding: 12px 25px; transition: 0.3s; display: flex; align-items: center; text-decoration: none; border-left: 5px solid transparent; }
         .sidebar-nav .nav-link:hover { color: white; background: rgba(255, 255, 255, 0.05); border-left-color: var(--accent-color); }
         .sidebar-nav .nav-link.active { color: white; background: rgba(255, 255, 255, 0.1); border-left-color: #3498db; font-weight: 600; }
         .sidebar-nav .nav-title { padding: 15px 25px 5px; font-size: 0.75rem; font-weight: 700; color: rgba(255, 255, 255, 0.4); text-transform: uppercase; letter-spacing: 1px; }
+        
         .main-content { flex: 1 0 auto; padding: 30px; margin-top: var(--header-height); margin-left: var(--sidebar-width); transition: margin-left 0.3s ease; min-height: calc(100vh - var(--header-height)); }
-        /* Footer */
-        footer {
-            flex-shrink: 0;
-            /* REMOVED background color here so .footer-main can work */
-            box-shadow: 0 -2px 10px rgba(0,0,0,0.1);
-            padding-left: var(--sidebar-width);
-            transition: padding-left var(--transition);
-            position: relative;
-            z-index: 1041;
-        }
         
         .user-dropdown .dropdown-toggle { color: white; display: flex; align-items: center; text-decoration: none; padding: 8px 12px; border-radius: 8px; }
         .user-dropdown .dropdown-toggle img { width: 36px; height: 36px; border-radius: 50%; object-fit: cover; margin-right: 10px; }
 
-        @media (max-width: 992px) {
-            .sidebar { left: -260px; }
-            .sidebar.show { left: 0; }
-            .main-content, footer { margin-left: 0; }
-        }
-
-        /* --- PAGE SPECIFIC --- */
+        /* ========================================
+           2. PAGE SPECIFIC (ARCHIVES DASHBOARD)
+           ======================================== */
         .page-header { background: white; padding: 2rem; border-radius: 12px; box-shadow: 0 5px 20px rgba(0,0,0,0.08); margin-bottom: 2rem; border-left: 5px solid var(--accent-color); }
-        .page-header h2 { font-size: 2rem; font-weight: 700; color: #333; margin-bottom: 0.5rem; display: flex; align-items: center; gap: 1rem; font-family: 'Poppins', sans-serif; }
-        
+        .page-header .section-title { font-family: 'Poppins', sans-serif; font-weight: 800; font-size: 2.2rem; color: #2c3e50; margin-bottom: 0.5rem; display: flex; align-items: center; }
+        .page-header .section-title i { background: linear-gradient(135deg, var(--accent-color) 0%, #16a085 100%); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; margin-right: 10px; }
+        .page-header .subtitle { font-size: 1rem; color: #6c757d; }
+
         .nav-tabs { border: none; background: white; padding: 0.5rem; border-radius: 12px; box-shadow: 0 1px 3px rgba(0,0,0,0.08); margin-bottom: 2rem; display: flex; gap: 0.5rem; }
         .nav-tabs .nav-link { border: none; border-radius: 8px; padding: 1rem 1.5rem; font-weight: 600; color: #64748b; transition: all 0.3s ease; display: flex; align-items: center; gap: 0.5rem; }
         .nav-tabs .nav-link:hover { background: #f1f5f9; color: #333; transform: translateY(-2px); }
         .nav-tabs .nav-link.active { background: linear-gradient(135deg, #3498db 0%, #2980b9 100%); color: white; box-shadow: 0 4px 12px rgba(52, 152, 219, 0.3); }
         
-        .archive-card { background: white; border-radius: 12px; box-shadow: 0 5px 20px rgba(0,0,0,0.08); transition: all 0.3s ease; border: 2px solid #e2e8f0; overflow: hidden; height: 100%; cursor: pointer; }
-        .archive-card:hover { transform: translateY(-8px); box-shadow: 0 10px 30px rgba(0,0,0,0.12); border-color: #3498db; }
-        .archive-card-header { background: linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%); padding: 1.5rem; border-bottom: 2px solid #e2e8f0; }
-        .archive-card-body { padding: 1.5rem; }
-        .season-title { font-size: 1.25rem; font-weight: 700; color: #333; margin-bottom: 0.5rem; }
-        .champion-badge { background: linear-gradient(135deg, #fef3c7 0%, #fde68a 100%); padding: 1rem; border-radius: 8px; margin: 1rem 0; border-left: 4px solid #f59e0b; }
-        .stats-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 0.75rem; margin: 1.5rem 0; }
-        .stat-box { text-align: center; padding: 1rem; background: #f8fafc; border-radius: 8px; border: 1px solid #e2e8f0; }
-        .stat-box .number { font-size: 1.75rem; font-weight: 700; color: #3498db; display: block; }
-        .stat-box .label { font-size: 0.75rem; color: #64748b; text-transform: uppercase; font-weight: 600; }
-        .action-card { background: white; border-radius: 12px; padding: 3rem; box-shadow: 0 4px 12px rgba(0,0,0,0.1); text-align: center; border-top: 5px solid; transition: all 0.3s ease; }
+        /* ========================================
+           MODERN ROW-CARD TABLE STYLES (CLEANED)
+           ======================================== */
+        /* Make the outer wrapper invisible */
+        .table-card { background: transparent; border: none; box-shadow: none; border-radius: 0; }
+        
+        /* Separate the rows and add vertical gaps! */
+        .table-card table { width: 100%; border-collapse: separate; border-spacing: 0 12px; text-align: left; }
+        
+        /* Clean up the header */
+        .table-card thead th { padding: 0 1.5rem 0.5rem; font-size: 0.75rem; font-weight: 600; text-transform: uppercase; color: #6b7280; letter-spacing: 0.05em; border-bottom: none; background: transparent; }
+        
+        /* Style the individual rows as floating cards */
+        .table-card tbody tr { background-color: #fff; box-shadow: 0 2px 5px rgba(0,0,0,0.04); transition: all 0.2s ease; }
+        .table-card tbody tr:hover { transform: translateY(-3px); box-shadow: 0 8px 15px rgba(0,0,0,0.08); }
+        
+        /* Remove inner borders and add padding */
+        .table-card td { padding: 1.25rem 1.5rem; border: none; border-top: 1px solid #f3f4f6; border-bottom: 1px solid #f3f4f6; vertical-align: middle; }
+        
+        /* Add rounded corners and side borders ONLY to the outer edges of the row */
+        .table-card td:first-child { border-left: 1px solid #f3f4f6; border-top-left-radius: 12px; border-bottom-left-radius: 12px; }
+        .table-card td:last-child { border-right: 1px solid #f3f4f6; border-top-right-radius: 12px; border-bottom-right-radius: 12px; }
+
+        /* Typography & Element styling inside the cells */
+        .season-name { font-weight: 700; color: #111827; font-size: 1.05rem; }
+        .date-archived { display: flex; align-items: center; gap: 0.5rem; color: #6b7280; font-size: 0.85rem;}
+        .champion-cell { display: flex; align-items: center; gap: 0.75rem; font-weight: 600; color: #111827; font-size: 1.05rem; }
+        .logo-circle { width: 50px; height: 50px; border-radius: 50%; object-fit: cover; border: 1px solid #e5e7eb; background: #fff;}
+        
+        .stats-cell { text-align: center; }
+        .stat-number { display: block; font-size: 1.1rem; font-weight: 700; color: #2563eb; line-height: 1; }
+        .stat-label { font-size: 0.65rem; font-weight: 600; text-transform: uppercase; color: #9ca3af; }
+        .divider { height: 1px; background: #e5e7eb; margin: 6px auto; width: 30px; }
+        
+        /* Footer adjustments */
+        .table-footer { padding: 1rem 0; background: transparent; display: flex; justify-content: space-between; align-items: center; border-top: none; }
+        .table-footer-text { color: #6b7280; font-size: 0.875rem; }
+        
+        /* Button styling */
+        .btn-view-report { display: inline-flex; align-items: center; gap: 0.5rem; padding: 0.5rem 1.25rem; font-size: 0.875rem; font-weight: 600; border-radius: 0.5rem; transition: all 0.2s; border: 1px solid #3b82f6; color: #3b82f6; background: transparent; cursor: pointer; text-decoration: none;}
+        .btn-view-report:hover { background: #3b82f6; color: white; box-shadow: 0 4px 6px rgba(59, 130, 246, 0.2); }
+
+        .action-card { background: white; border-radius: 12px; padding: 3rem 1.5rem; box-shadow: 0 4px 12px rgba(0,0,0,0.1); text-align: center; border-top: 5px solid; transition: all 0.3s ease; }
         .action-card.archive-action { border-top-color: #3498db; }
         .action-card.reset-action { border-top-color: #ef4444; background: linear-gradient(135deg, #fff 0%, #fef2f2 100%); }
         .action-icon { font-size: 4rem; margin-bottom: 1.5rem; opacity: 0.9; }
+        .action-card h3 { font-size: 1.5rem; font-weight: 700; margin-bottom: 0.5rem; }
+        .action-card p { font-size: 1rem; color: #6c757d; margin-bottom: 1.5rem; }
 
-        /* --- PROFESSIONAL REPORT VIEWER STYLES --- */
-#fullReportModal .modal-body { 
-    height: calc(100vh - 65px); 
-    overflow: hidden; 
-    background: #f8f9fa;
-}
+        .empty-state { text-align: center; padding: 3rem 1rem; color: #6c757d; }
+        .empty-state i { font-size: 4rem; margin-bottom: 1rem; color: #adb5bd; }
+        .empty-state h5 { font-size: 1.25rem; font-weight: 600; color: #495057; }
 
-.report-layout { 
-    display: flex; 
-    height: 100%; 
-    gap: 0;
-}
+        /* ========================================
+           3. FOOTER
+           ======================================== */
+        footer { flex-shrink: 0; box-shadow: 0 -2px 10px rgba(0,0,0,0.1); padding-left: var(--sidebar-width); transition: padding-left 0.3s ease; position: relative; z-index: 1041; }
+        .footer-main { background: linear-gradient(135deg, #1a1a1a 0%, #2d2d2d 100%); color: rgba(255,255,255,0.7); padding: 3rem 0 2rem 0; }
+        .footer-main .footer-logo-group { display: flex; align-items: center; gap: 12px; margin-bottom: 1rem; }
+        .footer-main .footer-logo-group img { height: 50px; width: 50px; object-fit: contain; }
+        .footer-main h5 { margin: 0; font-size: 1.1rem; font-weight: 700; color: #fff; }
+        .footer-main p { font-size: 0.9rem; max-width: 400px; }
+        .footer-main h6 { font-family: 'Poppins', sans-serif; color: #fff; font-weight: 600; margin-bottom: 1rem; text-transform: uppercase; letter-spacing: 0.5px; }
+        .footer-main .footer-links { list-style: none; padding: 0; }
+        .footer-main .footer-links li { margin-bottom: 0.5rem; }
+        .footer-main .footer-links a { text-decoration: none; color: rgba(255,255,255,0.7); transition: 0.3s; }
+        .footer-main .footer-links a:hover { color: #fff; padding-left: 5px; }
+        .footer-bottom { border-top: 1px solid rgba(255,255,255,0.1); padding-top: 1.5rem; margin-top: 2rem; text-align: center; font-size: 0.85rem; }
 
-.report-sidebar { 
-    width: 280px; 
-    background: #ffffff;
-    border-right: 1px solid #e9ecef; 
-    padding: 2rem 0;
-    overflow-y: auto; 
-    flex-shrink: 0;
-    box-shadow: 2px 0 8px rgba(0,0,0,0.03);
-}
+        /* ========================================
+           4. MOBILE RESPONSIVENESS (DASHBOARD)
+           ======================================== */
+        @media (max-width: 991.98px) {
+            .navbar { padding: 0.5rem 1rem !important; height: 60px !important; display: flex !important; flex-wrap: nowrap !important; align-items: center !important; }
+            .navbar-toggler { order: 1; border: 1px solid rgba(255,255,255,0.1); padding: 4px 8px; font-size: 1.2rem; margin-right: 10px; }
+            .navbar-toggler:focus { box-shadow: none; }
+            .navbar-brand { order: 2; margin-right: auto !important; display: flex; align-items: center; max-width: 60%; }
+            .navbar-brand img { height: 30px !important; width: 30px !important; margin-right: 8px !important; }
+            .navbar-brand strong { font-size: 0.95rem !important; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+            .navbar-brand small { display: none !important; }
+            .user-dropdown { order: 3; margin-left: 0 !important; }
+            .user-dropdown .user-name { display: none !important; }
+            .user-dropdown .dropdown-toggle i { font-size: 26px !important; margin: 0 !important; color: #fff; }
+            
+            .sidebar { top: 60px !important; left: -260px; height: calc(100vh - 60px) !important; }
+            .sidebar.show { left: 0; }
+            .main-content { padding: 15px !important; margin-top: 60px !important; margin-left: 0 !important; }
+            footer { padding-left: 0 !important; }
 
-.report-sidebar .text-muted {
-    padding: 0 1.5rem;
-    font-size: 0.7rem;
-    font-weight: 700;
-    letter-spacing: 1.2px;
-    color: #adb5bd;
-    margin-bottom: 1rem;
-}
+            .page-header { padding: 1.5rem !important; margin-bottom: 1.5rem !important; }
+            .page-header .section-title { font-size: 1.5rem !important; }
+            
+            .nav-tabs { flex-direction: column; gap: 0.5rem; padding: 0.75rem; }
+            .nav-tabs .nav-link { justify-content: center; font-size: 0.9rem; }
+        }
 
-.report-content { 
-    flex-grow: 1; 
-    overflow-y: auto; 
-    padding: 3rem;
-    background: #f8f9fa;
-    scroll-behavior: smooth;
-}
+        @media (max-width: 575.98px) {
+            .stats-grid { grid-template-columns: 1fr; }
+            .action-icon { font-size: 2.5rem; }
+            .action-card { padding: 1.5rem 1rem; }
+        }
 
-.report-nav-link { 
-    display: flex;
-    align-items: center;
-    padding: 0.875rem 1.5rem;
-    color: #6c757d;
-    text-decoration: none;
-    margin: 0;
-    font-weight: 500;
-    font-size: 0.9rem;
-    transition: all 0.2s ease;
-    border-left: 3px solid transparent;
-}
+        /* ========================================
+           5. NEW REPORT MODAL UI (PURE CSS)
+           ======================================== */
+        #fullReportModal { padding-right: 0 !important; }
+        #fullReportModal .modal-dialog { margin: 0; max-width: 100%; height: 100vh; }
+        #fullReportModal .modal-content { height: 100%; border: none; border-radius: 0; }
 
-.report-nav-link:hover { 
-    background: #f8f9fa;
-    color: #212529;
-    border-left-color: #dee2e6;
-}
+        /* MOVED VARIABLES TO ROOT SO PDF CAN ALWAYS SEE THEM */
+        :root {
+            --rep-primary: #1a355b;
+            --rep-primary-10: rgba(26,53,91,0.1);
+            --rep-primary-05: rgba(26,53,91,0.05);
+            --rep-primary-20: rgba(26,53,91,0.2);
+            --rep-primary-60: rgba(26,53,91,0.6);
+            --rep-primary-70: rgba(26,53,91,0.7);
+            --rep-bg-light: #f6f7f8;
+            --rep-white: #ffffff;
+            --rep-slate-50: #f8fafc;
+            --rep-slate-100: #f1f5f9;
+            --rep-slate-200: #e2e8f0;
+            --rep-slate-400: #94a3b8;
+            --rep-slate-500: #64748b;
+            --rep-slate-600: #475569;
+            --rep-slate-700: #334155;
+            --rep-slate-900: #0f172a;
+            --rep-amber-50: #fffbeb;
+            --rep-amber-100: #fef3c7;
+            --rep-amber-400: #fbbf24;
+            --rep-amber-700: #b45309;
+            --rep-orange-50: #fff7ed;
+            --rep-orange-100: #ffedd5;
+            --rep-orange-400: #fb923c;
+            --rep-orange-700: #c2410c;
+            --rep-radius: 0.25rem;
+            --rep-radius-lg: 0.5rem;
+            --rep-radius-xl: 0.75rem;
+        }
 
-.report-nav-link.active { 
-    background: linear-gradient(90deg, #e7f1ff 0%, transparent 100%);
-    color: #0d6efd;
-    font-weight: 600;
-    border-left-color: #0d6efd;
-}
+        .custom-report-ui {
+            background: var(--rep-bg-light);
+            font-family: 'DM Sans', sans-serif;
+            color: var(--rep-slate-900);
+            overflow-y: auto;
+            width: 100%;
+        }
 
-.report-nav-link i { 
-    width: 28px;
-    text-align: center;
-    margin-right: 12px;
-    font-size: 1.1rem;
-}
+        .custom-report-ui .rep-container { max-width: 1280px; margin: 0 auto; padding: 2rem 1.5rem; }
 
-/* Report Section Styling */
-.report-section { 
-    background: white;
-    border-radius: 12px;
-    padding: 2.5rem;
-    margin-bottom: 2rem;
-    box-shadow: 0 1px 3px rgba(0,0,0,0.04);
-    border: 1px solid #e9ecef;
-}
+        /* Report Header */
+        .custom-report-ui .rep-header { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 1rem; border-bottom: 1px solid var(--rep-primary-10); padding-bottom: 1.5rem; margin-bottom: 2rem; }
+        .custom-report-ui .rep-header-brand { display: flex; align-items: center; gap: 1rem; }
+        .custom-report-ui .rep-brand-icon { background: var(--rep-primary); padding: 0.5rem; border-radius: var(--rep-radius-lg); color: #fff; display: flex; align-items: center; justify-content: center; }
+        .custom-report-ui .rep-brand-icon i { font-size: 1.75rem; }
+        .custom-report-ui .rep-brand-title { font-size: 1.25rem; font-weight: 900; letter-spacing: 0.05em; color: var(--rep-primary); text-transform: uppercase; }
+        .custom-report-ui .rep-brand-sub { font-size: 0.8rem; font-weight: 500; color: var(--rep-slate-500); }
+        .custom-report-ui .rep-btn { display: inline-flex; align-items: center; gap: 0.4rem; padding: 0.5rem 1rem; border-radius: var(--rep-radius-lg); font-weight: 700; font-size: 0.8rem; cursor: pointer; transition: 0.2s; border: none; text-decoration: none; }
+        .custom-report-ui .rep-btn-primary { background: var(--rep-primary); color: #fff; }
+        .custom-report-ui .rep-btn-primary:hover { opacity: 0.9; }
 
-.report-section-title { 
-    font-family: 'Poppins', sans-serif;
-    font-size: 1.5rem;
-    font-weight: 700;
-    color: #212529;
-    margin-bottom: 2rem;
-    padding-bottom: 1rem;
-    border-bottom: 2px solid #f1f3f5;
-    display: flex;
-    align-items: center;
-}
+        /* Report Identity */
+        .custom-report-ui .rep-identity { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: flex-end; gap: 1rem; margin-bottom: 2rem; }
+        .custom-report-ui .rep-title { font-size: 2.5rem; font-weight: 900; color: var(--rep-slate-900); line-height: 1; margin-bottom: 0.5rem; }
+        .custom-report-ui .rep-meta { display: flex; align-items: center; gap: 1.5rem; color: var(--rep-slate-500); flex-wrap: wrap; }
+        .custom-report-ui .rep-meta span { display: inline-flex; align-items: center; gap: 0.25rem; font-weight: 500; font-size: 0.9rem; }
+        .custom-report-ui .rep-id-badge { background: var(--rep-primary-05); padding: 0.5rem 1rem; border-radius: var(--rep-radius); border: 1px solid var(--rep-primary-10); }
+        .custom-report-ui .rep-id-label { font-size: 0.6rem; text-transform: uppercase; letter-spacing: 0.15em; font-weight: 700; color: var(--rep-primary-60); }
+        .custom-report-ui .rep-id-value { font-family: monospace; font-size: 0.85rem; font-weight: 700; color: var(--rep-primary); }
 
-.report-section-title i { 
-    margin-right: 12px;
-    color: #6c757d;
-    font-size: 1.3rem;
-}
+        /* Report Metrics */
+        .custom-report-ui .rep-metrics-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 1.5rem; margin-bottom: 2.5rem; }
+        .custom-report-ui .rep-metric-card { background: var(--rep-white); padding: 1.5rem; border-radius: var(--rep-radius-xl); border: 1px solid var(--rep-primary-10); box-shadow: 0 1px 3px rgba(0,0,0,0.06); display: flex; align-items: center; gap: 1.25rem; }
+        .custom-report-ui .rep-metric-icon { width: 3.5rem; height: 3.5rem; border-radius: 50%; background: var(--rep-primary-10); display: flex; align-items: center; justify-content: center; color: var(--rep-primary); flex-shrink: 0; }
+        .custom-report-ui .rep-metric-icon i { font-size: 1.75rem; }
+        .custom-report-ui .rep-metric-label { font-size: 0.8rem; font-weight: 500; color: var(--rep-slate-500); margin-bottom: 0.15rem; }
+        .custom-report-ui .rep-metric-value { font-size: 1.875rem; font-weight: 900; color: var(--rep-slate-900); }
 
-/* Table Enhancements */
-.report-section .table-responsive {
-    border-radius: 8px;
-    overflow: hidden;
-    border: 1px solid #e9ecef;
-}
+        /* Report Grid & Cards */
+        .custom-report-ui .rep-main-grid { display: grid; grid-template-columns: 1fr; gap: 2rem; margin-bottom: 2.5rem; }
+        @media (min-width: 1024px) { .custom-report-ui .rep-main-grid { grid-template-columns: 2fr 1fr; } }
+        
+        .custom-report-ui .rep-card { background: var(--rep-white); border-radius: var(--rep-radius-xl); border: 1px solid var(--rep-primary-10); box-shadow: 0 1px 3px rgba(0,0,0,0.06); overflow: hidden; margin-bottom: 2rem; page-break-inside: avoid; break-inside: avoid; }
+        .custom-report-ui .rep-card-header { padding: 1rem 1.5rem; border-bottom: 1px solid var(--rep-slate-100); background: var(--rep-slate-50); display: flex; justify-content: space-between; align-items: center; }
+        .custom-report-ui .rep-card-title { font-weight: 700; font-size: 1.1rem; color: var(--rep-primary); }
+        .custom-report-ui .rep-card-body { padding: 1.5rem; }
 
-.report-section table {
-    margin-bottom: 0;
-    font-size: 0.9rem;
-}
+        /* Report Tables */
+        .custom-report-ui .rep-table-wrap { overflow-x: auto; }
+        .custom-report-ui table { width: 100%; border-collapse: collapse; font-size: 0.875rem; margin: 0; background: transparent; }
+        .custom-report-ui thead tr { background: var(--rep-slate-50); }
+        .custom-report-ui th { padding: 1rem 1.5rem; border-bottom: 1px solid var(--rep-slate-100); font-size: 0.7rem; font-weight: 700; text-transform: uppercase; color: var(--rep-slate-600); text-align: left; }
+        .custom-report-ui td { padding: 1rem 1.5rem; border-bottom: 1px solid var(--rep-slate-100); }
+        .custom-report-ui th.center, .custom-report-ui td.center { text-align: center; }
+        .custom-report-ui th.right, .custom-report-ui td.right { text-align: center; }
+        .custom-report-ui td.rank { font-weight: 700; color: var(--rep-primary); font-size: 1.1rem;}
+        .custom-report-ui td.name { font-weight: 600; display: flex; align-items: center; gap: 0.75rem; }
+        .custom-report-ui td.right { font-weight: 900; color: var(--rep-slate-900); font-size: 1.1rem;}
+        
+        .custom-report-ui .rep-badge { display: inline-block; padding: 0.3rem 0.8rem; border-radius: var(--rep-radius); font-weight: 700; }
+        .custom-report-ui .badge-gold { background: var(--rep-amber-100); color: var(--rep-amber-700); }
+        .custom-report-ui .badge-silver { background: var(--rep-slate-100); color: var(--rep-slate-600); }
+        .custom-report-ui .badge-bronze { background: var(--rep-orange-100); color: var(--rep-orange-700); }
 
-.report-section thead th {
-    background: #f8f9fa;
-    color: #495057;
-    font-weight: 600;
-    text-transform: uppercase;
-    font-size: 0.75rem;
-    letter-spacing: 0.5px;
-    padding: 1rem;
-    border-bottom: 2px solid #dee2e6;
-}
+        /* Report Events */
+        .custom-report-ui .rep-events-list { display: flex; flex-direction: column; gap: 1.5rem; }
+        .custom-report-ui .rep-event-row { display: grid; grid-template-columns: 1fr; gap: 1rem; align-items: center; border-bottom: 1px solid var(--rep-slate-50); padding-bottom: 1rem; }
+        @media (min-width: 768px) { .custom-report-ui .rep-event-row { grid-template-columns: 1fr 3fr; } }
+        .custom-report-ui .rep-event-row:last-child { border-bottom: none; padding-bottom: 0; }
+        .custom-report-ui .rep-event-name { font-weight: 700; color: var(--rep-slate-900); font-size: 0.95rem; }
+        .custom-report-ui .rep-event-sub { font-size: 0.75rem; color: var(--rep-slate-500); font-weight: 500; margin-top: 0.2rem; }
+        .custom-report-ui .rep-event-medals { display: grid; grid-template-columns: repeat(3, 1fr); gap: 0.5rem; }
+        .custom-report-ui .rep-medal-cell { padding: 0.5rem; border-radius: var(--rep-radius); overflow: hidden; }
+        .custom-report-ui .rep-medal-cell.gold { background: var(--rep-amber-50); border: 1px solid var(--rep-amber-100); }
+        .custom-report-ui .rep-medal-cell.silver { background: var(--rep-slate-50); border: 1px solid var(--rep-slate-100); }
+        .custom-report-ui .rep-medal-cell.bronze { background: var(--rep-orange-50); border: 1px solid var(--rep-orange-100); }
+        .custom-report-ui .rep-medal-label { font-size: 0.6rem; font-weight: 900; text-transform: uppercase; margin-bottom: 0.2rem; }
+        .custom-report-ui .rep-medal-cell.gold .rep-medal-label { color: var(--rep-amber-700); }
+        .custom-report-ui .rep-medal-cell.silver .rep-medal-label { color: var(--rep-slate-500); }
+        .custom-report-ui .rep-medal-cell.bronze .rep-medal-label { color: var(--rep-orange-700); }
+        .custom-report-ui .rep-medal-team { font-size: 0.75rem; font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; color: var(--rep-slate-800);}
 
-.report-section tbody td {
-    padding: 1rem;
-    vertical-align: middle;
-    border-bottom: 1px solid #f1f3f5;
-}
+        /* Report Misc (Officials, Teams, Charts) */
+        .custom-report-ui .rep-section-heading { font-weight: 700; font-size: 0.95rem; color: var(--rep-primary); background: var(--rep-slate-50); padding: 0.5rem; border-radius: var(--rep-radius); margin-bottom: 1rem; text-align: center; }
+        .custom-report-ui .rep-officials-list { display: flex; flex-direction: column; padding: 1rem; }
+        .custom-report-ui .rep-official-row { display: flex; align-items: center; gap: 0.75rem; padding: 0.75rem 0; border-bottom: 1px solid var(--rep-slate-50); }
+        .custom-report-ui .rep-official-row:last-child { border-bottom: none; }
+        .custom-report-ui .rep-official-avatar { width: 2.5rem; height: 2.5rem; border-radius: 50%; background: var(--rep-primary-05); display: flex; align-items: center; justify-content: center; color: var(--rep-primary); flex-shrink: 0; }
+        .custom-report-ui .rep-official-name { font-size: 0.85rem; font-weight: 700; line-height: 1.2; color: var(--rep-slate-800);}
+        .custom-report-ui .rep-official-role { font-size: 0.65rem; color: var(--rep-slate-500); font-weight: 700; text-transform: uppercase; margin-top: 2px;}
+        .custom-report-ui .rep-official-email { font-size: 0.65rem; color: var(--rep-slate-400); }
+        
+        .custom-report-ui .rep-team-tags { display: flex; flex-wrap: wrap; gap: 0.75rem; }
+        .custom-report-ui .rep-team-tag { display: flex; align-items: center; gap: 0.5rem; background: var(--rep-slate-50); padding: 0.5rem 0.75rem; border-radius: var(--rep-radius-lg); border: 1px solid var(--rep-slate-100); width: calc(50% - 0.5rem);}
+        @media (min-width: 1024px) { .custom-report-ui .rep-team-tag { width: 100%; } }
+        .custom-report-ui .rep-team-logo { width: 2rem; height: 2rem; border-radius: var(--rep-radius); object-fit: cover; border: 1px solid #ddd; background: white;}
+        .custom-report-ui .rep-team-name { font-size: 0.75rem; font-weight: 700; color: var(--rep-slate-700); white-space: nowrap; overflow: hidden; text-overflow: ellipsis;}
 
-.report-section tbody tr:last-child td {
-    border-bottom: none;
-}
+        /* Report Footer */
+        .custom-report-ui .rep-footer { margin-top: 3rem; padding-top: 2rem; border-top: 1px solid var(--rep-slate-200); display: flex; flex-wrap: wrap; justify-content: space-between; gap: 1rem; color: var(--rep-slate-400); font-size: 0.75rem; font-weight: 500; }
+        .custom-report-ui .rep-footer-copy { display: flex; flex-direction: column; gap: 0.25rem; }
+        .custom-report-ui .rep-footer-right { display: flex; gap: 2rem; }
+        .custom-report-ui .rep-footer-block-title { font-weight: 700; color: var(--rep-slate-500); text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 0.25rem; font-size: 0.7rem; }
+        .custom-report-ui .rep-footer-verified { display: inline-flex; align-items: center; gap: 0.25rem; color: var(--rep-primary); font-weight: 700;}
+        .custom-report-ui .rep-footer-verified i { font-size: 1rem; }
 
-.report-section tbody tr:hover {
-    background: #f8f9fa;
-}
-
-/* Chart Containers */
-.chart-container { 
-    height: 400px;
-    position: relative;
-    margin: 1.5rem 0;
-}
-
-.report-section .card {
-    border: 1px solid #e9ecef;
-    box-shadow: none;
-}
-
-.report-section .card-header {
-    background: #f8f9fa;
-    border-bottom: 2px solid #e9ecef;
-    font-weight: 600;
-    font-size: 0.95rem;
-    padding: 1rem 1.5rem;
-}
-
-.report-section .card-body {
-    padding: 2rem;
-}
-
-/* Stat Badges & Visual Elements */
-.badge {
-    font-weight: 600;
-    padding: 0.35rem 0.65rem;
-    font-size: 0.75rem;
-}
-
-/* Medal Row Enhancements */
-#tableMedals tbody tr td:first-child {
-    font-size: 1.5rem;
-}
-
-#tableMedals tbody tr:nth-child(1) {
-    background: linear-gradient(90deg, #fff9e6 0%, #ffffff 100%);
-}
-
-#tableMedals tbody tr:nth-child(2) {
-    background: linear-gradient(90deg, #f5f5f5 0%, #ffffff 100%);
-}
-
-#tableMedals tbody tr:nth-child(3) {
-    background: linear-gradient(90deg, #fff5f0 0%, #ffffff 100%);
-}
-
-/* Empty State */
-.report-section .text-muted.py-5 {
-    font-size: 0.95rem;
-    color: #adb5bd;
-}
-
-        /* Chart Containers */
-        .chart-container { height: 400px; position: relative; margin-bottom: 2rem; }
-
-        /* --- PRINT STYLES (Fully Updated) --- */
+        /* ========================================
+           6. PRINT STYLES (Full Data Capture)
+           ======================================== */
         @media print {
-            /* 1. Global Reset for Print */
-            body { 
-                background: white !important; 
-                height: auto !important; 
-                overflow: visible !important; 
-            }
+            @page { margin: 0.5in; }
 
-            /* 2. Hide everything except the modal */
-            body > *:not(#fullReportModal) { 
-                display: none !important; 
+            body > *:not(#fullReportModal) { display: none !important; }
+            html, body { height: auto !important; overflow: visible !important; background: white !important; }
+            
+            #fullReportModal, #fullReportModal .modal-dialog, #fullReportModal .modal-content, 
+            .custom-report-ui, .custom-report-ui .rep-container { 
+                position: relative !important; display: block !important; width: 100% !important; 
+                height: auto !important; max-height: none !important; overflow: visible !important; 
+                border: none !important; box-shadow: none !important; background: white !important; padding: 0 !important;
             }
             
-            /* 3. Modal Container Reset */
-            #fullReportModal {
-                display: block !important;
-                position: static !important;
-                width: 100% !important;
-                height: auto !important;
-                background: white !important;
-                z-index: 1 !important;
-                overflow: visible !important;
-            }
-
-            /* 4. Modal Inner Elements Reset */
-            .modal-dialog, .modal-content, .modal-body {
-                width: 100% !important;
-                max-width: 100% !important;
-                margin: 0 !important;
-                padding: 0 !important;
-                border: none !important;
-                box-shadow: none !important;
-                position: static !important;
-                height: auto !important;
-                overflow: visible !important;
-            }
-
-            /* 5. Hide UI Elements (Sidebar, Header, Footer, Buttons) */
-            .modal-header, .modal-footer, .report-sidebar, .btn { 
-                display: none !important; 
-            }
-
-            /* 6. Layout Reset */
-            .report-layout { 
-                display: block !important; 
-                height: auto !important; 
-            }
-            .report-content {
-                width: 100% !important;
-                padding: 0 !important;
-                margin: 0 !important;
-                overflow: visible !important;
-                height: auto !important;
-            }
-
-            /* 7. Section Page Breaks */
-            .report-section { 
-                page-break-inside: avoid; 
-                margin-bottom: 3rem; 
-                display: block !important; 
-            }
-            #sec-events { page-break-before: always; }
-            #sec-officials { page-break-inside: avoid; }
-            #sec-charts { page-break-before: always; }
-
-            /* 8. Table Styling for Print */
-            .table { color: black !important; }
-            .table-light th { background-color: #f0f0f0 !important; color: black !important; }
+            .custom-report-ui .rep-header-actions, .btn-close { display: none !important; }
+            .custom-report-ui .rep-main-grid { display: block !important; }
+            .custom-report-ui .rep-left-col, .custom-report-ui .rep-right-col { display: block !important; width: 100% !important; }
             
-            /* 9. Badge Styling Fix (Outline for Print) */
-            .badge {
-                border: 1px solid #000 !important;
-                color: #000 !important;
-                background: transparent !important;
-                font-weight: bold !important;
-            }
-
-            /* 10. --- CHART CENTERING FIX --- */
+            /* --- COMPRESS HEADER & TITLE FOR PAGE 1 FIT --- */
+            .custom-report-ui .rep-header { padding-bottom: 0.25rem !important; margin-bottom: 0.5rem !important; }
+            .custom-report-ui .rep-title { font-size: 1.5rem !important; margin-bottom: 0.25rem !important; }
+            .custom-report-ui .rep-identity { margin-bottom: 0.75rem !important; }
             
-            /* Force the chart section to use a vertical layout */
-            #sec-charts .row {
-                display: block !important;
-                text-align: center !important;
-            }
+            /* --- SHRINK METRICS CARDS SO TABLE CAN FIT BELOW IT --- */
+            .custom-report-ui .rep-metrics-grid { gap: 0.5rem !important; margin-bottom: 1rem !important; }
+            .custom-report-ui .rep-metric-card { padding: 0.5rem 1rem !important; gap: 0.75rem !important; }
+            .custom-report-ui .rep-metric-icon { width: 2.5rem !important; height: 2.5rem !important; }
+            .custom-report-ui .rep-metric-icon i { font-size: 1.2rem !important; }
+            .custom-report-ui .rep-metric-value { font-size: 1.25rem !important; }
+            .custom-report-ui .rep-metric-label { font-size: 0.7rem !important; margin-bottom: 0 !important; }
 
-            /* Make the chart columns full width and centered */
-            #sec-charts .col-lg-6 {
-                width: 100% !important;
-                max-width: 90% !important;
-                margin: 0 auto 40px auto !important;
-                page-break-inside: avoid !important;
-                display: block !important;
-                float: none !important;
-            }
-
-            /* Center the chart container itself */
-            .chart-container {
-                margin: 0 auto !important;
-                width: 80% !important;
-                height: 400px !important;
-                display: flex !important;
-                justify-content: center !important;
-                align-items: center !important;
-            }
-
-            /* Clean up the card look for print */
-            .card {
-                border: none !important;
-                box-shadow: none !important;
-            }
-            .card-header {
-                background: transparent !important;
-                border-bottom: 2px solid #333 !important;
-                text-align: center !important;
-                font-size: 18pt !important;
-                padding-bottom: 10px !important;
-                margin-bottom: 20px !important;
-            }
+            /* --- SHRINK TABLE PADDING SO IT DOESN'T JUMP TO PAGE 2 --- */
+            .custom-report-ui th, .custom-report-ui td { padding: 0.5rem !important; }
+            
+            .custom-report-ui .rep-card { border: 1px solid #ddd !important; margin-bottom: 1.5rem !important; box-shadow: none !important; }
+            .custom-report-ui .rep-card-header { page-break-after: avoid !important; break-after: avoid !important; padding: 0.75rem !important; }
+            .custom-report-ui table tr { page-break-inside: avoid !important; break-inside: avoid !important; }
+            
+            .pdf-page-break { page-break-before: always !important; break-before: page !important; }
+            .custom-report-ui .rep-table-wrap { overflow: visible !important; }
+            
+            canvas { max-width: 100% !important; }
+            .chart-container { height: auto !important; min-height: 250px !important; page-break-inside: avoid !important; }
         }
-
-        /* --- FOOTER STYLES (MATCHING HOME.PHP) --- */
-    .footer-main {
-        flex-shrink: 0;
-        background: linear-gradient(135deg, #1a1a1a 0%, #2d2d2d 100%);
-        color: rgba(255,255,255,0.7);
-        padding: 3rem 0 2rem 0;
-        box-shadow: 0 -4px 20px rgba(0,0,0,0.15);
-        position: relative;
-        z-index: 1;
-    }
-
-    .footer-main .footer-logo-group {
-        display: flex;
-        align-items: center;
-        gap: 12px;
-        margin-bottom: 1rem;
-    }
-
-    .footer-main .footer-logo-group img {
-        height: 50px !important;
-        width: 50px !important;
-        object-fit: contain;
-    }
-
-    .footer-main .footer-logo-group h5 {
-        margin: 0;
-        font-size: 1.1rem;
-        font-weight: 700;
-        color: #fff;
-        line-height: 1.2;
-    }
-
-    .footer-main p {
-        font-size: 0.9rem;
-        max-width: 400px;
-    }
-
-    .footer-main h6 {
-        font-family: 'Poppins', sans-serif;
-        color: #fff;
-        font-weight: 600;
-        margin-bottom: 1rem;
-        text-transform: uppercase;
-        letter-spacing: 0.5px;
-    }
-
-    .footer-main .footer-links {
-        list-style: none;
-        padding: 0;
-    }
-
-    .footer-main .footer-links li {
-        margin-bottom: 0.5rem;
-    }
-
-    .footer-main .footer-links a {
-        text-decoration: none;
-        color: rgba(255,255,255,0.7);
-        transition: var(--transition);
-    }
-
-    .footer-main .footer-links a:hover {
-        color: #fff;
-        padding-left: 5px;
-    }
-
-    .footer-bottom {
-        border-top: 1px solid rgba(255,255,255,0.1);
-        padding-top: 1.5rem;
-        margin-top: 2rem;
-        text-align: center;
-        font-size: 0.85rem;
-    }
-
-    @media (max-width: 767.98px) {
-      .logo-container {
-        gap: 1rem;
-      }
-      .main-logo {
-        width: 80px;
-        height: 80px;
-      }
-      .brand-title {
-        font-size: 1.5rem;
-      }
-      .login-container h2 {
-        font-size: 1.5rem;
-      }
-    }
-
-    /* ==========================================================================
-       MOBILE OPTIMIZATION - COMPREHENSIVE RESPONSIVE DESIGN
-       ========================================================================== */
-    @media (max-width: 991.98px) {
-        
-        /* ===== 1. NAVBAR MOBILE OPTIMIZATION ===== */
-        .navbar {
-            padding: 0.5rem 1rem !important;
-            height: 60px !important;
-            display: flex !important;
-            flex-wrap: nowrap !important;
-            align-items: center !important;
-        }
-        
-        /* A. Hamburger Menu */
-        .navbar-toggler {
-            order: 1;
-            border: 1px solid rgba(255,255,255,0.1);
-            padding: 4px 8px;
-            font-size: 1.2rem;
-            margin-right: 10px;
-        }
-        .navbar-toggler:focus { box-shadow: none; }
-
-        /* B. Brand Logo */
-        .navbar-brand {
-            order: 2;
-            margin-right: auto !important;
-            display: flex;
-            align-items: center;
-            max-width: 60%;
-        }
-        .navbar-brand img {
-            height: 30px !important;
-            width: 30px !important;
-            margin-right: 8px !important;
-        }
-        .navbar-brand strong {
-            font-size: 0.95rem !important;
-            white-space: nowrap;
-            overflow: hidden;
-            text-overflow: ellipsis;
-        }
-        .navbar-brand small { display: none !important; }
-
-        /* C. Profile Menu Icon */
-        .user-dropdown {
-            order: 3;
-            margin-left: 0 !important;
-        }
-        .user-dropdown .user-name { display: none !important; }
-        .user-dropdown .dropdown-toggle i { 
-            font-size: 26px !important; 
-            margin: 0 !important;
-            color: #fff;
-        }
-
-        /* ===== 2. SIDEBAR DRAWER ===== */
-        .sidebar {
-            position: fixed !important;
-            top: 60px !important;
-            left: -260px !important;
-            width: 260px !important;
-            height: calc(100vh - 60px) !important;
-            background-color: #2c3e50 !important;
-            box-shadow: 5px 0 15px rgba(0,0,0,0.3);
-            transition: left 0.3s ease-in-out !important;
-            z-index: 1045;
-            overflow-y: auto;
-        }
-        .sidebar.show { left: 0 !important; }
-        .sidebar-nav .nav-link { 
-            white-space: nowrap; 
-            font-size: 0.95rem;
-        }
-
-        /* ===== 3. MAIN CONTENT ===== */
-        .main-content {
-            padding: 15px !important;
-            margin-top: 60px !important;
-            margin-left: 0 !important;
-        }
-
-        /* ===== 4. PAGE HEADER ===== */
-        .page-header {
-            padding: 1.5rem !important;
-            margin-bottom: 1.5rem !important;
-        }
-        
-        .page-header .section-title {
-            font-size: 1.5rem !important;
-        }
-        
-        .page-header .subtitle {
-            font-size: 0.85rem;
-        }
-
-        /* ===== 5. NAV TABS (ARCHIVE SECTIONS) ===== */
-        .nav-tabs {
-            flex-direction: column;
-            gap: 0.5rem;
-            padding: 0.75rem;
-        }
-        
-        .nav-tabs .nav-link {
-            padding: 0.75rem 1rem;
-            font-size: 0.9rem;
-            justify-content: center;
-        }
-
-        /* ===== 6. ARCHIVE CARDS ===== */
-        .archive-card {
-            margin-bottom: 1rem;
-        }
-        
-        .archive-card-header {
-            padding: 1rem;
-        }
-        
-        .archive-card-body {
-            padding: 1rem;
-        }
-        
-        .season-title {
-            font-size: 1.1rem;
-        }
-        
-        .champion-badge {
-            padding: 0.75rem;
-        }
-        
-        .champion-badge .value {
-            font-size: 0.9rem;
-        }
-        
-        .champion-badge img {
-            width: 35px !important;
-            height: 35px !important;
-        }
-        
-        .stats-grid {
-            gap: 0.5rem;
-            margin: 1rem 0;
-        }
-        
-        .stat-box {
-            padding: 0.75rem;
-        }
-        
-        .stat-box .number {
-            font-size: 1.5rem;
-        }
-
-        /* ===== 7. ACTION CARDS ===== */
-        .action-card {
-            padding: 2rem 1.5rem;
-            margin-bottom: 1.5rem;
-        }
-        
-        .action-icon {
-            font-size: 3rem;
-            margin-bottom: 1rem;
-        }
-        
-        .action-card h3 {
-            font-size: 1.25rem;
-        }
-        
-        .action-card p {
-            font-size: 0.9rem;
-        }
-
-        /* ===== 8. FULL REPORT MODAL - COMPLETE MOBILE TRANSFORMATION ===== */
-        
-        /* A. Modal Layout - Stack Vertically */
-        #fullReportModal .modal-body {
-            height: calc(100vh - 60px);
-            padding: 0;
-        }
-        
-        .report-layout {
-            flex-direction: column !important;
-            height: 100%;
-        }
-
-        /* B. Navigation - Horizontal Sticky Swipeable Nav */
-        .report-sidebar {
-            width: 100% !important;
-            height: auto !important;
-            flex-shrink: 0;
-            border-right: none;
-            border-bottom: 2px solid #e9ecef;
-            padding: 0;
-            position: sticky;
-            top: 0;
-            z-index: 100;
-            background: #fff;
-            box-shadow: 0 2px 8px rgba(0,0,0,0.05);
-        }
-
-        /* Hide "NAVIGATION" Label */
-        .report-sidebar .text-muted {
-            display: none !important;
-        }
-
-        /* Horizontal Scrollable Nav */
-        .report-sidebar .nav {
-            flex-direction: row !important;
-            flex-wrap: nowrap !important;
-            overflow-x: auto !important;
-            overflow-y: hidden;
-            -webkit-overflow-scrolling: touch;
-            width: 100%;
-            display: flex !important;
-            padding: 8px 0;
-            background: #fff;
-        }
-
-        /* Hide Scrollbar */
-        .report-sidebar .nav::-webkit-scrollbar {
-            display: none;
-        }
-
-        /* Nav Link Styling for Mobile */
-        .report-nav-link {
-            flex: 0 0 auto !important;
-            width: auto !important;
-            display: flex !important;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
-            padding: 10px 18px !important;
-            font-size: 0.7rem !important;
-            text-align: center;
-            border-left: none !important;
-            border-bottom: 3px solid transparent;
-            color: #6c757d;
-            white-space: nowrap;
-            min-width: 80px;
-        }
-
-        /* Active State */
-        .report-nav-link.active {
-            background-color: transparent !important;
-            color: #0d6efd !important;
-            border-bottom-color: #0d6efd !important;
-            border-left-color: transparent !important;
-        }
-
-        /* Icons */
-        .report-nav-link i {
-            font-size: 1.1rem !important;
-            margin-right: 0 !important;
-            margin-bottom: 4px;
-            width: auto;
-        }
-
-        /* C. Report Content */
-        .report-content {
-            padding: 1rem !important;
-            height: 100%;
-            overflow-y: auto;
-            padding-bottom: 60px !important;
-        }
-
-        /* D. Report Sections */
-        .report-section {
-            padding: 1.25rem !important;
-            margin-bottom: 1.25rem !important;
-            border-radius: 8px;
-        }
-
-        .report-section-title {
-            font-size: 1.15rem !important;
-            margin-bottom: 1rem !important;
-            padding-bottom: 0.75rem !important;
-        }
-        
-        .report-section-title i {
-            font-size: 1rem;
-            margin-right: 8px;
-        }
-
-        /* E. Tables - Card-Based Mobile View */
-        .report-section .table-responsive {
-            border: none;
-            border-radius: 0;
-        }
-
-        /* Hide Desktop Table Headers */
-        .report-section table thead {
-            display: none;
-        }
-
-        /* Transform Rows into Cards */
-        .report-section table tbody,
-        .report-section table tr,
-        .report-section table td {
-            display: block;
-            width: 100%;
-        }
-
-        .report-section table tr {
-            background: #fff;
-            border: 1px solid #e9ecef;
-            border-radius: 10px;
-            margin-bottom: 12px;
-            box-shadow: 0 2px 6px rgba(0,0,0,0.04);
-            overflow: hidden;
-        }
-
-        /* Cell Styling */
-        .report-section table td {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            text-align: right;
-            padding: 10px 12px;
-            border-bottom: 1px solid #f8f9fa;
-            font-size: 0.85rem;
-        }
-
-        .report-section table tr td:last-child {
-            border-bottom: none;
-        }
-
-        /* Data Labels (::before pseudo-element) */
-        .report-section table td::before {
-            content: attr(data-label);
-            font-weight: 700;
-            color: #6c757d;
-            text-transform: uppercase;
-            font-size: 0.7rem;
-            text-align: left;
-            margin-right: 10px;
-            letter-spacing: 0.3px;
-        }
-
-        /* ===== F. SPECIFIC TABLE CUSTOMIZATIONS ===== */
-
-        /* --- Medal Table (#tableMedals) --- */
-        
-        /* Rank & Team Name Header */
-        #tableMedals td:nth-child(1),
-        #tableMedals td:nth-child(2) {
-            text-align: left !important;
-            justify-content: flex-start !important;
-            background: #f8f9fa;
-            border-bottom: none !important;
-        }
-
-        #tableMedals td:nth-child(1) { 
-            font-size: 1.3rem !important; 
-            padding-bottom: 5px !important;
-        }
-        
-        #tableMedals td:nth-child(2) { 
-            padding-top: 5px !important; 
-            padding-bottom: 12px !important; 
-            border-bottom: 2px solid #e9ecef !important;
-        }
-
-        #tableMedals td:nth-child(1)::before,
-        #tableMedals td:nth-child(2)::before {
-            display: none;
-        }
-
-        /* Medal Labels & Values */
-        #tableMedals td:nth-child(3)::before { content: "🥇 Gold"; color: #f59e0b; }
-        #tableMedals td:nth-child(4)::before { content: "🥈 Silver"; color: #64748b; }
-        #tableMedals td:nth-child(5)::before { content: "🥉 Bronze"; color: #ea580c; }
-        #tableMedals td:nth-child(6)::before { content: "Total"; color: #2c3e50; }
-        
-        #tableMedals td:nth-child(3),
-        #tableMedals td:nth-child(4),
-        #tableMedals td:nth-child(5),
-        #tableMedals td:nth-child(6) {
-            font-weight: 700;
-            font-size: 1.1rem;
-        }
-
-        /* --- Event Results (#tableEvents) --- */
-        
-        /* Event Name Header */
-        #tableEvents td:nth-child(1) {
-            flex-direction: column !important;
-            align-items: flex-start !important;
-            text-align: left !important;
-            background: #f8f9fa;
-            border-bottom: 2px solid #e9ecef !important;
-            padding: 12px !important;
-        }
-        
-        #tableEvents td:nth-child(1)::before { 
-            display: none; 
-        }
-        
-        #tableEvents td:nth-child(1) .fw-bold {
-            font-size: 0.95rem;
-            margin-bottom: 3px;
-        }
-        
-        #tableEvents td:nth-child(1) .small {
-            font-size: 0.75rem;
-        }
-
-        /* Winner Labels */
-        #tableEvents td:nth-child(2)::before { content: "🥇 Gold"; color: #f59e0b; }
-        #tableEvents td:nth-child(3)::before { content: "🥈 Silver"; color: #64748b; }
-        #tableEvents td:nth-child(4)::before { content: "🥉 Bronze"; color: #ea580c; }
-
-        /* --- Teams Table (#tableTeams) --- */
-        
-        /* Logo */
-        #tableTeams td:nth-child(1) { 
-            justify-content: center !important; 
-            background: #f8f9fa; 
-            padding: 12px !important; 
-            border-bottom: none !important;
-        }
-        #tableTeams td:nth-child(1)::before { display: none; }
-        
-        /* Team Name */
-        #tableTeams td:nth-child(2) { 
-            justify-content: center !important; 
-            background: #f8f9fa; 
-            font-weight: 700; 
-            font-size: 1rem;
-            padding-top: 5px !important;
-            padding-bottom: 12px !important;
-            border-bottom: 2px solid #e9ecef !important;
-        }
-        #tableTeams td:nth-child(2)::before { display: none; }
-
-        /* Details Labels */
-        #tableTeams td:nth-child(3)::before { content: "Code"; }
-        #tableTeams td:nth-child(4)::before { content: "Manager"; }
-        #tableTeams td:nth-child(5)::before { content: "Slogan"; }
-
-        /* --- Officials Table (#tableOfficials) --- */
-        
-        #tableOfficials td:nth-child(1) { 
-            background: #f8f9fa; 
-            font-weight: 700; 
-            justify-content: flex-start !important;
-            font-size: 0.95rem;
-        }
-        #tableOfficials td:nth-child(1)::before { content: "Name"; }
-        #tableOfficials td:nth-child(2)::before { content: "Role"; }
-        #tableOfficials td:nth-child(3)::before { content: "Email"; }
-
-        /* ===== G. CHARTS MOBILE OPTIMIZATION ===== */
-        .chart-container {
-            height: 280px !important;
-            margin: 1rem 0 !important;
-        }
-        
-        #sec-charts .row {
-            margin: 0;
-        }
-        
-        #sec-charts .col-lg-6 {
-            padding: 0;
-            margin-bottom: 1.5rem;
-        }
-        
-        #sec-charts .card {
-            border-radius: 8px;
-        }
-        
-        #sec-charts .card-header {
-            font-size: 0.9rem;
-            padding: 0.75rem 1rem;
-        }
-        
-        #sec-charts .card-body {
-            padding: 1rem;
-        }
-
-        /* ===== 9. MODAL HEADER ===== */
-        #fullReportModal .modal-header {
-            padding: 0.75rem 1rem;
-            height: 60px;
-        }
-        
-        #fullReportModal .modal-title {
-            font-size: 0.95rem;
-        }
-        
-        #fullReportModal .modal-title .badge {
-            font-size: 0.65rem;
-            padding: 0.25rem 0.5rem;
-        }
-        
-        #fullReportModal .btn-sm {
-            font-size: 0.75rem;
-            padding: 0.35rem 0.65rem;
-        }
-
-        /* ===== 10. FOOTER MOBILE ===== */
-        footer {
-            padding-left: 0 !important;
-        }
-        
-        .footer-main {
-            padding: 2rem 0 1.5rem 0;
-        }
-        
-        .footer-main .footer-logo-group img {
-            height: 40px !important;
-            width: 40px !important;
-        }
-        
-        .footer-main h5 {
-            font-size: 0.95rem;
-        }
-        
-        .footer-main h6 {
-            font-size: 0.9rem;
-            margin-top: 1.5rem;
-        }
-
-        /* ===== 11. EMPTY STATES ===== */
-        .empty-state {
-            padding: 2rem 1rem;
-        }
-        
-        .empty-state i {
-            font-size: 3rem;
-        }
-        
-        .empty-state h5 {
-            font-size: 1.1rem;
-        }
-        
-        .empty-state p {
-            font-size: 0.85rem;
-        }
-    }
-
-    /* ===== EXTRA SMALL DEVICES (< 576px) ===== */
-    @media (max-width: 575.98px) {
-        .page-header .section-title {
-            font-size: 1.25rem !important;
-        }
-        
-        .nav-tabs .nav-link {
-            font-size: 0.85rem;
-            padding: 0.65rem 0.85rem;
-        }
-        
-        .champion-badge img {
-            width: 30px !important;
-            height: 30px !important;
-        }
-        
-        .stat-box .number {
-            font-size: 1.25rem;
-        }
-        
-        .stat-box .label {
-            font-size: 0.65rem;
-        }
-        
-        .action-card {
-            padding: 1.5rem 1rem;
-        }
-        
-        .action-icon {
-            font-size: 2.5rem;
-        }
-        
-        #fullReportModal .modal-title {
-            font-size: 0.85rem;
-        }
-        
-        .report-nav-link {
-            min-width: 70px;
-            padding: 8px 12px !important;
-            font-size: 0.65rem !important;
-        }
-        
-        .report-nav-link i {
-            font-size: 1rem !important;
-        }
-        
-        .report-section {
-            padding: 1rem !important;
-        }
-        
-        .report-section-title {
-            font-size: 1rem !important;
-        }
-        
-        .chart-container {
-            height: 240px !important;
-        }
-    }
-
-    /* ===== LANDSCAPE ORIENTATION ON MOBILE ===== */
-    @media (max-width: 991.98px) and (orientation: landscape) {
-        .navbar {
-            height: 50px !important;
-        }
-        
-        .sidebar {
-            top: 50px !important;
-            height: calc(100vh - 50px) !important;
-        }
-        
-        .main-content {
-            margin-top: 50px !important;
-        }
-        
-        #fullReportModal .modal-body {
-            height: calc(100vh - 50px);
-        }
-        
-        #fullReportModal .modal-header {
-            height: 50px;
-            padding: 0.5rem 1rem;
-        }
-        
-        .chart-container {
-            height: 200px !important;
-        }
-    }
     </style>
 </head>
 <body>
@@ -1454,26 +661,30 @@ $pending_results_count = $conn->query("SELECT COUNT(*) FROM categories WHERE sta
                 </div>
             <?php endif; ?>
 
-            <ul class="nav nav-tabs" id="archiveTabs" role="tablist">
-                <li class="nav-item">
-                    <button class="nav-link active" id="history-tab" data-bs-toggle="tab" data-bs-target="#history" type="button">
-                        <i class="fas fa-folder-open text-warning"></i>
-                        History
-                    </button>
-                </li>
-                <li class="nav-item">
-                    <button class="nav-link" id="archive-tab" data-bs-toggle="tab" data-bs-target="#archive" type="button">
-                        <i class="fas fa-save text-primary"></i>
-                        Create Archive
-                    </button>
-                </li>
-                <li class="nav-item">
-                    <button class="nav-link text-danger" id="reset-tab" data-bs-toggle="tab" data-bs-target="#reset" type="button">
-                        <i class="fas fa-exclamation-circle"></i>
-                        Reset System
-                    </button>
-                </li>
-            </ul>
+            <div class="d-flex flex-wrap justify-content-between align-items-center mb-4">
+                
+                <ul class="nav nav-tabs mb-0" id="archiveTabs" role="tablist" style="margin-bottom: 0 !important;">
+                    <li class="nav-item">
+                        <button class="nav-link active" id="history-tab" data-bs-toggle="tab" data-bs-target="#history" type="button">
+                            <i class="fas fa-folder-open text-warning"></i>
+                            History
+                        </button>
+                    </li>
+                    <li class="nav-item">
+                        <button class="nav-link" id="archive-tab" data-bs-toggle="tab" data-bs-target="#archive" type="button">
+                            <i class="fas fa-save text-primary"></i>
+                            Create Archive
+                        </button>
+                    </li>
+                </ul>
+
+                <div class="search-container position-relative mt-3 mt-md-0" style="width: 100%; max-width: 300px;">
+                    <i class="fas fa-search position-absolute text-muted" style="left: 15px; top: 50%; transform: translateY(-50%);"></i>
+                    <input type="text" id="archiveSearch" class="form-control border-0" placeholder="Search seasons or dates..." 
+                           style="padding-left: 40px; border-radius: 12px; box-shadow: 0 1px 3px rgba(0,0,0,0.08); height: 45px; background: white;">
+                </div>
+
+            </div>
 
             <div class="tab-content">
                 
@@ -1485,61 +696,75 @@ $pending_results_count = $conn->query("SELECT COUNT(*) FROM categories WHERE sta
                             <p>Once you archive a season, it will appear here for future reference and analysis.</p>
                         </div>
                     <?php else: ?>
-                        <div class="row g-4">
-                            <?php foreach ($archives as $arch): 
-                                $stats_json = $arch['stats_json'] ?? '{}';
-                                $medals_json = $arch['medal_standing_json'] ?? '[]';
-                                
-                                $stats = json_decode($stats_json, true) ?? [];
-                                $medals = json_decode($medals_json, true) ?? [];
-                                
-                                $champion = $medals[0]['college_name'] ?? 'Unknown';
-                                $champion_logo = $medals[0]['logo_url'] ?? '';
-                                if (!empty($champion_logo)) { $champion_logo = str_replace('../', '', $champion_logo); }
-                                
-                                $val_games = $stats['total_games'] ?? 0;
-                                $val_events = $stats['total_events'] ?? 0;
-                            ?>
-                            <div class="col-md-6 col-xl-4">
-                                <div class="archive-card view-archive-btn" 
-                                    data-id="<?= $arch['archive_id'] ?>"
-                                    data-season="<?= htmlspecialchars($arch['season_name']) ?>">
-                                    <div class="archive-card-header">
-                                        <div class="season-title"><?= htmlspecialchars($arch['season_name']) ?></div>
-                                        <div class="archive-date">
-                                            <i class="fas fa-calendar"></i>
-                                            <?= date('F d, Y', strtotime($arch['archived_at'])) ?>
-                                        </div>
-                                    </div>
-                                    <div class="archive-card-body">
-                                        <div class="champion-badge">
-                                            <div class="label">Season Champion</div>
-                                            <div class="value d-flex align-items-center justify-content-center gap-2">
+                        <div class="table-card">
+                            <table>
+                                <thead>
+                                    <tr>
+                                        <th>Season Name</th>
+                                        <th>Date Archived</th>
+                                        <th>Season Champion</th>
+                                        <th style="text-align: center;">Games & Events</th>
+                                        <th style="text-align: center;">Action</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <?php foreach ($archives as $arch): 
+                                        $stats_json = $arch['stats_json'] ?? '{}';
+                                        $medals_json = $arch['medal_standing_json'] ?? '[]';
+                                        
+                                        $stats = json_decode($stats_json, true) ?? [];
+                                        $medals = json_decode($medals_json, true) ?? [];
+                                        
+                                        $champion = $medals[0]['college_name'] ?? 'Unknown';
+                                        $champion_logo = $medals[0]['logo_url'] ?? '';
+                                        if (!empty($champion_logo)) { $champion_logo = str_replace('../', '', $champion_logo); }
+                                        
+                                        $val_games = $stats['total_games'] ?? 0;
+                                        $val_events = $stats['total_events'] ?? 0;
+                                    ?>
+                                    <tr>
+                                        <td><span class="season-name"><?= htmlspecialchars($arch['season_name']) ?></span></td>
+                                        <td>
+                                            <div class="date-archived">
+                                                <i class="fas fa-calendar-alt"></i>
+                                                <?= date('F d, Y', strtotime($arch['archived_at'])) ?>
+                                            </div>
+                                        </td>
+                                        <td>
+                                            <div class="champion-cell">
                                                 <?php if (!empty($champion_logo)): ?>
-                                                    <img src="<?= htmlspecialchars($champion_logo) ?>" alt="Logo" style="width: 45px; height: 45px; border-radius: 50%; object-fit: cover; border: 2px solid #d97706; background: white;">
+                                                    <img src="<?= htmlspecialchars($champion_logo) ?>" alt="Logo" class="logo-circle">
                                                 <?php else: ?>
-                                                    <i class="fas fa-trophy"></i>
+                                                    <div class="logo-circle d-flex align-items-center justify-content-center bg-light" style="border-radius: 50%;">
+                                                        <i class="fas fa-trophy text-warning" style="font-size: 14px;"></i>
+                                                    </div>
                                                 <?php endif; ?>
-                                                <span class="text-start lh-sm"><?= htmlspecialchars($champion) ?></span>
+                                                <?= htmlspecialchars($champion) ?>
                                             </div>
-                                        </div>
-                                        <div class="stats-grid">
-                                            <div class="stat-box">
-                                                <span class="number"><?= $val_games ?></span>
-                                                <span class="label">Games</span>
-                                            </div>
-                                            <div class="stat-box">
-                                                <span class="number"><?= $val_events ?></span>
-                                                <span class="label">Events</span>
-                                            </div>
-                                        </div>
-                                        <button class="btn btn-primary w-100 d-flex align-items-center justify-content-center gap-2">
-                                            <i class="fas fa-external-link-alt"></i> View Full Report
-                                        </button>
-                                    </div>
+                                        </td>
+                                        <td class="stats-cell">
+                                            <span class="stat-number"><?= $val_games ?></span>
+                                            <span class="stat-label">Games</span>
+                                            <div class="divider"></div>
+                                            <span class="stat-number"><?= $val_events ?></span>
+                                            <span class="stat-label">Events</span>
+                                        </td>
+                                        <td style="text-align: right;">
+                                            <button class="btn-view-report view-archive-btn" 
+                                                data-id="<?= $arch['archive_id'] ?>" 
+                                                data-season="<?= htmlspecialchars($arch['season_name']) ?>">
+                                                View Full Report
+                                            </button>
+                                        </td>
+                                    </tr>
+                                    <?php endforeach; ?>
+                                </tbody>
+                            </table>
+                            <div class="table-footer">
+                                <div class="table-footer-text">
+                                    Showing <strong><?= count($archives) ?></strong> archived seasons
                                 </div>
                             </div>
-                            <?php endforeach; ?>
                         </div>
                     <?php endif; ?>
                 </div>
@@ -1559,21 +784,6 @@ $pending_results_count = $conn->query("SELECT COUNT(*) FROM categories WHERE sta
                     </div>
                 </div>
 
-                <div class="tab-pane fade" id="reset">
-                    <div class="row justify-content-center">
-                        <div class="col-lg-8">
-                            <div class="action-card reset-action">
-                                <i class="fas fa-trash-restore-alt action-icon text-danger"></i>
-                                <h3 class="text-danger">Reset System Data</h3>
-                                <p><strong>⚠️ Critical Action:</strong> This will delete all events, results, and assignments. Irreversible.</p>
-                                <button class="btn btn-danger" data-bs-toggle="modal" data-bs-target="#confirmResetModal">
-                                    <i class="fas fa-exclamation-triangle me-2"></i> Reset System
-                                </button>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-
             </div>
         </div>
     </div>
@@ -1587,9 +797,29 @@ $pending_results_count = $conn->query("SELECT COUNT(*) FROM categories WHERE sta
                 </div>
                 <form method="POST">
                     <div class="modal-body">
-                        <div class="mb-4">
-                            <label class="form-label fw-bold">Season Name / Title</label>
-                            <input type="text" name="season_name" class="form-control form-control-lg" placeholder="e.g. Intramurals 2024" required>
+                        <div class="alert alert-warning border-0 mb-4 small">
+                            <i class="fas fa-exclamation-triangle me-2"></i>
+                            <strong>Important:</strong> Archiving will save all current results and <u>automatically reset the active system</u> (deleting current events/results) to prepare for the next season.
+                        </div>
+
+                        <div class="row mb-4">
+                            <div class="col-md-7">
+                                <label class="form-label fw-bold">Event Name</label>
+                                <input type="text" name="season_name" class="form-control form-control-lg" placeholder="e.g. Siglakas" required>
+                            </div>
+                            <div class="col-md-5 mt-3 mt-md-0">
+                                <label class="form-label fw-bold">Academic Year</label>
+                                <select name="season_year" class="form-select form-control-lg" required>
+                                    <?php 
+                                        $currY = date("Y");
+                                        // Generates a 4-year sliding window dynamically
+                                        echo "<option value='".($currY-2)."-".($currY-1)."'>".($currY-2)."-".($currY-1)."</option>";
+                                        echo "<option value='".($currY-1)."-".$currY."'>".($currY-1)."-".$currY."</option>";
+                                        echo "<option value='".$currY."-".($currY+1)."' selected>".$currY."-".($currY+1)."</option>";
+                                        echo "<option value='".($currY+1)."-".($currY+2)."'>".($currY+1)."-".($currY+2)."</option>";
+                                    ?>
+                                </select>
+                            </div>
                         </div>
                         <div class="mb-3">
                             <label class="form-label fw-bold">Admin Password</label>
@@ -1606,173 +836,180 @@ $pending_results_count = $conn->query("SELECT COUNT(*) FROM categories WHERE sta
         </div>
     </div>
 
-    <div class="modal fade" id="confirmResetModal" tabindex="-1">
-        <div class="modal-dialog modal-dialog-centered">
-            <div class="modal-content">
-                <div class="modal-header bg-danger text-white">
-                    <h5 class="modal-title"><i class="fas fa-skull-crossbones me-2"></i>Confirm System Reset</h5>
-                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
-                </div>
-                <form method="POST">
-                    <div class="modal-body">
-                        <div class="alert alert-warning border-0 mb-4">
-                            <i class="fas fa-exclamation-triangle me-2"></i>
-                            <strong>Warning:</strong> This action is irreversible and will delete all events and results permanently.
-                        </div>
-                        <div class="mb-3">
-                            <label class="form-label fw-bold">Confirm Admin Password</label>
-                            <input type="password" name="password_check" class="form-control form-control-lg" placeholder="Enter your password" required>
-                        </div>
-                        <input type="hidden" name="season_name" value="RESET_ACTION">
-                        <input type="hidden" name="action" value="reset_system">
-                    </div>
-                    <div class="modal-footer">
-                        <button type="button" class="btn btn-light" data-bs-dismiss="modal">Cancel</button>
-                        <button type="submit" class="btn btn-danger"><i class="fas fa-check me-2"></i>Yes, Reset System</button>
-                    </div>
-                </form>
-            </div>
-        </div>
-    </div>
-
     <div class="modal fade" id="fullReportModal" tabindex="-1">
         <div class="modal-dialog modal-fullscreen">
-            <div class="modal-content">
-                <div class="modal-header" style="height: 65px; background: #ffffff; border-bottom: 2px solid #e9ecef;">
-                    <h5 class="modal-title text-dark fw-bold" id="reportModalTitle">
-                        <i class="fas fa-history me-2 text-primary"></i>Archive Viewer
-                    </h5>
-                    <div class="ms-auto d-flex gap-2">
-                        <button class="btn btn-light border btn-sm" onclick="printReport()">
-                            <i class="fas fa-print me-1"></i> Print
-                        </button>
-                        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-                    </div>
-                </div>
+            <div class="modal-content custom-report-ui">
                 
-                <div class="modal-body p-0">
-                    <div class="report-layout">
-                        <div class="report-sidebar">
-                            <div class="text-muted small fw-bold text-uppercase mb-3 mt-2">NAVIGATION</div>
-                            <nav class="nav flex-column">
-                                <a class="report-nav-link" href="#sec-medals">
-                                    <i class="fas fa-medal"></i>Medal Tally
-                                </a>
-                                <a class="report-nav-link" href="#sec-charts">
-                                    <i class="fas fa-chart-bar"></i>Visual Analytics
-                                </a>
-                                <a class="report-nav-link" href="#sec-events">
-                                    <i class="fas fa-calendar-check"></i>Event Results
-                                </a>
-                                <a class="report-nav-link" href="#sec-teams">
-                                    <i class="fas fa-users"></i>Teams
-                                </a>
-                                <a class="report-nav-link" href="#sec-officials">
-                                    <i class="fas fa-user-tie"></i>Officials
-                                </a>
-                            </nav>
+                <button type="button" class="btn-close position-absolute top-0 end-0 m-4" data-bs-dismiss="modal" style="z-index: 1060; background-color: white; padding: 10px; border-radius: 50%; opacity: 0.8;"></button>
+
+                <div class="rep-container">
+                    <div class="rep-header">
+                        
+                        <div class="rep-header-brand">
+                            <div class="rep-brand-icon" style="background: transparent; padding: 0;">
+                                <img src="images/PIT.png" alt="PIT Logo" style="width: 50px; height: 50px; object-fit: contain;"> 
+                            </div>
+                            <div>
+                                <div class="rep-brand-title">Siglakas Result Reports</div>
+                                <div class="rep-brand-sub">Official Reporting Dashboard</div>
+                            </div>
+                        </div>
+
+                        <div class="rep-header-actions">
+                            <button class="rep-btn rep-btn-primary" onclick="printReport()">
+                                <i class="fas fa-print me-1"></i> Print Report 
+                            </button>
                         </div>
                         
-                        <div class="report-content">
-                            
-                            <div id="sec-medals" class="report-section">
-                                <div class="report-section-title"><i class="fas fa-medal"></i> Final Medal Tally</div>
-                                <div class="table-responsive bg-white rounded shadow-sm border">
-                                    <table class="table table-hover align-middle mb-0" id="tableMedals">
-                                        <thead class="table-light">
-                                            <tr>
-                                                <th class="text-center" style="width: 80px;">Rank</th>
-                                                <th>College / Team</th>
-                                                <th class="text-center">🥇 Gold</th>
-                                                <th class="text-center">🥈 Silver</th>
-                                                <th class="text-center">🥉 Bronze</th>
-                                                <th class="text-center fw-bold">Total</th>
-                                            </tr>
-                                        </thead>
-                                        <tbody></tbody>
-                                    </table>
-                                </div>
-                            </div>
+                    </div>
 
-                            <div id="sec-charts" class="report-section">
-                                <div class="report-section-title"><i class="fas fa-chart-pie"></i> Visual Reports</div>
-                                <div class="row g-4">
-                                    <div class="col-lg-6">
-                                        <div class="card h-100">
-                                            <div class="card-header fw-bold text-center">Medal Distribution</div>
-                                            <div class="card-body">
-                                                <div class="chart-container">
-                                                    <canvas id="archiveBarChart"></canvas>
-                                                </div>
-                                            </div>
-                                        </div>
-                                    </div>
-                                    <div class="col-lg-6">
-                                        <div class="card h-100">
-                                            <div class="card-header fw-bold text-center">Sport Event Distribution</div>
-                                            <div class="card-body d-flex align-items-center justify-content-center">
-                                                <div class="chart-container" style="width: 100%;">
-                                                    <canvas id="archivePieChart"></canvas>
-                                                </div>
-                                            </div>
-                                        </div>
-                                    </div>
-                                </div>
+                    <div class="rep-identity">
+                        <div>
+                            <div class="rep-title" id="report-season-name">Loading Report...</div>
+                            <div class="rep-meta">
+                                <span><i class="fas fa-calendar-alt"></i> <span id="report-date">...</span></span>
+                                <span><i class="fas fa-map-marker-alt"></i> Palompon Institute of Technology</span>
                             </div>
-
-                            <div id="sec-events" class="report-section">
-                                <div class="report-section-title"><i class="fas fa-calendar-day"></i> Event Results</div>
-                                <div class="table-responsive bg-white rounded shadow-sm border">
-                                    <table class="table table-hover align-middle mb-0" id="tableEvents">
-                                        <thead class="table-light">
-                                            <tr>
-                                                <th style="width: 30%;">Event Details</th>
-                                                <th style="width: 20%;">Gold</th>
-                                                <th style="width: 20%;">Silver</th>
-                                                <th style="width: 20%;">Bronze</th>
-                                            </tr>
-                                        </thead>
-                                        <tbody id="eventsTableBody"></tbody>
-                                    </table>
-                                </div>
-                            </div>
-
-                            <div id="sec-teams" class="report-section">
-                                <div class="report-section-title"><i class="fas fa-users"></i> Participating Teams</div>
-                                <div class="table-responsive bg-white rounded shadow-sm border">
-                                    <table class="table table-hover align-middle mb-0" id="tableTeams">
-                                        <thead class="table-light">
-                                            <tr>
-                                                <th style="width: 80px;">Logo</th>
-                                                <th>Team Name</th>
-                                                <th>Code</th>
-                                                <th>Manager</th>
-                                                <th>Slogan</th>
-                                            </tr>
-                                        </thead>
-                                        <tbody id="teamsTableBody"></tbody>
-                                    </table>
-                                </div>
-                            </div>
-
-                            <div id="sec-officials" class="report-section">
-                                <div class="report-section-title"><i class="fas fa-user-tie"></i> Tournament Officials</div>
-                                <div class="table-responsive bg-white rounded shadow-sm border">
-                                    <table class="table table-hover align-middle mb-0" id="tableOfficials">
-                                        <thead class="table-light">
-                                            <tr>
-                                                <th>Name</th>
-                                                <th>Role</th>
-                                                <th>Email</th>
-                                            </tr>
-                                        </thead>
-                                        <tbody id="officialsTableBody"></tbody>
-                                    </table>
-                                </div>
-                            </div>
-
+                        </div>
+                        <div class="rep-id-badge">
+                            <div class="rep-id-label">Report ID</div>
+                            <div class="rep-id-value" id="report-id">TRN-...</div>
                         </div>
                     </div>
+
+                    <div class="rep-metrics-grid">
+        
+                        <div class="rep-metric-card">
+                            <div class="rep-metric-icon"><i class="fas fa-users" style="font-size: 28px;"></i></div>
+                            <div>
+                                <div class="rep-metric-label">Total Teams</div>
+                                <div class="rep-metric-value" id="stat-total-teams">0</div>
+                            </div>
+                        </div>
+                        
+                        <div class="rep-metric-card">
+                            <div class="rep-metric-icon"><i class="fas fa-calendar-check" style="font-size: 28px;"></i></div>
+                            <div>
+                                <div class="rep-metric-label">Total Events</div>
+                                <div class="rep-metric-value" id="stat-total-events">0</div>
+                            </div>
+                        </div>
+                        
+                        <div class="rep-metric-card">
+                            <div class="rep-metric-icon"><i class="fas fa-award" style="font-size: 28px;"></i></div>
+                            <div>
+                                <div class="rep-metric-label">Medals Awarded</div>
+                                <div class="rep-metric-value" id="stat-total-medals">0</div>
+                            </div>
+                        </div>
+                        
+                    </div>
+
+                    <div class="rep-main-grid">
+
+                        <div class="rep-left-col">
+                            
+                            <div class="rep-card">
+                                <div class="rep-card-header">
+                                    <div class="rep-card-title">Final Medal Tally</div>
+                                </div>
+                                <div class="rep-table-wrap">
+                                    <table id="tableMedals">
+                                        <thead>
+                                            <tr>
+                                                <th class="center" style="width: 60px;">Rank</th>
+                                                <th>College / Team</th>
+                                                <th class="center">Gold</th>
+                                                <th class="center">Silver</th>
+                                                <th class="center">Bronze</th>
+                                                <th class="right">Total</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            </tbody>
+                                    </table>
+                                </div>
+                            </div>
+
+                            <div class="rep-card">
+                                <div class="rep-card-header">
+                                    <div class="rep-card-title">Event Results</div>
+                                </div>
+                                <div class="rep-card-body">
+                                    <div class="rep-events-list" id="eventsContainer">
+                                        </div>
+                                </div>
+                            </div>
+                            
+                            <div class="rep-card">
+                                <div class="rep-card-header">
+                                    <div class="rep-card-title">Visual Analytics</div>
+                                </div>
+                                <div class="rep-card-body" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 2rem;">
+                                    
+                                    <div>
+                                        <div class="rep-section-heading" style="text-align:center;">Medal Distribution</div>
+                                        <div class="chart-container" style="position: relative; height: 350px; width: 100%;">
+                                            <canvas id="archiveBarChart"></canvas>
+                                        </div>
+                                    </div>
+
+                                    <div>
+                                        <div class="rep-section-heading" style="text-align:center;">Event Distribution</div>
+                                        <div class="chart-container" style="position: relative; height: 350px; width: 100%;">
+                                            <canvas id="archivePieChart"></canvas>
+                                        </div>
+                                    </div>
+
+                                </div>
+                            </div>
+
+                        </div> <div class="rep-right-col">
+                            
+                            <div class="rep-card">
+                                <div class="rep-card-header">
+                                    <div class="rep-card-title">Participating Teams</div>
+                                </div>
+                                <div class="rep-card-body">
+                                    <div class="rep-team-tags" id="teamsContainer">
+                                        </div>
+                                </div>
+                            </div>
+
+                            <div class="rep-card">
+                                <div class="rep-card-header">
+                                    <div class="rep-card-title">Tournament Officials</div>
+                                </div>
+                                <div class="rep-officials-list" id="officialsContainer">
+                                    </div>
+                            </div>
+
+                        </div> 
+                    </div>
+
+                        
+
+                           
+
+                    <div class="rep-footer">
+                        <div class="rep-footer-copy">
+                            <p>© <?php echo date('Y'); ?> PIT Sports Tallying System.</p>
+                            <p>This report was automatically generated and is considered an official record.</p>
+                        </div>
+                        <div class="rep-footer-right">
+                            <div>
+                                <div class="rep-footer-block-title">Confidentiality</div>
+                                <p>Internal documentation only</p>
+                            </div>
+                            <div>
+                                <div class="rep-footer-block-title">Verification</div>
+                                <p class="rep-footer-verified">
+                                    <span class="material-symbols-outlined">verified</span> Digital Signature Verified
+                                </p>
+                            </div>
+                        </div>
+                    </div>
+
                 </div>
             </div>
         </div>
@@ -1820,6 +1057,7 @@ $pending_results_count = $conn->query("SELECT COUNT(*) FROM categories WHERE sta
     <script>
         document.getElementById('mobileToggle').addEventListener('click', function() {
             document.getElementById('sidebar').classList.toggle('show');
+            
         });
 
         // Sidebar Footer Fix
@@ -1840,12 +1078,10 @@ $pending_results_count = $conn->query("SELECT COUNT(*) FROM categories WHERE sta
             window.addEventListener('resize', adjustSidebarHeight);
             setTimeout(adjustSidebarHeight, 100);
         }
-
         // --- PRINT LOGIC (FIXED) ---
         function printReport() {
-            const officialsBody = document.getElementById('officialsTableBody');
+            const officialsBody = document.getElementById('officialsContainer'); // Updated to your new container ID
             
-            // Wait for data load
             if (!officialsBody || officialsBody.children.length === 0 || officialsBody.innerHTML.includes('Loading')) {
                 setTimeout(() => { window.print(); }, 500); 
             } else {
@@ -1854,6 +1090,8 @@ $pending_results_count = $conn->query("SELECT COUNT(*) FROM categories WHERE sta
         }
         window.printReport = printReport;
 
+
+       
         // --- ARCHIVE VIEWER LOGIC ---
         document.addEventListener('DOMContentLoaded', function() {
             const viewBtns = document.querySelectorAll('.view-archive-btn');
@@ -1868,10 +1106,19 @@ $pending_results_count = $conn->query("SELECT COUNT(*) FROM categories WHERE sta
                     const archiveId = this.dataset.id;
                     const season = this.dataset.season;
                     
-                    document.getElementById('reportModalTitle').innerHTML = `<span class="spinner-border spinner-border-sm me-2"></span> Loading ${season}...`;
+                    // 1. Use the new ID for the title
+                    document.getElementById('report-season-name').innerHTML = `<span class="spinner-border spinner-border-sm me-2"></span> Loading ${season}...`;
                     
-                    // Clear previous data
-                    document.getElementById('officialsTableBody').innerHTML = '';
+                    // 2. Clear previous data using the NEW container IDs
+                    const oBody = document.getElementById('officialsContainer');
+                    const eBody = document.getElementById('eventsContainer');
+                    const mBody = document.querySelector('#tableMedals tbody');
+                    const tBody = document.getElementById('teamsContainer');
+                    
+                    if(oBody) oBody.innerHTML = '';
+                    if(eBody) eBody.innerHTML = '';
+                    if(mBody) mBody.innerHTML = '';
+                    if(tBody) tBody.innerHTML = '';
                     
                     modal.show();
                     
@@ -1879,16 +1126,8 @@ $pending_results_count = $conn->query("SELECT COUNT(*) FROM categories WHERE sta
                         .then(response => response.json())
                         .then(data => {
                             if (data.success) {
-                            const archiveDate = new Date(data.archived_at).toLocaleDateString('en-US', {year: 'numeric', month: 'long', day: 'numeric'});
-                            document.getElementById('reportModalTitle').innerHTML = `
-                                <div class="d-flex align-items-center">
-                                    <i class="fas fa-file-alt me-2 text-primary"></i>
-                                    <span class="fw-bold">${data.season_name}</span>
-                                    <span class="badge bg-light text-dark border ms-3" style="font-size: 0.7rem; font-weight: 500;">
-                                        ${archiveDate}
-                                    </span>
-                                </div>`;
-                            populateModal(data);
+                                // 3. The new populateModal function handles all the title formatting now!
+                                populateModal(data);
                             } else {
                                 alert('Error: ' + (data.message || 'Unknown error'));
                                 modal.hide();
@@ -1905,138 +1144,135 @@ $pending_results_count = $conn->query("SELECT COUNT(*) FROM categories WHERE sta
             function populateModal(data) {
                 const pathPrefix = '';
                 
-                // 1. Medals (Updated: Lexicographical Sort - Gold > Silver > Bronze)
+                // --- Top Headers & Stats ---
+                document.getElementById('report-season-name').textContent = data.season_name;
+                document.getElementById('report-date').textContent = new Date(data.archived_at).toLocaleDateString('en-US', {year: 'numeric', month: 'long', day: 'numeric'});
+                
+                // Format ID
+                let rawDate = data.archived_at || '';
+                document.getElementById('report-id').textContent = 'TRN-' + rawDate.replace(/[-:\s]/g, '').substring(0, 14);
+                
+                // Stats
+                let totalMedalsCount = 0;
+                if (data.medals) data.medals.forEach(m => totalMedalsCount += parseInt(m.total || 0));
+                
+                document.getElementById('stat-total-teams').textContent = data.teams ? data.teams.length : 0;
+                document.getElementById('stat-total-events').textContent = data.stats.total_events || 0;
+                document.getElementById('stat-total-medals').textContent = totalMedalsCount;
+                
+                // --- 1. Medals Data ---
                 const medalBody = document.querySelector('#tableMedals tbody');
                 if (data.medals && data.medals.length > 0) {
-                    // Apply Sort: Gold -> Silver -> Bronze
                     data.medals.sort((a, b) => {
                         const goldDiff = parseInt(b.gold) - parseInt(a.gold);
                         if (goldDiff !== 0) return goldDiff;
-                        
                         const silverDiff = parseInt(b.silver) - parseInt(a.silver);
                         if (silverDiff !== 0) return silverDiff;
-                        
                         return parseInt(b.bronze) - parseInt(a.bronze);
                     });
 
                     medalBody.innerHTML = data.medals.map((m, i) => {
-                        let rawLogo = m.logo_url || 'images/default_avatar.png';
-                        rawLogo = rawLogo.replace('../', '');
-                        let logoSrc = pathPrefix + rawLogo;
-                        
-                        // Top 3 Styling
-                        let rankDisplay = `#${i+1}`;
-                        if (i === 0) rankDisplay = '<i class="fas fa-trophy text-warning"></i>';
-                        if (i === 1) rankDisplay = '<i class="fas fa-medal text-secondary"></i>';
-                        if (i === 2) rankDisplay = '<i class="fas fa-medal" style="color: #cd7f32;"></i>';
-
+                        let logoSrc = pathPrefix + (m.logo_url || 'images/default_avatar.png').replace('../', '');
+                        let rankDisplay = String(i + 1).padStart(2, '0');
                         return `<tr>
-                            <td class="text-center fw-bold fs-5">${rankDisplay}</td>
-                            <td>
-                                <div class="d-flex align-items-center">
-                                    <img src="${logoSrc}" style="width: 40px; height: 40px; object-fit: cover; border-radius: 50%; margin-right: 15px; border: 1px solid #dee2e6;" onerror="this.src='${pathPrefix}images/default_avatar.png'">
-                                    <span class="fw-bold text-dark">${m.college_name}</span>
-                                </div>
-                            </td>
-                            <td class="text-center fw-bold text-warning fs-5">${m.gold}</td>
-                            <td class="text-center fw-bold text-secondary fs-5">${m.silver}</td>
-                            <td class="text-center fw-bold fs-5" style="color: #cd7f32;">${m.bronze}</td>
-                            <td class="text-center fw-bold text-primary fs-5">${m.total}</td>
+                            <td class="rank center">${rankDisplay}</td>
+                            <td class="name"><img src="${logoSrc}" style="width:24px;height:24px;border-radius:50%;object-fit:cover;"> ${m.college_name}</td>
+                            <td class="center"><span class="rep-badge badge-gold">${m.gold}</span></td>
+                            <td class="center"><span class="rep-badge badge-silver">${m.silver}</span></td>
+                            <td class="center"><span class="rep-badge badge-bronze">${m.bronze}</span></td>
+                            <td class="right">${m.total}</td>
                         </tr>`;
                     }).join('');
                 } else {
-                    medalBody.innerHTML = '<tr><td colspan="6" class="text-center text-muted py-5">No medal data available.</td></tr>';
+                    medalBody.innerHTML = '<tr><td colspan="6" class="center">No medal data available.</td></tr>';
                 }
 
-                // 2. Events (UPDATED: Shows College Name + Medal Count)
-                const eventsBody = document.getElementById('eventsTableBody');
+                // --- 2. Events Data ---
+                const eventsContainer = document.getElementById('eventsContainer');
                 if (data.events && data.events.length > 0) {
-                    eventsBody.innerHTML = data.events.map(ev => {
-                        // Helper to format "College (Count)"
-                        const fmt = (name, count) => {
-                            if (!name) return '-';
-                            return count > 0 ? `${name} <span class="text-dark">(${count})</span>` : name;
-                        };
-
+                    eventsContainer.innerHTML = data.events.map(ev => {
                         return `
-                        <tr>
-                            <td>
-                                <div class="fw-bold text-dark">${ev.game_name}</div>
-                                <div class="small text-primary">${ev.event_name}</div>
-                                <div class="small text-muted fst-italic">${ev.category_name || ''}</div>
-                            </td>
-                            <td class="text-warning fw-bold small">${fmt(ev.gold_winner, ev.gold_count)}</td>
-                            <td class="text-secondary fw-bold small">${fmt(ev.silver_winner, ev.silver_count)}</td>
-                            <td class="text-muted fw-bold small" style="color:#cd7f32 !important;">${fmt(ev.bronze_winner, ev.bronze_count)}</td>
-                        </tr>`;
+                        <div class="rep-event-row">
+                            <div>
+                                <div class="rep-event-name">${ev.game_name}</div>
+                                <div class="rep-event-sub">${ev.event_name} ${ev.category_name ? `- ${ev.category_name}` : ''}</div>
+                            </div>
+                            <div class="rep-event-medals">
+                                <div class="rep-medal-cell gold">
+                                    <div class="rep-medal-label">Gold</div>
+                                    <div class="rep-medal-team" title="${ev.gold_winner}">${ev.gold_winner || '-'}</div>
+                                </div>
+                                <div class="rep-medal-cell silver">
+                                    <div class="rep-medal-label">Silver</div>
+                                    <div class="rep-medal-team" title="${ev.silver_winner}">${ev.silver_winner || '-'}</div>
+                                </div>
+                                <div class="rep-medal-cell bronze">
+                                    <div class="rep-medal-label">Bronze</div>
+                                    <div class="rep-medal-team" title="${ev.bronze_winner}">${ev.bronze_winner || '-'}</div>
+                                </div>
+                            </div>
+                        </div>`;
                     }).join('');
-                } else { 
-                    eventsBody.innerHTML = '<tr><td colspan="4" class="text-center text-muted py-5">No events found.</td></tr>'; 
+                } else {
+                    eventsContainer.innerHTML = '<p style="text-align:center;color:#64748b;">No events found.</p>';
                 }
 
-               // 3. Teams (Updated: Removed box around Code)
-                const teamsBody = document.getElementById('teamsTableBody');
+                // --- 3. Teams Data ---
+                const teamsContainer = document.getElementById('teamsContainer');
                 if (data.teams && data.teams.length > 0) {
-                    teamsBody.innerHTML = data.teams.map(t => {
-                        let rawLogo = t.logo_url || 'images/default_avatar.png'; 
-                        rawLogo = rawLogo.replace('../', ''); 
-                        let logoSrc = pathPrefix + rawLogo;
-                        
-                        return `<tr>
-                            <td>
-                                <img src="${logoSrc}" style="width: 50px; height: 50px; border-radius: 50%; object-fit: cover; border: 1px solid #dee2e6;" onerror="this.src='${pathPrefix}images/default_avatar.png'">
-                            </td>
-                            <td><span class="fw-bold text-dark">${t.college_name}</span></td>
-                            
-                            <td><span class="fw-bold text-dark">${t.college_code}</span></td>
-                            
-                            <td>${t.team_manager || '<span class="text-muted">—</span>'}</td>
-                            <td class="text-muted fst-italic small">${t.slogan || ''}</td>
-                        </tr>`;
+                    teamsContainer.innerHTML = data.teams.map(t => {
+                        let logoSrc = pathPrefix + (t.logo_url || 'images/default_avatar.png').replace('../', '');
+                        return `
+                        <div class="rep-team-tag">
+                            <img src="${logoSrc}" class="rep-team-logo" onerror="this.src='images/default_avatar.png'">
+                            <span class="rep-team-name">${t.college_name}</span>
+                        </div>`;
                     }).join('');
-                } else { 
-                    teamsBody.innerHTML = '<tr><td colspan="5" class="text-center text-muted py-5">No teams recorded.</td></tr>'; 
+                } else {
+                    teamsContainer.innerHTML = '<p style="color:#64748b;font-size:0.8rem;">No teams recorded.</p>';
                 }
 
-                // 4. Officials (Updated: Text Only for Role)
-                const officialsBody = document.getElementById('officialsTableBody');
+                // --- 4. Officials Data ---
+                const officialsContainer = document.getElementById('officialsContainer');
                 if (data.officials && data.officials.length > 0) {
-                    // Sort: Sports Director first
                     data.officials.sort((a, b) => {
                         if (a.role === 'Sports Director' && b.role !== 'Sports Director') return -1;
                         if (a.role !== 'Sports Director' && b.role === 'Sports Director') return 1;
                         return 0; 
                     });
                     
-                    officialsBody.innerHTML = data.officials.map(o => {
-                        // REMOVED: const badgeClass logic
+                    officialsContainer.innerHTML = data.officials.map(o => {
+                        // UPDATED: Use FontAwesome Profile Icons instead of Material Symbols
+                        let icon = o.role === 'Sports Director' ? 'fas fa-user-shield' : 'fas fa-user';
                         
                         return `
-                        <tr>
-                            <td><span class="fw-bold text-dark">${o.full_name}</span></td>
-                            <td class="text-dark">${o.role}</td>
-                            <td><span class="text-muted small">${o.email}</span></td>
-                        </tr>`;
+                        <div class="rep-official-row">
+                            <div class="rep-official-avatar">
+                                <i class="${icon}"></i>
+                            </div>
+                            <div>
+                                <div class="rep-official-name">${o.full_name}</div>
+                                <div class="rep-official-role">${o.role}</div>
+                                <div class="rep-official-email">${o.email}</div>
+                            </div>
+                        </div>`;
                     }).join('');
-                } else { 
-                    officialsBody.innerHTML = '<tr><td colspan="3" class="text-center text-muted py-5">No officials data.</td></tr>'; 
+                } else {
+                    officialsContainer.innerHTML = '<p style="text-align:center;color:#64748b;padding:1rem;">No officials data.</p>';
                 }
 
-                // 5. Visual Reports (CHARTS)
+                // --- 5. Visual Reports (CHARTS) ---
                 if (data.stats && data.stats.charts) {
-                    renderCharts(data.stats.charts);
+                    setTimeout(() => { renderCharts(data.stats.charts); }, 150);
                 }
-                
-                // 6. Initialize Smooth Navigation (NEW)
-                initializeReportNavigation();
             }
 
             function renderCharts(chartData) {
-                // Destroy old charts if exist to prevent overlay
-                if (barChartInstance) barChartInstance.destroy();
-                if (pieChartInstance) pieChartInstance.destroy();
+                // Destroy old charts to prevent overlay glitches
+                if (barChartInstance) { barChartInstance.destroy(); barChartInstance = null; }
+                if (pieChartInstance) { pieChartInstance.destroy(); pieChartInstance = null; }
 
-                // Bar Chart
+                // OLD CLASSIC BAR CHART
                 if (chartData.bar && document.getElementById('archiveBarChart')) {
                     const ctxBar = document.getElementById('archiveBarChart').getContext('2d');
                     barChartInstance = new Chart(ctxBar, {
@@ -2049,11 +1285,16 @@ $pending_results_count = $conn->query("SELECT COUNT(*) FROM categories WHERE sta
                                 { label: 'Bronze', data: chartData.bar.bronze, backgroundColor: '#CD7F32', borderColor: '#a05a2c', borderWidth: 1 }
                             ]
                         },
-                        options: { responsive: true, maintainAspectRatio: false }
+                        options: {
+                            animation: false, 
+                            responsive: true, 
+                            maintainAspectRatio: false 
+                            // Removed the rules that hid the legend and grid lines so it looks like the old one!
+                        }
                     });
                 }
 
-                // Pie Chart
+                // OLD CLASSIC PIE/DOUGHNUT CHART
                 if (chartData.pie && document.getElementById('archivePieChart')) {
                     const ctxPie = document.getElementById('archivePieChart').getContext('2d');
                     pieChartInstance = new Chart(ctxPie, {
@@ -2067,6 +1308,7 @@ $pending_results_count = $conn->query("SELECT COUNT(*) FROM categories WHERE sta
                             }]
                         },
                         options: { 
+                            animation: false,
                             responsive: true, 
                             maintainAspectRatio: false,
                             plugins: {
@@ -2177,6 +1419,37 @@ $pending_results_count = $conn->query("SELECT COUNT(*) FROM categories WHERE sta
             // Run Badges
             updateSidebarBadges();
             setInterval(updateSidebarBadges, 5000);
+
+            // ==========================================
+            // NEW: LIVE TABLE SEARCH FILTER
+            // ==========================================
+            const searchInput = document.getElementById('archiveSearch');
+            if (searchInput) {
+                searchInput.addEventListener('keyup', function() {
+                    const filter = this.value.toLowerCase();
+                    const tableRows = document.querySelectorAll('.table-card tbody tr');
+                    let visibleCount = 0;
+
+                    tableRows.forEach(row => {
+                        // We are searching by the Season Name and the Date Archived
+                        const seasonName = row.querySelector('.season-name').textContent.toLowerCase();
+                        const dateArchived = row.querySelector('.date-archived').textContent.toLowerCase();
+
+                        if (seasonName.includes(filter) || dateArchived.includes(filter)) {
+                            row.style.display = ''; // Show row
+                            visibleCount++;
+                        } else {
+                            row.style.display = 'none'; // Hide row
+                        }
+                    });
+
+                    // Update the "Showing X archived seasons" footer text dynamically
+                    const footerText = document.querySelector('.table-footer-text strong');
+                    if(footerText) {
+                        footerText.textContent = visibleCount;
+                    }
+                });
+            }
         
         });
 

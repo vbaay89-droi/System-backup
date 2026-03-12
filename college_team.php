@@ -921,7 +921,7 @@ function truncate_text($text, $length = 100, $suffix = '...') {
 
                                             data-college-id="<?= $college['college_id'] ?>">
 
-                                        <i class="fas fa-info-circle me-1"></i> Full Details
+                                        </i> Full Details
 
                                     </button>
                                 </div>
@@ -1438,7 +1438,7 @@ function truncate_text($text, $length = 100, $suffix = '...') {
 
                             <div class="mt-auto d-grid gap-2">
                                 <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#detailsModal" data-college-id="${college.college_id}">
-                                    <i class="fas fa-info-circle me-1"></i> Full Details
+                                    </i> Full Details
                                 </button>
                             </div>
                         </div>
