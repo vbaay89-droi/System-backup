@@ -1,10 +1,9 @@
 <?php
 session_start();
 require_once 'config.php'; // Your DB connection
- // Your logger function
 
-// 1. SECURITY & ACCESS CONTROL
-if (!isset($_SESSION['logged_in']) || $_SESSION['logged_in'] !== true || !isset($_SESSION['role']) || $_SESSION['role'] !== 'Event Manager') {
+// 1. SECURITY & ACCESS CONTROL (FIXED to allow both roles!)
+if (!isset($_SESSION['logged_in']) || $_SESSION['logged_in'] !== true || !isset($_SESSION['role']) || ($_SESSION['role'] !== 'Tournament Manager' && $_SESSION['role'] !== 'Sports Director')) {
     header('Location: login.php');
     exit();
 }
@@ -20,13 +19,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $category_id = (int)$_POST['category_id'];
         $new_status = $_POST['new_status'];
         
-        // --- Security Check ---
-        // Verify this manager is allowed to edit this category and get current status
+        // --- Security Check & Fetch Data ---
+        // NEW: Added c.division_name to the SELECT query
         $stmt_check = $conn->prepare("
-            SELECT c.status, c.category_name 
+            SELECT c.status, c.category_name, c.division_name 
             FROM categories c
             JOIN game_events ge ON c.event_id = ge.event_id
-            JOIN event_manager_assignments ema ON ge.event_id = ema.event_id
+            JOIN tournament_manager_assignments ema ON ge.event_id = ema.event_id
             WHERE c.category_id = ? AND ema.user_id = ?
         ");
         $stmt_check->bind_param("ii", $category_id, $user_id);
@@ -39,7 +38,24 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         
         $category = $result->fetch_assoc();
         $current_status = $category['status'];
-        $category_name = $category['category_name'];
+        $cat_name = trim($category['category_name'] ?? '');
+        $div_name = trim($category['division_name'] ?? '');
+        
+        // --- NEW: Format the Display Name elegantly ---
+        $display_name = "";
+        
+        // Ignore internal placeholder names
+        $is_main_event = ($cat_name === 'Main Event' || $cat_name === 'Main Competition' || strpos($cat_name, 'No Category') !== false);
+        
+        if (!$is_main_event && !empty($cat_name)) {
+            $display_name .= $cat_name;
+        }
+        if (!empty($div_name)) {
+            $display_name .= (!empty($display_name) ? ' - ' : '') . $div_name;
+        }
+        if (empty($display_name)) {
+            $display_name = "Main Event"; // Fallback if both are empty/placeholders
+        }
         
         // --- Logic to handle different transitions ---
         $allowed_transition = false;
@@ -47,12 +63,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         // Transition 1: Upcoming -> Ongoing
         if ($new_status == 'Ongoing' && $current_status == 'Upcoming') {
             $allowed_transition = true;
-            $_SESSION['alert_message'] = "Event '{$category_name}' has been started.";
+            // Uses the new $display_name
+            $_SESSION['alert_message'] = "Event '{$display_name}' has been started.";
         
         // Transition 2: Ongoing -> Completed (Pending Results)
         } elseif ($new_status == 'Completed (Pending Results)' && $current_status == 'Ongoing') {
             $allowed_transition = true;
-            $_SESSION['alert_message'] = "Event '{$category_name}' marked as completed. You can now submit results.";
+            // Uses the new $display_name
+            $_SESSION['alert_message'] = "Event '{$display_name}' marked as completed. You can now submit results.";
         
         } else {
             throw new Exception("Invalid status transition requested.");
@@ -66,8 +84,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             
             // Log this action
             try {
-                // Assuming you have a log_activity function
-                log_activity($conn, $user_id, 'UPDATED_CATEGORY', $category_id, 'category', $current_status, $new_status);
+                if(function_exists('log_activity')) {
+                    log_activity($conn, $user_id, 'UPDATED_CATEGORY', $category_id, 'category', $current_status, $new_status);
+                }
             } catch (Exception $log_e) { 
                 error_log("Failed to log status update: " . $log_e->getMessage()); 
             }
@@ -75,7 +94,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $_SESSION['alert_type'] = 'success';
             
         } else {
-            // This should be caught by the logic above, but as a fallback.
             $_SESSION['alert_message'] = "Invalid action.";
             $_SESSION['alert_type'] = 'danger';
         }
