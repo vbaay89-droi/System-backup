@@ -726,6 +726,28 @@ function truncate_text($text, $length = 100, $suffix = '...') {
     .live-badge-wrapper-gold i { font-size: 0.7rem; }
     .live-badge-wrapper-gold span { font-size: 0.55rem !important; }
 }
+
+/* --- NEW PUBLIC MEDAL HISTORY STYLES --- */
+        .public-medal-icon-box {
+            width: 45px; height: 45px;
+            border-radius: 10px;
+            display: flex; align-items: center; justify-content: center;
+            font-size: 1.25rem;
+            flex-shrink: 0;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.1);
+        }
+        .public-gold-icon { background: linear-gradient(135deg, #fef9c3 0%, #fef08a 100%); color: #eab308; border: 1px solid #fef08a;}
+        .public-silver-icon { background: linear-gradient(135deg, #f1f5f9 0%, #e2e8f0 100%); color: #64748b; border: 1px solid #e2e8f0;}
+        .public-bronze-icon { background: linear-gradient(135deg, #ffedd5 0%, #fed7aa 100%); color: #ea580c; border: 1px solid #fed7aa;}
+        
+        .medal-count-pill {
+            background: rgba(0,0,0,0.1);
+            padding: 2px 8px;
+            border-radius: 12px;
+            font-size: 0.8rem;
+            font-weight: 800;
+            margin-left: 8px;
+        }
     </style>
 </head>
 <body>
@@ -736,7 +758,7 @@ function truncate_text($text, $length = 100, $suffix = '...') {
                 <img src="images/PIT.png" alt="Logo" class="me-2 brand-logo" style="height: 50px; width: 48px; object-fit: contain;">
                 <div class="d-flex flex-column lh-sm">
                     <strong class="text-white brand-heading" style="font-size: 1.25rem;">PIT SIGLAKAS MEDAL TALLY</strong>
-                    <small class="text-light brand-subheading" style="font-size: 0.75rem;">Official College Tournament System</small>
+                    <small class="text-light brand-subheading" style="font-size: 0.75rem;">Official College Medal Tally System</small>
                 </div>
             </a>
             <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
@@ -1218,52 +1240,81 @@ function truncate_text($text, $length = 100, $suffix = '...') {
             let html = '';
 
             // --- MEDAL HISTORY TAB ---
+            // --- MEDAL HISTORY TAB (Expert Layout) ---
             if (tabType === 'history') {
                 if (data.length === 0) {
                     html = '<div class="alert alert-info text-center m-3">No medal history recorded yet.</div>';
                 } else {
                     html = `
                         <div class="table-responsive">
-                            <table class="table table-hover align-middle table-sm mb-0">
+                            <table class="table table-hover align-middle mb-0" style="border-collapse: separate; border-spacing: 0 8px;">
                                 <thead class="table-light">
                                     <tr>
-                                        <th class="text-center" style="width: 15%;">Medal</th>
-                                        <th style="width: 20%;">Game</th>
-                                        <th style="width: 25%;">Event</th>
-                                        <th style="width: 25%;">Category</th>
-                                        <th class="text-center" style="width: 15%;">Date</th>
+                                        <th class="ps-4 border-0 text-uppercase text-muted small fw-bold" style="width: 25%;">Result</th>
+                                        <th class="border-0 text-uppercase- text-muted small fw-bold" style="width: 50%; just">Event Details</th>
+                                        <th class="text-center pe-4 border-0 text-uppercase text-muted small fw-bold" style="width: 25%; ">Date</th>
                                     </tr>
                                 </thead>
                                 <tbody>
                     `;
+                    
                     data.forEach(row => {
-                        let badgeClass = 'bg-secondary';
-                        let customStyle = '';
                         let medalType = (row.medal_won || '').toLowerCase();
-
-                        if(medalType === 'gold') badgeClass = 'bg-warning text-dark';
-                        else if(medalType === 'silver') badgeClass = 'bg-secondary text-white';
-                        else if(medalType === 'bronze') {
-                             badgeClass = 'text-white';
-                             customStyle = 'background-color: #cd7f32 !important; border: 1px solid #a05a2c;';
+                        
+                        // Determine Icon Box Style and Text Color
+                        let iconClass = 'public-silver-icon';
+                        let textColor = '#64748b';
+                        
+                        if(medalType === 'gold') {
+                            iconClass = 'public-gold-icon';
+                            textColor = '#d97706';
+                        } else if(medalType === 'bronze') {
+                            iconClass = 'public-bronze-icon';
+                            textColor = '#c2410c';
                         }
 
-                        let categoryText = '<span class="text-muted fst-italic">-</span>';
+                        // Determine the Medal Count to display (Assuming you have this data, otherwise defaults to 1)
+                        // NOTE: You must make sure your fetch API for this tab returns row.medal_count!
+                        let medalCount = row.medal_count || 1; 
+
+                        // Format the sub-category text
+                        let categoryText = '';
                         if (row.category_name && row.category_name !== '.' && row.category_name !== '-') {
                             categoryText = row.category_name;
                         }
+                        
+                        // Create the sub-details string (e.g. "Ball Games • Women's")
+                        let subDetails = [];
+                        if (row.game_name) subDetails.push(row.game_name);
+                        if (categoryText) subDetails.push(categoryText);
+                        let subDetailsHtml = subDetails.length > 0 ? `<small class="text-muted fw-semibold">${subDetails.join(' &bull; ')}</small>` : '';
 
                         html += `
-                            <tr>
-                                <td class="text-center">
-                                    <span class="badge ${badgeClass} w-100 py-2" style="${customStyle}">
-                                        ${row.medal_won}
-                                    </span>
+                            <tr class="bg-white shadow-sm" style="border-radius: 12px; transition: transform 0.2s;">
+                                <td class="ps-4 py-3 rounded-start border-0">
+                                    <div class="d-flex align-items-center">
+                                        <div class="public-medal-icon-box ${iconClass} me-3">
+                                            <i class="fas fa-award"></i>
+                                        </div>
+                                        <div class="d-flex flex-column">
+                                            <span class="fw-bold text-uppercase" style="color: ${textColor}; font-size: 0.9rem; letter-spacing: 0.5px;">
+                                                ${row.medal_won} <span class="medal-count-pill">+${medalCount}</span>
+                                            </span>
+                                            <small class="text-muted" style="font-size: 0.7rem;">MEDAL</small>
+                                        </div>
+                                    </div>
                                 </td>
-                                <td class="fw-bold text-primary">${row.game_name}</td>
-                                <td class="fw-semibold">${row.event_name}</td>
-                                <td class="text-dark">${categoryText}</td>
-                                <td class="text-end small text-muted">${row.date_formatted || '-'}</td>
+                                <td class="py-3 border-0">
+                                    <div class="d-flex flex-column">
+                                        <span class="fw-bold text-dark" style="font-size: 1.1rem;">${row.event_name}</span>
+                                        ${subDetailsHtml}
+                                    </div>
+                                </td>
+                                <td class="text-end pe-4 py-3 rounded-end border-0">
+                                    <div class="d-flex flex-column">
+                                        <span class="text-secondary small fw-bold"><i class="far fa-calendar-check me-1"></i> ${row.date_formatted || 'TBD'}</span>
+                                    </div>
+                                </td>
                             </tr>
                         `;
                     });

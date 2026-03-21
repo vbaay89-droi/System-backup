@@ -284,6 +284,80 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     footer { flex-shrink: 0; width: 100%; background: rgba(26, 26, 26, 0.98); backdrop-filter: blur(20px); position: relative; z-index: 100; }
     footer::before { content: ''; position: absolute; top: 0; left: 0; right: 0; height: 3px; background: linear-gradient(90deg, transparent, var(--primary-green), var(--accent-gold), transparent); }
 
+    /* --- FOOTER STYLES (MATCHING HOME.PHP) --- */
+    .footer-main {
+        flex-shrink: 0;
+        background: linear-gradient(135deg, #1a1a1a 0%, #2d2d2d 100%);
+        color: rgba(255,255,255,0.7);
+        padding: 3rem 0 2rem 0;
+        box-shadow: 0 -4px 20px rgba(0,0,0,0.15);
+        position: relative;
+        z-index: 1;
+    }
+
+    .footer-main .footer-logo-group {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        margin-bottom: 1rem;
+    }
+
+    .footer-main .footer-logo-group img {
+        height: 50px !important;
+        width: 50px !important;
+        object-fit: contain;
+    }
+
+    .footer-main .footer-logo-group h5 {
+        margin: 0;
+        font-size: 1.1rem;
+        font-weight: 700;
+        color: #fff;
+        line-height: 1.2;
+    }
+
+    .footer-main p {
+        font-size: 0.9rem;
+        max-width: 400px;
+    }
+
+    .footer-main h6 {
+        font-family: 'Poppins', sans-serif;
+        color: #fff;
+        font-weight: 600;
+        margin-bottom: 1rem;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+    }
+
+    .footer-main .footer-links {
+        list-style: none;
+        padding: 0;
+    }
+
+    .footer-main .footer-links li {
+        margin-bottom: 0.5rem;
+    }
+
+    .footer-main .footer-links a {
+        text-decoration: none;
+        color: rgba(255,255,255,0.7);
+        transition: var(--transition);
+    }
+
+    .footer-main .footer-links a:hover {
+        color: #fff;
+        padding-left: 5px;
+    }
+
+    .footer-bottom {
+        border-top: 1px solid rgba(255,255,255,0.1);
+        padding-top: 1.5rem;
+        margin-top: 2rem;
+        text-align: center;
+        font-size: 0.85rem;
+    }
+    
     /* Responsive */
     @media (max-width: 991.98px) {
       .main-content { align-items: center; }
@@ -304,7 +378,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             <img src="images/PIT.png" alt="Logo" class="me-2 brand-logo" style="height: 50px; width: 48px; object-fit: contain;">
             <div class="d-flex flex-column lh-sm">
                 <strong class="text-white brand-heading" style="font-size: 1.25rem;">PIT SIGLAKAS MEDAL TALLY</strong>
-                <small class="text-light brand-subheading" style="font-size: 0.75rem;">Official College Tournament System</small>
+                <small class="text-light brand-subheading" style="font-size: 0.75rem;">Official College Medal Tally System</small>
             </div>
         </a>
         <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
@@ -329,7 +403,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         <div class="col-lg-7 brand-section">
           <div class="logo-container">
             <img src="images/PIT.png" alt="PIT Logo" class="main-logo">
-            <img src="images/siglakas_pfpNOBG.png" alt="Siglakas Logo" class="main-logo">
+            <img src="images/COte.png" alt="Siglakas Logo" class="main-logo">
           </div>
           <h1 class="brand-title">
             SmartScore: A Web-Based Scoring and Medal Tally Platform for Siglakas Events
@@ -412,12 +486,43 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     </div>
   </div>
 
-  <footer class="bg-dark text-white py-4">
-    <div class="text-center">
-      <small>&copy; <?= date("Y") ?> PIT SIGLAKAS MEDAL TALLY. All rights reserved.</small><br>
-      <small>Developed by Tsunayoshi Sawada</small>
-    </div>
-  </footer>
+  <footer class="footer-main">
+        <div class="container">
+            <div class="row">
+                <div class="col-lg-5 col-md-12 mb-4 mb-lg-0">
+                    <div class="footer-logo-group">
+                        <img src="images/PIT.png" alt="Logo">
+                        <img src="images/COte.png" alt="Logo">
+                        <h5> PIT SILAKAS MEDAL TALLY</h5>
+                    </div>
+                    <p>The official live medal tallying system for the Palompon Institute of Technology. Bringing you real-time results, event schedules, and team standings.</p>
+                </div>
+                <div class="col-lg-3 col-md-6 mb-4 mb-md-0">
+                    <h6>Quick Links</h6>
+                    <ul class="footer-links">
+                        <li><a href="home.php">Home (Standings)</a></li>
+                        <li><a href="Eventpage.php">Events Schedule</a></li>
+                        <li><a href="college_team.php">Teams & Rosters</a></li>
+                    </ul>
+                </div>
+                <div class="col-lg-4 col-md-6">
+                    <h6>Contact Us</h6>
+                    <div style="color: rgba(255,255,255,0.7); font-size: 0.9rem; line-height: 1.6;">
+                        <p class="mb-1 fw-bold text-white">Palompon Institute of Technology</p>
+                        <p class="mb-2">Evangelista Street, Brgy. Guiwan II,<br>Palompon, Leyte 6538</p>
+                        <p class="mb-0">
+                            <i class="fas fa-phone-alt me-2"></i>(053) 555-9841<br>
+                            <i class="fas fa-envelope me-2"></i>op@pit.edu.ph
+                        </p>
+                    </div>
+                </div>
+            </div>
+            <div class="footer-bottom">
+                <small>&copy; <?php echo date("Y"); ?> PIT SILAKAS MEDAL TALLY. All rights reserved.</small><br>
+                <small>Developed by Jayvee Baybyon</small>
+            </div>
+        </div>
+    </footer>
 
   <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
   

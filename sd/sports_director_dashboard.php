@@ -82,123 +82,104 @@ function formatLogEntry($conn, $log, $current_user_id) {
     // 1. Identify Actor
     $actor = ($log['actor_user_id'] == $current_user_id) ? "<strong>You</strong>" : "<strong>" . htmlspecialchars(getUserNameById($conn, $log['actor_user_id'])) . "</strong>";
     
-    // 2. Decode Context
+    // 2. Decode Context (The Sticky Note)
     $ctx = json_decode($log['log_context'], true) ?? [];
     $action = trim($log['action_type']);
-    $related_id = (int)$log['related_id']; // We use this to look up missing info
+    $related_id = (int)$log['related_id']; 
+
+    // --- SMART NAME & TYPE LOGIC ---
+    $parent  = trim($ctx['parent_event_name'] ?? $ctx['event_name'] ?? '');
+    $raw_cat = trim($ctx['category_name'] ?? $ctx['new_category_name'] ?? $ctx['deleted_category_name'] ?? '');
+    $raw_div = trim($ctx['division_name'] ?? '');
     
+    $is_main = ($raw_cat === 'Main Event' || $raw_cat === 'Main Competition' || empty($raw_cat));
+    $has_cat = !$is_main && !empty($raw_cat);
+    $has_div = !empty($raw_div);
+
+    // Determine Item Type
+    if ($has_cat && $has_div) { $item_type = "category and division"; }
+    elseif ($has_cat) { $item_type = "category"; }
+    elseif ($has_div) { $item_type = "division"; }
+    else { $item_type = "event"; }
+
+    // Build the Smart Name
+    $parts = [];
+    if ($has_cat) $parts[] = $raw_cat;
+    if ($has_div) $parts[] = $raw_div;
+    $sub_details = implode(' - ', $parts);
+
+    if (!empty($parent)) {
+        $smart_name = empty($sub_details) ? $parent : "$parent ($sub_details)";
+    } else {
+        $smart_name = !empty($sub_details) ? $sub_details : "an event";
+    }
+    $smart_name = htmlspecialchars($smart_name);
+
     // Default values
     $msg = "Action performed.";
     $icon = "fas fa-info-circle text-muted";
 
     switch ($action) {
-        // --- Game/Event Actions ---
-        case 'CREATED_GAME': 
-            $msg = "$actor created a new game: <strong>" . htmlspecialchars($ctx['game_name']??'') . "</strong>."; 
-            $icon = "fas fa-plus-circle text-success"; 
-            break;
-        case 'CREATED_EVENT': 
-            $msg = "$actor created the event <strong>" . htmlspecialchars($ctx['event_name']??'') . "</strong>."; 
-            $icon = "fas fa-calendar-plus text-success"; 
-            break;
-        
-        // --- Team Actions ---
-        case 'CREATED_COLLEGE': 
-            $msg = "$actor added a new team: <strong>" . htmlspecialchars($ctx['college_name']??'') . "</strong>."; 
-            $icon = "fas fa-users text-info"; 
-            break;
-        case 'UPDATED_COLLEGE': 
-            $msg = "$actor updated team info for <strong>" . htmlspecialchars($ctx['college_name']??'') . "</strong>."; 
-            $icon = "fas fa-pen text-info"; 
-            break;
-        
-        // --- Result Actions ---
-        case 'APPROVED_RESULT': 
-            // Fetch Event Name if missing
-            $event_name = $ctx['event_name'] ?? 'Unknown Event';
-            // Optional: DB Lookup similar to SUBMITTED_RESULTS can be added here if needed
-            $msg = "$actor approved the results for <strong>" . htmlspecialchars($event_name) . "</strong>."; 
-            $icon = "fas fa-check-double text-success"; 
-            break;
-            
-        case 'REVOKED_RESULT': 
-            $msg = "$actor <span class='text-danger fw-bold'>revoked</span> the results for <strong>" . htmlspecialchars($ctx['event_name']??'') . "</strong>."; 
-            $icon = "fas fa-undo text-danger"; 
-            break;
-            
-        case 'REJECTED_RESULT': 
-            $msg = "$actor rejected the results for <strong>" . htmlspecialchars($ctx['event_name']??'') . "</strong>."; 
-            $icon = "fas fa-times-circle text-warning"; 
-            break;
-
-        // --- EVENT MANAGER ACTIONS (UPDATED SECTION) ---
-        // --- EVENT MANAGER ACTIONS (UPDATED SECTION) ---
-        case 'SUBMITTED_RESULTS':
-            // 1. Try to get names from the log context first
-            $cat_name = $ctx['category_name'] ?? null;
-            $event_name = $ctx['event_name'] ?? null;
-            $div_name = $ctx['division_name'] ?? null; // Fetch division from log if it exists
-
-            // 2. If data is missing, fetch it from DB using the Category ID
-            if ($related_id > 0) {
-                // UPDATE: Added c.division_name to the SELECT query
-                $q = $conn->query("SELECT ge.event_name, c.category_name, c.division_name 
-                                   FROM categories c 
-                                   JOIN game_events ge ON c.event_id = ge.event_id 
-                                   WHERE c.category_id = $related_id LIMIT 1");
-                if ($q && $row = $q->fetch_assoc()) {
-                    if (!$event_name) $event_name = $row['event_name'];
-                    if (!$cat_name) $cat_name = $row['category_name'];
-                    if (!$div_name) $div_name = $row['division_name']; // Get division from DB
-                }
-            }
-
-            // 3. Fallbacks and Formatting
-            $event_name = htmlspecialchars($event_name ?? 'Unknown Event');
-            $cat_name = htmlspecialchars($cat_name ?? 'Unknown Category');
-            
-            // Format Division string (e.g., " - Men's Division")
-            $div_display = !empty($div_name) ? " <span class='text-muted'>(" . htmlspecialchars($div_name) . ")</span>" : "";
-
-            // 4. Construct the New Message Format: "Event - Category (Division)"
-            $msg = "$actor submitted results for <strong>$event_name - $cat_name</strong>$div_display.";
-            $icon = "fas fa-paper-plane text-warning"; 
-            break;
-
+        // --- 1. Category/Division Management (Tournament Manager Actions) ---
         case 'CREATED_CATEGORY':
-            $cat_name = htmlspecialchars($ctx['category_name'] ?? 'a new category');
-            $msg = "$actor added a new category: <strong>$cat_name</strong>.";
+            $msg = "$actor added a new $item_type: <strong>\"$smart_name\"</strong>.";
             $icon = "fas fa-plus-circle text-success";
             break;
 
+        case 'UPDATED_CATEGORY':
+            $changes = [];
+            if (!empty($ctx['new_status']) && ($ctx['old_status'] ?? '') !== $ctx['new_status']) {
+                $changes[] = "status to <strong>" . htmlspecialchars($ctx['new_status']) . "</strong>";
+            }
+            // Add other change detection if needed (venue, date, etc)
+            
+            if (!empty($changes)) {
+                $msg = "$actor updated the $item_type <strong>\"$smart_name\"</strong>: Changed " . implode(', ', $changes) . ".";
+            } else {
+                $msg = "$actor updated details for the $item_type <strong>\"$smart_name\"</strong>.";
+            }
+            $icon = "fas fa-edit text-info";
+            break;
+
         case 'DELETED_CATEGORY':
-            $cat_name = htmlspecialchars($ctx['deleted_category_name'] ?? 'a category');
-            $msg = "$actor deleted the category <strong>$cat_name</strong>.";
+            $msg = "$actor deleted the $item_type: <strong>\"$smart_name\"</strong>.";
             $icon = "fas fa-trash-alt text-danger";
             break;
 
-        case 'UPDATED_CATEGORY':
-             $cat_name = htmlspecialchars($ctx['new_category_name'] ?? 'a category');
-             $msg = "$actor updated details for <strong>$cat_name</strong>.";
-             $icon = "fas fa-edit text-info";
-             break;
-
-        // --- Admin Actions ---
-        case 'UPDATED_USER': 
-            $msg = "$actor updated a user account profile."; 
-            $icon = "fas fa-user-edit text-warning"; 
+        // --- 2. Result Actions ---
+        case 'SUBMITTED_RESULTS':
+            $msg = "$actor submitted official results for the $item_type <strong>\"$smart_name\"</strong>.";
+            $icon = "fas fa-paper-plane text-warning"; 
             break;
+
+        case 'APPROVED_RESULT': 
+            $msg = "$actor approved the results for <strong>\"$smart_name\"</strong>."; 
+            $icon = "fas fa-check-double text-success"; 
+            break;
+            
+        case 'REJECTED_RESULT': 
+            $msg = "$actor <span class='text-danger'>rejected</span> the results for <strong>\"$smart_name\"</strong>."; 
+            $icon = "fas fa-times-circle text-danger"; 
+            break;
+
+        // --- 3. High-Level Administrative Actions ---
+        case 'CREATED_GAME': 
+            $msg = "$actor created a new game: <strong>" . htmlspecialchars($ctx['game_name']??'a game') . "</strong>."; 
+            $icon = "fas fa-plus-circle text-success"; 
+            break;
+            
+        case 'CREATED_EVENT': 
+            $msg = "$actor created the event <strong>" . htmlspecialchars($ctx['event_name']??'an event') . "</strong>."; 
+            $icon = "fas fa-calendar-plus text-success"; 
+            break;
+
         case 'APPROVED_REQUEST': 
             $msg = "$actor approved a new account request."; 
             $icon = "fas fa-user-check text-success"; 
             break;
-        case 'ARCHIVED_SEASON': 
-            $msg = "$actor archived the season and reset the system."; 
-            $icon = "fas fa-archive text-primary"; 
-            break;
 
         default: 
-            $msg = "$actor performed <strong>$action</strong>."; 
+            $msg = "$actor performed action: <strong>$action</strong>."; 
             break;
     }
     
@@ -796,7 +777,7 @@ if ($log_res) {
             </li>
             <li class="nav-item">
                 <a class="nav-link <?= ($current_page == 'events.php') ? 'active' : '' ?>" href="events.php">
-                    <i class="fas fa-calendar-alt me-2"></i> <span>Manage Events (L1-L3)</span>
+                    <i class="fas fa-calendar-alt me-2"></i> <span>Manage Events </span>
                 </a>
             </li>
 

@@ -27,6 +27,7 @@ try {
         SELECT 
             c.category_id AS event_id,
             c.category_name AS event_name,
+            c.division_name,
             c.status AS event_status,
              
             c.notes AS description, 

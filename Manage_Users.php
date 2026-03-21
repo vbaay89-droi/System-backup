@@ -869,7 +869,7 @@ $pending_results_count = $conn->query("SELECT COUNT(*) FROM categories WHERE sta
             </li>
             <li class="nav-item">
                 <a class="nav-link" href="sd/events.php">
-                    <i class="fas fa-calendar-alt me-2"></i> <span>Manage Events (L1-L3)</span>
+                    <i class="fas fa-calendar-alt me-2"></i> <span>Manage Events </span>
                 </a>
             </li>
 

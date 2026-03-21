@@ -49,28 +49,62 @@ function getUserNameById_EM($conn, $id) {
 
 // --- HELPER: FORMAT LOGS FOR DASHBOARD (USER-FRIENDLY VERSION) ---
 function formatLogEntry_EM($conn, $log, $current_user_id) {
-    $actor_name = "<strong>You</strong>"; // Since it's your dashboard, always say "You"
+    $actor_name = "<strong>You</strong>"; 
     $context = json_decode($log['log_context'], true) ?? [];
     $message = "";
     $icon = "fas fa-info-circle text-muted"; 
     $bg_class = "bg-light"; 
     $time = date('M d, h:i A', strtotime($log['created_at']));
 
+    // --- 1. EXTRACT DATA ---
+    $parent = trim($context['parent_event_name'] ?? '');
+    $raw_cat = trim($context['category_name'] ?? $context['new_category_name'] ?? $context['deleted_category_name'] ?? '');
+    $raw_div = trim($context['division_name'] ?? '');
+    
+    $is_main = ($raw_cat === 'Main Event' || $raw_cat === 'Main Competition' || empty($raw_cat));
+    $has_cat = !$is_main && !empty($raw_cat);
+    $has_div = !empty($raw_div);
+
+    // --- 2. DETERMINE ITEM TYPE (What did we edit?) ---
+    if ($has_cat && $has_div) {
+        $item_type = "category and division";
+    } elseif ($has_cat) {
+        $item_type = "category";
+    } elseif ($has_div) {
+        $item_type = "division";
+    } else {
+        $item_type = "event"; 
+    }
+
+    // --- 3. BUILD THE SMART NAME (e.g. "Basketball (Women's)") ---
+    $parts = [];
+    if ($has_cat) $parts[] = $raw_cat;
+    if ($has_div) $parts[] = $raw_div;
+    $sub_details = implode(' - ', $parts);
+
+    if (!empty($parent)) {
+        if (empty($sub_details)) {
+            $smart_name = $parent; // Output: Basketball
+        } else {
+            $smart_name = "$parent ($sub_details)"; // Output: Basketball (Women's)
+        }
+    } else {
+        $smart_name = !empty($sub_details) ? $sub_details : "event";
+    }
+    
+    $smart_name = htmlspecialchars($smart_name); // Clean it for HTML
+
+    // --- 4. PROCESS THE ACTION ---
     switch (trim($log['action_type'])) {
-        // --- 1. ADD (CREATE) ---
+        
         case 'CREATED_CATEGORY':
-            $cat_name = htmlspecialchars($context['category_name'] ?? 'an event');
-            $message = "$actor_name added a new event: <strong>\"$cat_name\"</strong>.";
+            $message = "$actor_name added a new $item_type: <strong>\"$smart_name\"</strong>.";
             $icon = "fas fa-plus text-success";
             $bg_class = "bg-success bg-opacity-10";
             break;
 
-        // --- 2. EDIT (UPDATE) ---
         case 'UPDATED_CATEGORY':
-            $cat_name = htmlspecialchars($context['new_category_name'] ?? 'an event');
             $changes = [];
-
-            // Check what specifically changed to make it detailed
             if (!empty($context['new_status']) && ($context['old_status'] ?? '') !== $context['new_status']) {
                 $changes[] = "status to <strong>" . htmlspecialchars($context['new_status']) . "</strong>";
             }
@@ -85,27 +119,22 @@ function formatLogEntry_EM($conn, $log, $current_user_id) {
             }
 
             if (!empty($changes)) {
-                $message = "$actor_name updated <strong>\"$cat_name\"</strong>: Changed " . implode(', ', $changes) . ".";
+                $message = "$actor_name updated the $item_type <strong>\"$smart_name\"</strong>: Changed " . implode(', ', $changes) . ".";
             } else {
-                $message = "$actor_name updated the details for <strong>\"$cat_name\"</strong>.";
+                $message = "$actor_name updated the details for the $item_type <strong>\"$smart_name\"</strong>.";
             }
             $icon = "fas fa-edit text-info";
             $bg_class = "bg-info bg-opacity-10";
             break;
 
-        // --- 3. DELETE ---
         case 'DELETED_CATEGORY':
-            $cat_name = htmlspecialchars($context['deleted_category_name'] ?? 'a category');
-            $message = "$actor_name deleted the event: <strong>\"$cat_name\"</strong>.";
+            $message = "$actor_name deleted the $item_type: <strong>\"$smart_name\"</strong>.";
             $icon = "fas fa-trash-alt text-danger";
             $bg_class = "bg-danger bg-opacity-10";
             break;
 
-        // --- 4. SUBMIT RESULTS ---
         case 'SUBMITTED_RESULTS': 
-            $cat_name = htmlspecialchars($context['category_name'] ?? 'a category');
             $winners = [];
-            
             if (!empty($context['gold']) && $context['gold'] !== 'N/A') {
                 $winners[] = "<span class='text-warning'>Gold: " . htmlspecialchars($context['gold']) . "</span>";
             }
@@ -118,12 +147,11 @@ function formatLogEntry_EM($conn, $log, $current_user_id) {
             
             $winner_text = !empty($winners) ? "<br><small class='mt-1 d-block'>" . implode(' • ', $winners) . "</small>" : "";
             
-            $message = "$actor_name submitted official results for <strong>\"$cat_name\"</strong>.$winner_text";
+            $message = "$actor_name submitted official results for the $item_type <strong>\"$smart_name\"</strong>.$winner_text";
             $icon = "fas fa-paper-plane text-primary";
             $bg_class = "bg-primary bg-opacity-10";
             break;
 
-        // --- 5. LOGIN ---
         case 'LOGIN':
             $message = "$actor_name logged in successfully.";
             $icon = "fas fa-sign-in-alt text-secondary";
@@ -721,8 +749,8 @@ try {
                         <h5 class="fw-light mb-3 text-white-50">Event Management & Verification Portal</h5>
                         <hr class="my-4" style="border-color: rgba(255,255,255,0.15); width: 60%;">
                         <p class="lead fs-6 opacity-90 mb-0" style="line-height: 1.7; font-weight: 400;">
-                            Good day, <strong><?= htmlspecialchars($display_name) ?></strong>. You are assigned to manage specific event categories. 
-                            Use this dashboard to input official results, upload tally sheet evidence, and submit data for Director approval.
+                            Good day, <strong><?= htmlspecialchars($display_name) ?></strong>. Welcome to your tournament management hub. 
+                            Use this dashboard to configure event categories and divisions, monitor live event progress, generate official tally sheets, and securely submit verified medal results for Director approval.
                         </p>
                     </div>
                     <div class="col-lg-3 text-end d-none d-lg-block">

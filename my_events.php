@@ -50,7 +50,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $event_id = (int)$_POST['event_id'];
                 $category_id = !empty($_POST['category_id']) ? (int)$_POST['category_id'] : null;
                 
-                $event_date = !empty($_POST['event_date']) ? $_POST['event_date'] : null;
+                // --- NEW: Fetch Parent Event Name for Detailed Logging ---
+                $parent_event_name = "Unknown Event";
+                $stmt_evt = $conn->prepare("SELECT event_name FROM game_events WHERE event_id = ?");
+                $stmt_evt->bind_param("i", $event_id);
+                $stmt_evt->execute();
+                if ($row_evt = $stmt_evt->get_result()->fetch_assoc()) {
+                    $parent_event_name = $row_evt['event_name'];
+                }
+                $stmt_evt->close();
+
                 $event_time = !empty($_POST['event_time']) ? $_POST['event_time'] : null;
                 $venue = trim($_POST['venue']);
 
@@ -83,7 +92,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     
                     try {
                         $context = [
+                            'parent_event_name' => $parent_event_name,
                             'category_name' => $category_name,
+                            'division_name' => $division_name,
                             'status' => $status,
                             'event_date' => $event_date,
                             'event_time' => $event_time,
@@ -94,11 +105,20 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                         error_log("Failed to log CREATED_CATEGORY: " . $log_e->getMessage());
                     }
                     
-                    // USER-FRIENDLY ADD MESSAGE
-                    if ($category_name === 'Main Event' || $category_name === 'Main Competition') {
+                    // --- SMART USER FEEDBACK (ADD) ---
+                    $display_parts = [];
+                    $is_main = ($category_name === 'Main Event' || $category_name === 'Main Competition' || empty($category_name));
+                    
+                    if (!$is_main) $display_parts[] = $category_name;
+                    if (!empty($division_name)) $display_parts[] = $division_name;
+
+                    if (empty($display_parts)) {
                         $alert_message = "Great! The event has been initialized and is ready for results.";
                     } else {
-                        $alert_message = "Success! You added a new category: <strong>" . htmlspecialchars($category_name) . "</strong>.";
+                        $display_name = implode(' - ', $display_parts);
+                        // Determine the specific type for the alert
+$item_type = ($has_cat && !empty($division_name)) ? "category and division" : (!empty($division_name) ? "division" : "category");
+$alert_message = "Success! You added a new $item_type: <strong>" . htmlspecialchars($display_name) . "</strong>.";
                     }
                     
                 } else {
@@ -107,12 +127,23 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                         throw new Exception("Please provide either a Category Name or a Division Name.");
                     }
                     
+                    // 1. Fetch old data (You already have this)
                     $old_data_stmt = $conn->prepare("SELECT status, event_date, event_time, venue FROM categories WHERE category_id = ?");
                     $old_data_stmt->bind_param("i", $category_id);
                     $old_data_stmt->execute();
                     $old_data = $old_data_stmt->get_result()->fetch_assoc();
                     $old_data_stmt->close();
                     
+                    // 2. FETCH THE PARENT EVENT NAME (Add this part if missing!)
+                    $parent_event_name = "Unknown Event";
+                    $stmt_evt = $conn->prepare("SELECT event_name FROM game_events WHERE event_id = ?");
+                    $stmt_evt->bind_param("i", $event_id);
+                    $stmt_evt->execute();
+                    if ($row_evt = $stmt_evt->get_result()->fetch_assoc()) {
+                        $parent_event_name = $row_evt['event_name'];
+                    }
+                    $stmt_evt->close();
+
                     $stmt = $conn->prepare(
                         "UPDATE categories SET category_name = ?, division_name = ?, status = ?, event_date = ?, event_time = ?, venue = ? 
                          WHERE category_id = ? AND event_id = ?"
@@ -120,32 +151,21 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     $stmt->bind_param("ssssssii", $category_name, $division_name, $status, $event_date, $event_time, $venue, $category_id, $event_id);
                     $stmt->execute();
                     
+                    // 3. UPDATE THE CONTEXT (The Sticky Note)
                     try {
                         $context = [
+                            'parent_event_name' => $parent_event_name, // <--- CRITICAL FIX
                             'new_category_name' => $category_name,
-                            'old_status' => $old_data['status'] ?? $status,
-                            'new_status' => $status,
-                            'old_event_date' => $old_data['event_date'] ?? null,
-                            'new_event_date' => $event_date,
-                            'old_event_time' => $old_data['event_time'] ?? null,
-                            'new_event_time' => $event_time,
-                            'old_venue' => $old_data['venue'] ?? '',
-                            'new_venue' => $venue,
-                            'category_id' => $category_id
+                            'division_name'     => $division_name,     // <--- CRITICAL FIX
+                            'old_status'        => $old_data['status'] ?? $status,
+                            'new_status'        => $status,
+                            'old_venue'         => $old_data['venue'] ?? '',
+                            'new_venue'         => $venue,
+                            'category_id'       => $category_id
                         ];
                         log_activity($conn, $current_user_id, 'UPDATED_CATEGORY', $category_id, 'category', $event_id, 'event', $context);
                     } catch (Exception $log_e) {
                         error_log("Failed to log UPDATED_CATEGORY: " . $log_e->getMessage());
-                    }
-
-                    // --- IMPROVED USER FEEDBACK ---
-                    // Check if this is a "Main Event" (Single Category)
-                    if ($category_name === 'Main Event' || $category_name === 'Main Competition') {
-                        // Friendly message for single events
-                        $alert_message = "Success! Event details updated successfully.";
-                    } else {
-                        // Standard message for sub-categories
-                        $alert_message = "Success! Category '{$category_name}' updated successfully.";
                     }
                 }
                 $stmt->close();
@@ -156,7 +176,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $category_id = (int)$_POST['category_id'];
                 
                 $stmt_check = $conn->prepare("
-                    SELECT c.event_id, c.category_name 
+                    SELECT c.event_id, c.category_name, c.division_name 
                     FROM categories c
                     JOIN tournament_manager_assignments ema ON c.event_id = ema.event_id
                     WHERE c.category_id = ? AND ema.user_id = ? AND (c.status = 'Upcoming' OR c.status = 'Cancelled')
@@ -171,23 +191,52 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 
                 $category_data = $result_check->fetch_assoc();
                 $deleted_category_name = $category_data['category_name'];
+                $deleted_division_name = $category_data['division_name'] ?? ''; // <--- ADDED!
+                
+                // Fetch Parent Event Name
+                $parent_event_name = "Unknown Event";
+                $stmt_evt = $conn->prepare("SELECT event_name FROM game_events WHERE event_id = ?");
+                $stmt_evt->bind_param("i", $category_data['event_id']);
+                $stmt_evt->execute();
+                if ($row_evt = $stmt_evt->get_result()->fetch_assoc()) {
+                    $parent_event_name = $row_evt['event_name'];
+                }
+                $stmt_evt->close();
                 $stmt_check->close();
                 
+                // --- THE MISSING LOGIC: Actually delete the category from the database ---
                 $stmt_del = $conn->prepare("DELETE FROM categories WHERE category_id = ?");
                 $stmt_del->bind_param("i", $category_id);
                 $stmt_del->execute();
+                // -------------------------------------------------------------------------
                 
                 if ($stmt_del->affected_rows > 0) {
                     
                     try {
-                        $context = ['deleted_category_name' => $deleted_category_name];
+                        $context = [
+                            'parent_event_name' => $parent_event_name,
+                            'deleted_category_name' => $deleted_category_name,
+                            'division_name' => $deleted_division_name
+                        ];
                         log_activity($conn, $current_user_id, 'DELETED_CATEGORY', $category_id, 'category', null, null, $context);
                     } catch (Exception $log_e) {
                         error_log("Failed to log DELETED_CATEGORY: " . $log_e->getMessage());
                     }
                     
                     // USER-FRIENDLY DELETE MESSAGE
-                    $alert_message = "Category deleted. <strong>" . htmlspecialchars($deleted_category_name) . "</strong> has been permanently removed.";
+                    // --- SMART USER FEEDBACK (DELETE) ---
+                    $display_parts = [];
+                    $is_main = ($deleted_category_name === 'Main Event' || $deleted_category_name === 'Main Competition' || empty($deleted_category_name));
+
+                    if (!$is_main) $display_parts[] = $deleted_category_name;
+                    if (!empty($deleted_division_name)) $display_parts[] = $deleted_division_name;
+
+                    if (empty($display_parts)) {
+                        $alert_message = "Success! The event has been permanently removed.";
+                    } else {
+                        $final_deleted_name = implode(' - ', $display_parts);
+                        $alert_message = "Success! <strong>" . htmlspecialchars($final_deleted_name) . "</strong> has been permanently removed.";
+                    }
                 } else {
                     throw new Exception("Could not delete category.");
                 }
@@ -241,18 +290,15 @@ try {
 
 // B. Fetch this Manager's ASSIGNED Events & Categories
 $managed_data = [];
+$results = [];
 try {
     $sql = "SELECT
         g.game_name,
         ge.event_id, 
         ge.event_name,
-        ge.event_structure, /* <--- Now this will work! */
+        ge.event_structure,
         c.category_id, c.category_name, c.division_name,
         c.status,
-    
-        -- END NEW LOGIC --
-        
-        
         c.event_date, c.event_time, c.venue,
         c.gold_winner_college_id, c.gold_count,
         c.silver_winner_college_id, c.silver_count,
@@ -336,6 +382,37 @@ $status_options = [
     'Cancelled',
     'Completed (Pending Results)'
 ];
+
+// --- NEW: SMART VENUE SUGGESTIONS ---
+// 1. Your predefined official list of venues
+$official_venues = [
+    "Bahay Alumni Hall",
+    "Basketball Court",
+    "CAS Inner Ground",
+    "Gymnasium/Communicators Road",
+    "New Highschool Court",
+    "OSDS Bldg. floor",
+    "PIT CHIC",
+    "PIT Cyber Library",
+    "PIT Oval Ground",
+    "Tennis Court",
+    "Volleyball Court"
+];
+
+// 2. Fetch any *other* custom venues managers might have typed into the DB
+$db_venues = [];
+try {
+    $venue_stmt = $conn->query("SELECT DISTINCT venue FROM categories WHERE venue IS NOT NULL AND venue != ''");
+    if ($venue_stmt) {
+        while ($v_row = $venue_stmt->fetch_assoc()) {
+            $db_venues[] = trim($v_row['venue']);
+        }
+    }
+} catch (Exception $e) { }
+
+// 3. Merge both lists, remove any duplicates, and sort alphabetically!
+$all_venues = array_unique(array_merge($official_venues, $db_venues));
+sort($all_venues);
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -1181,7 +1258,7 @@ $status_options = [
                     <input type="hidden" name="category_id" id="modal_category_id">
                     
                     <div class="modal-header">
-                        <h5 class="modal-title" id="categoryModalLabel"><i class="fas fa-plus-circle me-2"></i>Add Category</h5>
+                        <h5 class="modal-title" id="categoryModalLabel"><i class="fas fa-plus-circle me-2"></i>Add Category / Division</h5>
                         <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
                     </div>
                     <div class="modal-body">
@@ -1207,22 +1284,30 @@ $status_options = [
                         
                         <div class="row">
                             <div class="col-md-6 mb-3">
-                                <label for="modal_event_date" class="form-label fw-bold">Date</label>
-                                <input type="date" class="form-control" id="modal_event_date" name="event_date">
+                                <label for="modal_event_date" class="form-label fw-bold">Date <span class="text-danger">*</span></label>
+                                <input type="date" class="form-control" id="modal_event_date" name="event_date" required>
                             </div>
                             <div class="col-md-6 mb-3">
-                                <label for="modal_event_time" class="form-label fw-bold">Time</label>
-                                <input type="time" class="form-control" id="modal_event_time" name="event_time">
+                                <label for="modal_event_time" class="form-label fw-bold">Time <span class="text-danger">*</span></label>
+                                <input type="time" class="form-control" id="modal_event_time" name="event_time" required>
                             </div>
                         </div>
 
                         <div class="row">
                             <div class="col-md-6 mb-3">
-                                <label for="modal_venue" class="form-label fw-bold">Venue</label>
-                                <input type="text" class="form-control" id="modal_venue" name="venue" placeholder="e.g., Main Gym">
+                                <label for="modal_venue" class="form-label fw-bold">Venue <span class="text-danger">*</span></label>
+                                <input type="text" class="form-control" id="modal_venue" name="venue" list="venueList" placeholder="Search or type a venue..." autocomplete="off" required>
+                                
+                                <datalist id="venueList">
+                                    <?php if (!empty($all_venues)): ?>
+                                        <?php foreach ($all_venues as $v): ?>
+                                            <option value="<?= htmlspecialchars($v) ?>"></option>
+                                        <?php endforeach; ?>
+                                    <?php endif; ?>
+                                </datalist>
                             </div>
                             <div class="col-md-6 mb-3">
-                                <label for="modal_category_status" class="form-label fw-bold">Status</label>
+                                <label for="modal_category_status" class="form-label fw-bold">Status <span class="text-danger">*</span></label>
                                 <select class="form-select" id="modal_category_status" name="status" required>
                                     <?php foreach ($status_options as $status_opt): ?>
                                         <option value="<?php echo $status_opt; ?>"><?php echo $status_opt; ?></option>
@@ -1345,42 +1430,62 @@ $status_options = [
     
 
     <div class="modal fade" id="helpModal" tabindex="-1" aria-hidden="true">
-    <div class="modal-dialog modal-dialog-centered modal-lg">
-        <div class="modal-content border-0 shadow-lg">
-            <div class="modal-header border-bottom-0 pb-0">
-                <h5 class="modal-title fw-bold text-white"><i class="fas fa-info-circle text-primary me-2"></i>Event Management Guide</h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-            </div>
-            <div class="modal-body p-4">
-                <div class="row g-4">
-                    <div class="col-md-6">
-                        <div class="p-3 bg-light rounded h-100 border">
-                            <h6 class="fw-bold text-success mb-2"><i class="fas fa-play-circle me-2"></i>1. Start Event</h6>
-                            <p class="small text-muted mb-0">When the competition begins, click the <span class="badge bg-success">Start</span> button. This changes the status to 'Ongoing' and lets admins know the event is live.</p>
-                        </div>
-                    </div>
-                    <div class="col-md-6">
-                        <div class="p-3 bg-light rounded h-100 border">
-                            <h6 class="fw-bold text-warning text-dark mb-2"><i class="fas fa-flag-checkered me-2"></i>2. Finish Event</h6>
-                            <p class="small text-muted mb-0">Once the game is over, click <span class="badge bg-warning text-dark">Finish</span>. This locks the event and prepares the system for result entry.</p>
-                        </div>
-                    </div>
-                    <div class="col-md-6">
-                        <div class="p-3 bg-light rounded h-100 border">
-                            <h6 class="fw-bold text-primary mb-2"><i class="fas fa-clipboard-list me-2"></i>3. Submit Results</h6>
-                            <p class="small text-muted mb-0">Click the <strong>Results</strong> button. You will select the Gold, Silver, and Bronze winners and <strong>must upload a photo</strong> of the signed tally sheet.</p>
-                        </div>
-                    </div>
-                    <div class="col-md-6">
-                        <div class="p-3 bg-light rounded h-100 border">
-                            <h6 class="fw-bold text-danger mb-2"><i class="fas fa-exclamation-circle me-2"></i>4. Approval</h6>
-                            <p class="small text-muted mb-0">After submission, the Sports Director will review your evidence. If rejected, check the "Notes" section for the reason.</p>
-                        </div>
-                    </div>
+        <div class="modal-dialog modal-dialog-centered modal-lg">
+            <div class="modal-content border-0 shadow-lg">
+                <div class="modal-header bg-dark text-white border-bottom-0">
+                    <h5 class="modal-title fw-bold"></i>Event Management Guide</h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
                 </div>
-            </div>
-            <div class="modal-footer border-top-0 pt-0">
-                <button type="button" class="btn btn-secondary px-4 rounded-pill" data-bs-dismiss="modal">Got it</button>
+                <div class="modal-body p-4">
+                    
+                    <h6 class="fw-bold text-secondary mb-3 text-uppercase" style="letter-spacing: 1px; font-size: 0.85rem;">Phase 1: Pre-Game Setup</h6>
+                    <div class="row g-3 mb-4">
+                        <div class="col-md-6">
+                            <div class="p-3 bg-light rounded h-100 border border-primary border-opacity-25">
+                                <h6 class="fw-bold text-primary mb-2"><i class="fas fa-layer-group me-2"></i>Setup Divisions & Venues</h6>
+                                <p class="small text-muted mb-0">Use the <strong>Add Category / Division</strong> or <strong>Edit</strong> buttons to define specific divisions (e.g., Men's, Lightweight) and set the official Date, Time, and Venue.</p>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="p-3 bg-light rounded h-100 border border-primary border-opacity-25">
+                                <h6 class="fw-bold text-primary mb-2"><i class="fas fa-print me-2"></i>Print Tally Sheets</h6>
+                                <p class="small text-muted mb-0">Before the game begins, click the <strong>Print</strong> icon to generate the Official Tally Sheet for your referees to use and sign.</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <h6 class="fw-bold text-secondary mb-3 text-uppercase" style="letter-spacing: 1px; font-size: 0.85rem;">Phase 2: Game Day Execution</h6>
+                    <div class="row g-3">
+                        <div class="col-md-6">
+                            <div class="p-3 bg-light rounded h-100 border">
+                                <h6 class="fw-bold text-success mb-2"><i class="fas fa-play-circle me-2"></i>1. Start Event</h6>
+                                <p class="small text-muted mb-0">When the competition begins, click <span class="badge bg-success">Start</span>. This updates the status to 'Ongoing' so the public knows the match is live.</p>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="p-3 bg-light rounded h-100 border">
+                                <h6 class="fw-bold text-warning text-dark mb-2"><i class="fas fa-flag-checkered me-2"></i>2. Finish Event</h6>
+                                <p class="small text-muted mb-0">Once the final whistle blows, click <span class="badge bg-warning text-dark">Finish</span>. This locks the match status and activates the results submission form.</p>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="p-3 bg-light rounded h-100 border">
+                                <h6 class="fw-bold text-primary mb-2"><i class="fas fa-medal me-2"></i>3. Submit Results</h6>
+                                <p class="small text-muted mb-0">Click <strong>Results</strong> to declare the medal winners. You <strong>must</strong> upload a clear photo of the signed Official Tally Sheet as proof.</p>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="p-3 bg-light rounded h-100 border">
+                                <h6 class="fw-bold text-danger mb-2"><i class="fas fa-shield-alt me-2"></i>4. Verification</h6>
+                                <p class="small text-muted mb-0">The Sports Director will review your submitted evidence. If rejected, click the red <strong>Note</strong> button to read their feedback and resubmit.</p>
+                            </div>
+                        </div>
+                    </div>
+
+                </div>
+                <div class="modal-footer border-top-0 pt-0 bg-white justify-content-center">
+                    <button type="button" class="btn btn-secondary px-4 rounded-pill" data-bs-dismiss="modal">I understand</button>
+                </div>
             </div>
         </div>
     </div>
@@ -1568,7 +1673,7 @@ $status_options = [
                 if(oldHidden) oldHidden.remove();
 
                 if (action === 'edit') {
-                    modalTitle.innerHTML = '<i class="fas fa-edit me-2"></i>Edit Category';
+                    modalTitle.innerHTML = '<i class="fas fa-edit me-2"></i>Add Category / Division';
                     categoryIdInput.value = button.getAttribute('data-category-id');
                     
                     let rawName = button.getAttribute('data-category-name');
@@ -1617,7 +1722,7 @@ $status_options = [
                     
                 } else {
                     // Add Mode
-                    modalTitle.innerHTML = '<i class="fas fa-plus-circle me-2"></i>Add Category to ' + eventName;
+                    modalTitle.innerHTML = '<i class="fas fa-plus-circle me-2"></i>Add Category / Division ';
                     categoryIdInput.value = '';
                     categoryNameInput.value = '';
                     divisionNameInput.value = ''; // <--- Clear the division name

@@ -55,6 +55,9 @@ try {
     $category_info = $result->fetch_assoc();
     $stmt_check->close();
 
+    // This is the variable we will use for logging
+    $parent_event_name = $category_info['event_name'];
+
     // NEW: Store the fixed count (null if it doesn't exist)
     $fixed_count = $category_info['fixed_medal_count'];
 
@@ -197,8 +200,20 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     if($silver_team) { $q = $conn->query("SELECT college_name FROM colleges WHERE college_id = $silver_team"); if($q && $row = $q->fetch_assoc()) $log_silver = $row['college_name']; }
                     if($bronze_team) { $q = $conn->query("SELECT college_name FROM colleges WHERE college_id = $bronze_team"); if($q && $row = $q->fetch_assoc()) $log_bronze = $row['college_name']; }
 
-                    $context = ['category_name' => $category_info['category_name'], 'status' => 'Submitted', 'gold' => $log_gold, 'silver' => $log_silver, 'bronze' => $log_bronze];
-                    log_activity($conn, $user_id, 'SUBMITTED_RESULTS', $category_id, 'category', null, null, $context);
+                    // --- UPDATED: Smart Context for Submission ---
+                    $context = [
+                        'parent_event_name' => $parent_event_name, // Added
+                        'category_name'     => $category_info['category_name'],
+                        'division_name'     => $category_info['division_name'], // Added
+                        'status'            => 'Submitted', 
+                        'gold'              => $log_gold, 
+                        'silver'            => $log_silver, 
+                        'bronze'            => $log_bronze
+                    ];
+                    
+                    // We also add the Event ID (null replaced with $category_info['event_id']) 
+                    // Use the event_id from category_info to link the log to the parent event
+                    log_activity($conn, $user_id, 'SUBMITTED_RESULTS', $category_id, 'category', $category_info['event_id'], 'event', $context);
                 } catch (Exception $log_e) {}
 
                 // *** REDIRECT TO LIST (The Fix) ***
@@ -351,23 +366,97 @@ $current_submission = $conn->query("SELECT * FROM categories WHERE category_id =
     }
 
     /* Main Content */
-    .main-content { 
-        margin-left: var(--sidebar-width); 
-        width: calc(100% - var(--sidebar-width)); 
-        padding: 30px; 
-        margin-top: var(--header-height); 
-        z-index: 1; 
+        .main-content { flex: 1 0 auto; padding: 30px; margin-top: var(--header-height); margin-left: var(--sidebar-width); transition: margin-left var(--transition); min-height: calc(100vh - var(--header-height)); }
+        .section-title { font-family: 'Poppins', sans-serif; font-weight: 600; color: #333; }
+        
+        /* Footer */
+        footer {
+            flex-shrink: 0;
+            /* REMOVED background color here so .footer-main can work */
+            box-shadow: 0 -2px 10px rgba(0,0,0,0.1);
+            padding-left: var(--sidebar-width);
+            transition: padding-left var(--transition);
+            position: relative;
+            z-index: 1041;
+        }
+        @media (max-width: 992px) {
+            .sidebar { left: -260px; }
+            .sidebar.show { left: 0; }
+            .main-content, footer { margin-left: 0; }
+        }
+
+         /* --- FOOTER STYLES (MATCHING HOME.PHP) --- */
+    .footer-main {
+        flex-shrink: 0;
+        background: linear-gradient(135deg, #1a1a1a 0%, #2d2d2d 100%);
+        color: rgba(255,255,255,0.7);
+        padding: 3rem 0 2rem 0;
+        box-shadow: 0 -4px 20px rgba(0,0,0,0.15);
+        position: relative;
+        z-index: 1;
     }
 
-    /* Footer - Full Width Fix */
-    footer { 
-        margin-left: 0 !important;  /* Remove the indentation */
-        width: 100% !important;     /* Force full width */
-        background: #2c3e50 !important; 
-        z-index: 1100;              /* Ensure it sits on top of the gap */
-        border-top: none; 
-        padding: 20px 0;
-        position: relative;
+    .footer-main .footer-logo-group {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        margin-bottom: 1rem;
+    }
+
+    .footer-main .footer-logo-group img {
+        height: 50px !important;
+        width: 50px !important;
+        object-fit: contain;
+    }
+
+    .footer-main .footer-logo-group h5 {
+        margin: 0;
+        font-size: 1.1rem;
+        font-weight: 700;
+        color: #fff;
+        line-height: 1.2;
+    }
+
+    .footer-main p {
+        font-size: 0.9rem;
+        max-width: 400px;
+    }
+
+    .footer-main h6 {
+        font-family: 'Poppins', sans-serif;
+        color: #fff;
+        font-weight: 600;
+        margin-bottom: 1rem;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+    }
+
+    .footer-main .footer-links {
+        list-style: none;
+        padding: 0;
+    }
+
+    .footer-main .footer-links li {
+        margin-bottom: 0.5rem;
+    }
+
+    .footer-main .footer-links a {
+        text-decoration: none;
+        color: rgba(255,255,255,0.7);
+        transition: var(--transition);
+    }
+
+    .footer-main .footer-links a:hover {
+        color: #fff;
+        padding-left: 5px;
+    }
+
+    .footer-bottom {
+        border-top: 1px solid rgba(255,255,255,0.1);
+        padding-top: 1.5rem;
+        margin-top: 2rem;
+        text-align: center;
+        font-size: 0.85rem;
     }
 
     /* =========================================
@@ -444,82 +533,68 @@ $current_submission = $conn->query("SELECT * FROM categories WHERE category_id =
 }
 
     /* =========================================
-   4. INTERACTIVE MEDAL SELECTORS (Premium Ticket Layout)
-   ========================================= */
-.medal-row { 
-    padding: 1.75rem 1.5rem; /* Increased padding to make the tickets thicker */
-    border-radius: 16px; 
-    margin-bottom: 1.25rem; 
-    transition: all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
-    position: relative;
-    overflow: hidden;
-}
-
-/* Animated Gradient Background Overlay */
-.medal-row::before {
-    content: '';
-    position: absolute;
-    top: 0;
-    left: -100%;
-    width: 100%;
-    height: 100%;
-    transition: 0.5s;
-    z-index: 0;
-}
-.medal-row:hover::before {
-    left: 0;
-}
-
-/* =========================================
-   GOLD TICKET
-   ========================================= */
-.medal-row.gold-row { 
-    background: linear-gradient(145deg, #fffbeb 0%, #ffffff 100%);
-    border: 2px solid #fde68a;
+       4. PREMIUM MEDAL CARDS (From Image Design)
+       ========================================= */
+    .medal-card {
+        background: #ffffff;
+        border-radius: 16px;
+        padding: 1.5rem;
+        margin-bottom: 1.25rem;
+        border: 2px solid transparent;
+        transition: all 0.3s ease;
+        position: relative;
+    }
     
-    box-shadow: 0 4px 20px rgba(245, 158, 11, 0.05);
-}
-.medal-row.gold-row::before { 
-    background: linear-gradient(90deg, rgba(245, 158, 11, 0.08) 0%, transparent 100%); 
-}
-.medal-row.gold-row:hover { 
-    transform: translateX(8px) scale(1.02);
-    box-shadow: 0 12px 40px rgba(245, 158, 11, 0.15);
-}
+    /* Specific Card Borders & Shadows */
+    .medal-card.gold-card { border-color: #fef08a; box-shadow: 0 10px 25px rgba(250, 204, 21, 0.08); }
+    .medal-card.silver-card { border-color: #e2e8f0; box-shadow: 0 10px 25px rgba(148, 163, 184, 0.08); }
+    .medal-card.bronze-card { border-color: #ffedd5; box-shadow: 0 10px 25px rgba(249, 115, 22, 0.08); }
 
-/* =========================================
-   SILVER TICKET
-   ========================================= */
-.medal-row.silver-row { 
-    background: linear-gradient(145deg, #f8fafc 0%, #ffffff 100%);
-    border: 2px solid #e2e8f0;
-     
-    box-shadow: 0 4px 20px rgba(100, 116, 139, 0.05);
-}
-.medal-row.silver-row::before { 
-    background: linear-gradient(90deg, rgba(100, 116, 139, 0.08) 0%, transparent 100%); 
-}
-.medal-row.silver-row:hover { 
-    transform: translateX(8px) scale(1.02);
-    box-shadow: 0 12px 40px rgba(100, 116, 139, 0.15);
-}
+    /* Left Side Icon Boxes */
+    .medal-icon-box {
+        width: 70px; height: 70px;
+        border-radius: 16px;
+        display: flex; align-items: center; justify-content: center;
+        font-size: 2rem;
+    }
+    .gold-icon { background: #fef9c3; color: #eab308; }
+    .silver-icon { background: #f1f5f9; color: #94a3b8; }
+    .bronze-icon { background: #ffedd5; color: #ea580c; }
 
-/* =========================================
-   BRONZE TICKET
-   ========================================= */
-.medal-row.bronze-row { 
-    background: linear-gradient(145deg, #fff7ed 0%, #ffffff 100%);
-    border: 2px solid #fed7aa;
+    /* Top Right Pill Badges */
+    .place-badge {
+        padding: 4px 12px; 
+        border-radius: 20px; 
+        font-size: 0.65rem; 
+        font-weight: 800; 
+        letter-spacing: 1px;
+    }
+    .gold-badge { background: #fef9c3; color: #eab308; }
+    .silver-badge { background: #f1f5f9; color: #94a3b8; }
+    .bronze-badge { background: #ffedd5; color: #ea580c; }
     
-    box-shadow: 0 4px 20px rgba(234, 88, 12, 0.05);
-}
-.medal-row.bronze-row::before { 
-    background: linear-gradient(90deg, rgba(234, 88, 12, 0.08) 0%, transparent 100%); 
-}
-.medal-row.bronze-row:hover { 
-    transform: translateX(8px) scale(1.02);
-    box-shadow: 0 12px 40px rgba(234, 88, 12, 0.15);
-}
+    /* Tiny Labels above inputs */
+    .medal-input-group label {
+        font-size: 0.65rem;
+        font-weight: 800;
+        color: #94a3b8;
+        letter-spacing: 1px;
+        text-transform: uppercase;
+        margin-bottom: 6px;
+        display: block;
+    }
+    
+    /* Input Styling overrides */
+    .medal-card .form-select, .medal-card .form-control {
+        border: 1px solid #e2e8f0;
+        border-radius: 10px;
+        padding: 0.75rem 1rem;
+        color: #1e293b;
+    }
+    .medal-card .form-select:focus, .medal-card .form-control:focus {
+        border-color: #94a3b8;
+        box-shadow: none;
+    }
 
 /* =========================================
    MEDAL ICONS
@@ -646,6 +721,8 @@ $current_submission = $conn->query("SELECT * FROM categories WHERE category_id =
         .sidebar { width: 0; } 
         .main-content, footer { margin-left: 0; width: 100%; } 
     }
+
+    
 </style>
 </head>
 <body>
@@ -747,175 +824,199 @@ $current_submission = $conn->query("SELECT * FROM categories WHERE category_id =
                                 <span class="fw-bold text-muted small text-uppercase" style="letter-spacing: 1px;">Medal Counts</span>
                             </div>
                             <div class="card-body p-4">
-                                <div class="medal-row gold-row">
-                                    <div class="row align-items-center g-3">
-                                        <div class="col-md-2 text-center">
-                                            <div class="medal-icon">
-                                                <i class="fas fa-medal text-white"></i>
+                                <div class="medal-card gold-card">
+                                    <div class="d-flex gap-4">
+                                        <div class="flex-shrink-0">
+                                            <div class="medal-icon-box gold-icon">
+                                                <i class="fas fa-award"></i>
                                             </div>
                                         </div>
-                                        <div class="col-md-2">
-                                            <div class="medal-label text-gold">
-                                                GOLD<br>
-                                                <small class="fw-normal" style="font-size: 0.7rem; letter-spacing: 0;">1st Place</small>
-                                            </div>
-                                        </div>
-                                        <div class="col-md-6">
-                                            <select class="form-select text-center fw-bold" name="gold_winner_id" <?php if ($is_locked) echo 'disabled'; ?>>
-                                                <option value="">-- Select Team --</option>
-                                                <?php foreach ($teams as $team): ?>
-                                                    <option value="<?php echo $team['team_id']; ?>" <?php echo ($current_submission && $current_submission['gold_winner_college_id'] == $team['team_id']) ? 'selected' : ''; ?>>
-                                                        <?php echo htmlspecialchars($team['team_name']); ?>
-                                                    </option>
-                                                <?php endforeach; ?>
-                                            </select>
-                                        </div>
-                                        <div class="col-md-2 text-center">
-                                            <?php if ($fixed_count !== null): ?>
-                                                <div class="bg-light border border-success rounded p-2 text-success h-100 d-flex flex-column justify-content-center align-items-center shadow-sm">
-                                                    <span class="fs-5 fw-bold"><?php echo $fixed_count; ?></span>
-                                                    <span class="small" style="font-size: 0.6rem; line-height: 1;"><i class="fas fa-lock fa-xs me-1"></i>Locked</span>
+                                        
+                                        <div class="flex-grow-1">
+                                            <div class="d-flex justify-content-between align-items-start mb-3">
+                                                <div>
+                                                    <h5 class="fw-bold mb-1 text-dark" style="font-size: 1.1rem;">Gold Medalist</h5>
+                                                    <p class="text-muted small mb-0">Select the overall tournament champion</p>
                                                 </div>
-                                            <?php else: ?>
-                                                <input type="number" class="form-control text-center fw-bold" name="gold_count" 
-                                                    value="<?php echo $current_submission['gold_count'] ?? 0; ?>" 
-                                                    min="0" placeholder="0" <?php if ($is_locked) echo 'disabled'; ?>>
-                                                
-                                            <?php endif; ?>
+                                                <div class="place-badge gold-badge">
+                                                    <i class="fas fa-star me-1"></i> 1ST PLACE
+                                                </div>
+                                            </div>
+                                            
+                                            <div class="row g-3 align-items-end">
+                                                <div class="col-md-9">
+                                                    <select class="form-select fw-medium" name="gold_winner_id" <?php if ($is_locked) echo 'disabled'; ?>>
+                                                        <option value="" class="text-muted">Select participating team...</option>
+                                                        <?php foreach ($teams as $team): ?>
+                                                            <option value="<?php echo $team['team_id']; ?>" <?php echo ($current_submission && $current_submission['gold_winner_college_id'] == $team['team_id']) ? 'selected' : ''; ?>>
+                                                                <?php echo htmlspecialchars($team['team_name']); ?>
+                                                            </option>
+                                                        <?php endforeach; ?>
+                                                    </select>
+                                                </div>
+                                                <div class="col-md-3">
+                                                    <div class="medal-input-group">
+                                                        <label>Medal Count</label>
+                                                        <?php if ($fixed_count !== null): ?>
+                                                            <div class="form-control text-center fw-bold bg-light text-muted d-flex justify-content-center align-items-center gap-2">
+                                                                <?php echo $fixed_count; ?> <i class="fas fa-lock small"></i>
+                                                            </div>
+                                                        <?php else: ?>
+                                                            <input type="number" class="form-control text-center fw-bold" name="gold_count" value="<?php echo $current_submission['gold_count'] ?? 0; ?>" min="0" placeholder="0" <?php if ($is_locked) echo 'disabled'; ?>>
+                                                        <?php endif; ?>
+                                                    </div>
+                                                </div>
+                                            </div>
                                         </div>
                                     </div>
                                 </div>
 
-                                <div class="medal-row silver-row mt-3">
-                                    <div class="row align-items-center g-3">
-                                        <div class="col-md-2 text-center">
-                                            <div class="medal-icon">
-                                                <i class="fas fa-medal text-white"></i>
+                                <div class="medal-card silver-card">
+                                    <div class="d-flex gap-4">
+                                        <div class="flex-shrink-0">
+                                            <div class="medal-icon-box silver-icon">
+                                                <i class="fas fa-award"></i>
                                             </div>
                                         </div>
-                                        <div class="col-md-2">
-                                            <div class="medal-label text-silver">
-                                                SILVER<br>
-                                                <small class="fw-normal" style="font-size: 0.7rem; letter-spacing: 0;">2nd Place</small>
-                                            </div>
-                                        </div>
-                                        <div class="col-md-6">
-                                            <select class="form-select text-center fw-bold" name="silver_winner_id" <?php if ($is_locked) echo 'disabled'; ?>>
-                                                <option value="">-- Select Team --</option>
-                                                <?php foreach ($teams as $team): ?>
-                                                    <option value="<?php echo $team['team_id']; ?>" <?php echo ($current_submission && $current_submission['silver_winner_college_id'] == $team['team_id']) ? 'selected' : ''; ?>>
-                                                        <?php echo htmlspecialchars($team['team_name']); ?>
-                                                    </option>
-                                                <?php endforeach; ?>
-                                            </select>
-                                        </div>
-                                        <div class="col-md-2 text-center">
-                                            <?php if ($fixed_count !== null): ?>
-                                                <div class="bg-light border border-success rounded p-2 text-success h-100 d-flex flex-column justify-content-center align-items-center shadow-sm">
-                                                    <span class="fs-5 fw-bold"><?php echo $fixed_count; ?></span>
-                                                    <span class="small" style="font-size: 0.6rem; line-height: 1;"><i class="fas fa-lock fa-xs me-1"></i>Locked</span>
+                                        
+                                        <div class="flex-grow-1">
+                                            <div class="d-flex justify-content-between align-items-start mb-3">
+                                                <div>
+                                                    <h5 class="fw-bold mb-1 text-dark" style="font-size: 1.1rem;">Silver Medalist</h5>
+                                                    <p class="text-muted small mb-0">Select the tournament runner-up</p>
                                                 </div>
-                                            <?php else: ?>
-                                                <input type="number" class="form-control text-center fw-bold" name="silver_count" 
-                                                    value="<?php echo $current_submission['silver_count'] ?? 0; ?>" 
-                                                    min="0" placeholder="0" <?php if ($is_locked) echo 'disabled'; ?>>
-                                                
-                                            <?php endif; ?>
+                                                <div class="place-badge silver-badge">
+                                                    2ND PLACE
+                                                </div>
+                                            </div>
+                                            
+                                            <div class="row g-3 align-items-end">
+                                                <div class="col-md-9">
+                                                    <select class="form-select fw-medium" name="silver_winner_id" <?php if ($is_locked) echo 'disabled'; ?>>
+                                                        <option value="" class="text-muted">Select participating team...</option>
+                                                        <?php foreach ($teams as $team): ?>
+                                                            <option value="<?php echo $team['team_id']; ?>" <?php echo ($current_submission && $current_submission['silver_winner_college_id'] == $team['team_id']) ? 'selected' : ''; ?>>
+                                                                <?php echo htmlspecialchars($team['team_name']); ?>
+                                                            </option>
+                                                        <?php endforeach; ?>
+                                                    </select>
+                                                </div>
+                                                <div class="col-md-3">
+                                                    <div class="medal-input-group">
+                                                        <label>Medal Count</label>
+                                                        <?php if ($fixed_count !== null): ?>
+                                                            <div class="form-control text-center fw-bold bg-light text-muted d-flex justify-content-center align-items-center gap-2">
+                                                                <?php echo $fixed_count; ?> <i class="fas fa-lock small"></i>
+                                                            </div>
+                                                        <?php else: ?>
+                                                            <input type="number" class="form-control text-center fw-bold" name="silver_count" value="<?php echo $current_submission['silver_count'] ?? 0; ?>" min="0" placeholder="0" <?php if ($is_locked) echo 'disabled'; ?>>
+                                                        <?php endif; ?>
+                                                    </div>
+                                                </div>
+                                            </div>
                                         </div>
                                     </div>
                                 </div>
 
-                                <div class="medal-row bronze-row mt-3">
-                                    <div class="row align-items-center g-3">
-                                        <div class="col-md-2 text-center">
-                                            <div class="medal-icon">
-                                                <i class="fas fa-medal text-white"></i>
+                                <div class="medal-card bronze-card">
+                                    <div class="d-flex gap-4">
+                                        <div class="flex-shrink-0">
+                                            <div class="medal-icon-box bronze-icon">
+                                                <i class="fas fa-award"></i>
                                             </div>
                                         </div>
-                                        <div class="col-md-2">
-                                            <div class="medal-label text-bronze">
-                                                BRONZE<br>
-                                                <small class="fw-normal" style="font-size: 0.7rem; letter-spacing: 0;">3rd Place</small>
-                                            </div>
-                                        </div>
-                                        <div class="col-md-6">
-                                            <select class="form-select text-center fw-bold" name="bronze_winner_id" <?php if ($is_locked) echo 'disabled'; ?>>
-                                                <option value="">-- Select Team --</option>
-                                                <?php foreach ($teams as $team): ?>
-                                                    <option value="<?php echo $team['team_id']; ?>" <?php echo ($current_submission && $current_submission['bronze_winner_college_id'] == $team['team_id']) ? 'selected' : ''; ?>>
-                                                        <?php echo htmlspecialchars($team['team_name']); ?>
-                                                    </option>
-                                                <?php endforeach; ?>
-                                            </select>
-                                        </div>
-                                        <div class="col-md-2 text-center">
-                                            <?php if ($fixed_count !== null): ?>
-                                                <div class="bg-light border border-success rounded p-2 text-success h-100 d-flex flex-column justify-content-center align-items-center shadow-sm">
-                                                    <span class="fs-5 fw-bold"><?php echo $fixed_count; ?></span>
-                                                    <span class="small" style="font-size: 0.6rem; line-height: 1;"><i class="fas fa-lock fa-xs me-1"></i>Locked</span>
+                                        
+                                        <div class="flex-grow-1">
+                                            <div class="d-flex justify-content-between align-items-start mb-3">
+                                                <div>
+                                                    <h5 class="fw-bold mb-1 text-dark" style="font-size: 1.1rem;">Bronze Medalist</h5>
+                                                    <p class="text-muted small mb-0">Select the third-place finisher</p>
                                                 </div>
-                                            <?php else: ?>
-                                                <input type="number" class="form-control text-center fw-bold" name="bronze_count" 
-                                                    value="<?php echo $current_submission['bronze_count'] ?? 0; ?>" 
-                                                    min="0" placeholder="0" <?php if ($is_locked) echo 'disabled'; ?>>
-                                                
-                                            <?php endif; ?>
+                                                <div class="place-badge bronze-badge">
+                                                    <i class="fas fa-lock me-1 opacity-50"></i> 3RD PLACE
+                                                </div>
+                                            </div>
+                                            
+                                            <div class="row g-3 align-items-end">
+                                                <div class="col-md-9">
+                                                    <select class="form-select fw-medium" name="bronze_winner_id" <?php if ($is_locked) echo 'disabled'; ?>>
+                                                        <option value="" class="text-muted">Select participating team...</option>
+                                                        <?php foreach ($teams as $team): ?>
+                                                            <option value="<?php echo $team['team_id']; ?>" <?php echo ($current_submission && $current_submission['bronze_winner_college_id'] == $team['team_id']) ? 'selected' : ''; ?>>
+                                                                <?php echo htmlspecialchars($team['team_name']); ?>
+                                                            </option>
+                                                        <?php endforeach; ?>
+                                                    </select>
+                                                </div>
+                                                <div class="col-md-3">
+                                                    <div class="medal-input-group">
+                                                        <label>Medal Count</label>
+                                                        <?php if ($fixed_count !== null): ?>
+                                                            <div class="form-control text-center fw-bold bg-light text-muted d-flex justify-content-center align-items-center gap-2">
+                                                                <?php echo $fixed_count; ?> <i class="fas fa-lock small"></i>
+                                                            </div>
+                                                        <?php else: ?>
+                                                            <input type="number" class="form-control text-center fw-bold" name="bronze_count" value="<?php echo $current_submission['bronze_count'] ?? 0; ?>" min="0" placeholder="0" <?php if ($is_locked) echo 'disabled'; ?>>
+                                                        <?php endif; ?>
+                                                    </div>
+                                                </div>
+                                            </div>
                                         </div>
                                     </div>
                                 </div>
                                 <div class="card">
-                            <div class="card-header bg-white">
-                                <h5 class="mb-0 text-secondary"><i class="fas fa-history me-2"></i>Submission History</h5>
-                            </div>
-                            <div class="card-body p-4" style="max-height: 300px; overflow-y: auto;">
-                                <?php if (empty($history_logs)): ?>
-                                    <div class="text-center text-muted small py-3">
-                                        <i class="fas fa-clock fa-2x mb-2 opacity-25"></i><br>No history logs available.
+                                    <div class="card-header bg-white">
+                                        <h5 class="mb-0 text-secondary"><i class="fas fa-history me-2"></i>Submission History</h5>
                                     </div>
-                                <?php else: ?>
-                                    <div class="timeline">
-                                        <?php foreach ($history_logs as $log): 
-                                            $action = trim($log['action_type']);
-                                            $actor = htmlspecialchars($log['full_name'] ?? $log['username'] ?? 'System');
-                                            $date = date('M d, Y h:i A', strtotime($log['created_at']));
-                                            $msg = "";
-                                            $class = "secondary";
+                                    <div class="card-body p-4" style="max-height: 300px; overflow-y: auto;">
+                                        <?php if (empty($history_logs)): ?>
+                                            <div class="text-center text-muted small py-3">
+                                                <i class="fas fa-clock fa-2x mb-2 opacity-25"></i><br>No history logs available.
+                                            </div>
+                                        <?php else: ?>
+                                            <div class="timeline">
+                                                <?php foreach ($history_logs as $log): 
+                                                    $action = trim($log['action_type']);
+                                                    $actor = htmlspecialchars($log['full_name'] ?? $log['username'] ?? 'System');
+                                                    $date = date('M d, Y h:i A', strtotime($log['created_at']));
+                                                    $msg = "";
+                                                    $class = "secondary";
 
-                                            if ($action === 'SUBMITTED_RESULTS') {
-                                                $msg = "<strong>$actor</strong> submitted results for approval.";
-                                                $class = "success";
-                                            } elseif ($action === 'APPROVED_RESULT') {
-                                                $msg = "<strong>$actor</strong> (Director) approved the results.";
-                                                $class = "success";
-                                            } elseif ($action === 'REJECTED_RESULT') {
-                                                $msg = "<strong>$actor</strong> (Director) rejected the results.";
-                                                $class = "danger";
-                                            } elseif ($action === 'REVOKED_RESULT') {
-                                                $msg = "<strong>$actor</strong> revoked the approval.";
-                                                $class = "warning";
-                                            } elseif ($action === 'CREATED_CATEGORY') {
-                                                $msg = "<strong>$actor</strong> initialized this event.";
-                                                $class = "primary"; 
-                                            } elseif ($action === 'UPDATED_CATEGORY') {
-                                                $msg = "<strong>$actor</strong> updated event details.";
-                                                $class = "info"; 
-                                            } elseif ($action === 'DELETED_CATEGORY') {
-                                                $msg = "<strong>$actor</strong> deleted a category.";
-                                                $class = "danger";
-                                            } else {
-                                                $clean_action = ucwords(strtolower(str_replace('_', ' ', $action)));
-                                                $msg = "<strong>$actor</strong> - $clean_action";
-                                            }
-                                        ?>
-                                        <div class="timeline-item <?= $class ?>">
-                                            <div class="timeline-date"><?= $date ?></div>
-                                            <div class="timeline-content"><?= $msg ?></div>
-                                        </div>
-                                        <?php endforeach; ?>
+                                                    if ($action === 'SUBMITTED_RESULTS') {
+                                                        $msg = "<strong>$actor</strong> submitted results for approval.";
+                                                        $class = "success";
+                                                    } elseif ($action === 'APPROVED_RESULT') {
+                                                        $msg = "<strong>$actor</strong> (Director) approved the results.";
+                                                        $class = "success";
+                                                    } elseif ($action === 'REJECTED_RESULT') {
+                                                        $msg = "<strong>$actor</strong> (Director) rejected the results.";
+                                                        $class = "danger";
+                                                    } elseif ($action === 'REVOKED_RESULT') {
+                                                        $msg = "<strong>$actor</strong> revoked the approval.";
+                                                        $class = "warning";
+                                                    } elseif ($action === 'CREATED_CATEGORY') {
+                                                        $msg = "<strong>$actor</strong> initialized this event.";
+                                                        $class = "primary"; 
+                                                    } elseif ($action === 'UPDATED_CATEGORY') {
+                                                        $msg = "<strong>$actor</strong> updated event details.";
+                                                        $class = "info"; 
+                                                    } elseif ($action === 'DELETED_CATEGORY') {
+                                                        $msg = "<strong>$actor</strong> deleted a category.";
+                                                        $class = "danger";
+                                                    } else {
+                                                        $clean_action = ucwords(strtolower(str_replace('_', ' ', $action)));
+                                                        $msg = "<strong>$actor</strong> - $clean_action";
+                                                    }
+                                                ?>
+                                                <div class="timeline-item <?= $class ?>">
+                                                    <div class="timeline-date"><?= $date ?></div>
+                                                    <div class="timeline-content"><?= $msg ?></div>
+                                                </div>
+                                                <?php endforeach; ?>
+                                            </div>
+                                        <?php endif; ?>
                                     </div>
-                                <?php endif; ?>
-                            </div>
-                        </div>
+                                </div>
                             </div>
                         </div>
                     </div>
@@ -1029,10 +1130,41 @@ $current_submission = $conn->query("SELECT * FROM categories WHERE category_id =
         </div>
     </div>
     
-    <footer class="bg-dark text-white py-4">
-        <div class="text-center">
-            <small>&copy; <?php echo date("Y"); ?> PIT SPORTS TALLYING. All rights reserved.</small><br>
-            <small class="text-muted">Developed by Tsunayoshi Sawada</small>
+    <footer class="footer-main">
+        <div class="container">
+            <div class="row">
+                <div class="col-lg-5 col-md-12 mb-4 mb-lg-0">
+                    <div class="footer-logo-group">
+                        <img src="images/PIT.png" alt="Logo">
+                        <img src="images/Cote.png" alt="Logo">
+                        <h5> PIT SILAKAS MEDAL TALLY</h5>
+                    </div>
+                    <p>The official live medal tallying system for the Palompon Institute of Technology. Bringing you real-time results, event schedules, and team standings.</p>
+                </div>
+                <div class="col-lg-3 col-md-6 mb-4 mb-md-0">
+                    <h6>Quick Links</h6>
+                    <ul class="footer-links">
+                        <li><a href="home.php">Home (Standings)</a></li>
+                        <li><a href="Eventpage.php">Events Schedule</a></li>
+                        <li><a href="college_team.php">Teams & Rosters</a></li>
+                    </ul>
+                </div>
+                <div class="col-lg-4 col-md-6">
+                    <h6>Contact Us</h6>
+                    <div style="color: rgba(255,255,255,0.7); font-size: 0.9rem; line-height: 1.6;">
+                        <p class="mb-1 fw-bold text-white">Palompon Institute of Technology</p>
+                        <p class="mb-2">Evangelista Street, Brgy. Guiwan II,<br>Palompon, Leyte 6538</p>
+                        <p class="mb-0">
+                            <i class="fas fa-phone-alt me-2"></i>(053) 555-9841<br>
+                            <i class="fas fa-envelope me-2"></i>op@pit.edu.ph
+                        </p>
+                    </div>
+                </div>
+            </div>
+            <div class="footer-bottom">
+                <small>&copy; <?php echo date("Y"); ?> PIT SILAKAS MEDAL TALLY. All rights reserved.</small><br>
+                <small>Developed by Jayvee Baybyon</small>
+            </div>
         </div>
     </footer>
     
@@ -1049,28 +1181,29 @@ $current_submission = $conn->query("SELECT * FROM categories WHERE category_id =
             }
             
             // --- 2. Footer/Sidebar Adjustment ---
-            const footer = document.querySelector('footer');
-            const sidebar = document.getElementById('sidebar');
-            const navbar = document.querySelector('.navbar');
+            // --- Dynamic Sidebar Height (Footer Overlap Fix) ---
+        const footer = document.querySelector('footer');
+        const sidebar = document.getElementById('sidebar');
+        const navbar = document.querySelector('.navbar');
 
-            if (sidebar && footer && navbar) {
-                function adjustSidebarHeight() {
-                    if (window.innerWidth <= 992) {
-                        sidebar.style.height = ''; 
-                        return;
-                    }
-                    const navbarHeight = navbar.offsetHeight;
-                    const footerTop = footer.getBoundingClientRect().top;
-                    const viewportHeight = window.innerHeight;
-                    const maxSidebarHeight = viewportHeight - navbarHeight;
-                    const availableHeight = footerTop - navbarHeight;
-                    const newHeight = Math.max(0, Math.min(maxSidebarHeight, availableHeight));
-                    sidebar.style.height = `${newHeight}px`;
+        if (sidebar && footer && navbar) {
+            function adjustSidebarHeight() {
+                if (window.innerWidth <= 992) {
+                    sidebar.style.height = '';
+                    return;
                 }
-                window.addEventListener('scroll', adjustSidebarHeight, { passive: true });
-                window.addEventListener('resize', adjustSidebarHeight);
-                setTimeout(adjustSidebarHeight, 100);
+                const navbarHeight = navbar.offsetHeight;
+                const footerTop = footer.getBoundingClientRect().top;
+                const viewportHeight = window.innerHeight;
+                const maxSidebarHeight = viewportHeight - navbarHeight;
+                const availableHeight = footerTop - navbarHeight;
+                const newHeight = Math.max(0, Math.min(maxSidebarHeight, availableHeight));
+                sidebar.style.height = `${newHeight}px`;
             }
+            window.addEventListener('scroll', adjustSidebarHeight, { passive: true });
+            window.addEventListener('resize', adjustSidebarHeight);
+            setTimeout(adjustSidebarHeight, 100);
+        }
 
             // --- 3. [NEW] AUTO-SELECT NUMBER INPUTS ---
             // This fixes the issue: clicking the box highlights the number so typing replaces it instantly.

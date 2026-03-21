@@ -1376,7 +1376,7 @@ $conn->close();
                 <img src="images/PIT.png" alt="Logo" class="me-2 brand-logo" style="height: 50px; width: 48px; object-fit: contain; transition: filter 0.2s;">
                 <div class="d-flex flex-column lh-sm">
                     <strong class="text-white brand-heading" style="font-size: 1.25rem; transition: color 0.2s;">PIT SIGLAKAS MEDAL TALLY</strong>
-                    <small class="text-light brand-subheading" style="font-size: 0.75rem; transition: color 0.2s;">Official College Tournament System</small>
+                    <small class="text-light brand-subheading" style="font-size: 0.75rem; transition: color 0.2s;">Official College Medal Tally System</small>
                 </div>
             </a>
 
@@ -1601,43 +1601,82 @@ $conn->close();
                                         </h6>
                                     </div>
                                     
-                                    <div class="card-body">
-                                        <div class="row">
+                                    <div class="card-body p-4">
+                                        <div class="row g-4">
                                             
-                                            <div class="col-md-6">
-                                                <div class="detail-row mb-3">
-                                                    <label class="text-muted small mb-1">Game</label>
-                                                    <div class="fw-semibold fs-5" id="viewGameName">Loading...</div>
-                                                </div>
-                                                <div class="detail-row mb-3">
-                                                    <label class="text-muted small mb-1">Event</label>
-                                                    <div class="fw-semibold" id="viewEventName">Loading...</div>
-                                                </div>
-                                                <div class="detail-row mb-3"> <label class="text-muted small mb-1">Category</label>
-                                                    <div class="fw-semibold" id="viewCategory">Loading...</div>
-                                                </div>
-                                                <div class="detail-row mb-3 mb-md-0"> <label class="text-muted small mb-1">Status</label>
-                                                    <div>
-                                                        <span class="badge fs-6 bg-light text-dark" id="viewEventStatus">Loading...</span>
+                                            <div class="col-md-7 border-end pe-md-4">
+                                                
+                                                <div class="d-flex flex-column gap-3 mb-4">
+                                                    <div class="d-flex align-items-center">
+                                                        <div class="text-muted fw-bold small text-uppercase" style="width: 100px; letter-spacing: 1px;">Game:</div>
+                                                        <div class="fw-bold text-dark fs-6" id="viewGameName">Loading Sport...</div>
                                                     </div>
-                                                </div>
-                                                <div class="detail-row mb-3" id="viewDivisionRow"> 
-                                                    <label class="text-muted small mb-1">Division</label>
-                                                    <div class="fw-semibold text-primary" id="viewDivision">Loading...</div>
+                                                    
+                                                    <div class="d-flex align-items-center">
+                                                        <div class="text-muted fw-bold small text-uppercase" style="width: 100px; letter-spacing: 1px;">Event:</div>
+                                                        <div class="fw-bold text-dark" style="font-size: 1.4rem; line-height: 1.2;" id="viewEventName">Loading Event...</div>
+                                                    </div>
+                                                    
+                                                    <div class="d-flex align-items-center">
+                                                        <div class="text-muted fw-bold small text-uppercase" style="width: 100px; letter-spacing: 1px;">Category:</div>
+                                                        <div class="text-dark" style="font-size: 0.85rem;">
+                                                            <i class=" text-muted"></i> 
+                                                            <span id="viewCategory" class="fw-semibold">Loading Category...</span>
+                                                        </div>
+                                                    </div>
+                                                    
+                                                    <div id="viewDivisionRow" style="display:none;">
+                                                        <div class="d-flex align-items-center">
+                                                            <div class="text-muted fw-bold small text-uppercase" style="width: 100px; letter-spacing: 1px;">Division:</div>
+                                                                <div>
+                                                                    <div class="text-dark" style="font-size: 0.85rem;">
+                                                                        <i class="text-muted"></i> 
+                                                                        <span id="viewDivision" class="fw-semibold">Division</span>
+                                                                    </div>
+                                                                </div>
+                                                            </div>
+                                                        </div>
+                                                    </div>
+
+                                                <div class="mt-4 pt-4 border-top">
+                                                    <label class="text-muted small mb-2 fw-bold text-uppercase" style="letter-spacing: 1px;">Current Status</label><br>
+                                                    <span class="badge fs-6 px-4 py-2 rounded-pill shadow-sm" id="viewEventStatus">Loading...</span>
                                                 </div>
                                             </div>
                                             
-                                            <div class="col-md-6">
-                                                <div class="detail-row mb-3">
-                                                    <label class="text-muted small mb-1">Date</label>
-                                                    <div class="fw-semibold" id="viewEventDate">Loading...</div>
-                                                </div>
-                                                <div class="detail-row mb-3">
-                                                    <label class="text-muted small mb-1">Time</label>
-                                                    <div class="fw-semibold" id="viewEventTime">Loading...</div>
-                                                </div>
-                                                <div class="detail-row"> <label class="text-muted small mb-1">Venue</label>
-                                                    <div class="fw-semibold" id="viewEventVenue">Loading...</div>
+                                            <div class="col-md-5 ps-md-4">
+                                                <div class="bg-light rounded p-4 h-100 border">
+                                                    <h6 class="fw-bold text-dark mb-4 text-uppercase" style="font-size: 0.8rem; letter-spacing: 1px;">Schedule & Location</h6>
+                                                    
+                                                    <div class="d-flex align-items-center mb-4">
+                                                        <div class="bg-white rounded shadow-sm p-2 me-3 text-center" style="width: 45px; height: 45px;">
+                                                            <i class="far fa-calendar-alt text-primary fs-5"></i>
+                                                        </div>
+                                                        <div>
+                                                            <div class="text-muted small fw-bold text-uppercase" style="font-size: 0.65rem;">Date</div>
+                                                            <div class="fw-semibold text-dark" id="viewEventDate">Loading...</div>
+                                                        </div>
+                                                    </div>
+                                                    
+                                                    <div class="d-flex align-items-center mb-4">
+                                                        <div class="bg-white rounded shadow-sm p-2 me-3 text-center" style="width: 45px; height: 45px;">
+                                                            <i class="far fa-clock text-warning fs-5"></i>
+                                                        </div>
+                                                        <div>
+                                                            <div class="text-muted small fw-bold text-uppercase" style="font-size: 0.65rem;">Time</div>
+                                                            <div class="fw-semibold text-dark" id="viewEventTime">Loading...</div>
+                                                        </div>
+                                                    </div>
+                                                    
+                                                    <div class="d-flex align-items-center">
+                                                        <div class="bg-white rounded shadow-sm p-2 me-3 text-center" style="width: 45px; height: 45px;">
+                                                            <i class="fas fa-map-marker-alt text-danger fs-5"></i>
+                                                        </div>
+                                                        <div>
+                                                            <div class="text-muted small fw-bold text-uppercase" style="font-size: 0.65rem;">Venue</div>
+                                                            <div class="fw-semibold text-dark" id="viewEventVenue">Loading...</div>
+                                                        </div>
+                                                    </div>
                                                 </div>
                                             </div>
                                             

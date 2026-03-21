@@ -32,7 +32,26 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
     try {
         $category_id = (int)$_POST['category_id'];
 
-        // Action: Approve
+        // --- NEW: Fetch Context Data for Smart Logging ---
+        $log_event_name = 'Unknown Event';
+        $log_cat_name = 'Unknown Category';
+        $log_div_name = '';
+        $stmt_info = $conn->prepare("
+            SELECT ge.event_name, c.category_name, c.division_name 
+            FROM categories c
+            JOIN game_events ge ON c.event_id = ge.event_id
+            WHERE c.category_id = ?
+        ");
+        $stmt_info->bind_param("i", $category_id);
+        $stmt_info->execute();
+        if ($row_info = $stmt_info->get_result()->fetch_assoc()) {
+            $log_event_name = $row_info['event_name'];
+            $log_cat_name = $row_info['category_name'];
+            $log_div_name = $row_info['division_name'];
+        }
+        $stmt_info->close();
+
+        // 1. Action: Approve
         if ($_POST['action'] === 'approve_result') {
             $stmt_cat = $conn->prepare(
                "UPDATE categories SET 
@@ -45,10 +64,18 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
             $stmt_cat->execute();
             
             if ($stmt_cat->affected_rows > 0) {
-                // Log Activity
-                $log_context = json_encode(['category_id' => $category_id, 'action' => 'Approve']);
-                $conn->query("INSERT INTO system_logs (actor_user_id, action_type, related_id, related_table, log_context) 
-                              VALUES ($current_user_id, 'APPROVED_RESULT', $category_id, 'categories', '$log_context')");
+                // Log Activity with Smart Context
+                $context = [
+                    'parent_event_name' => $log_event_name,
+                    'category_name' => $log_cat_name,
+                    'division_name' => $log_div_name,
+                    'action' => 'Approve'
+                ];
+                $log_context = json_encode($context);
+                $stmt_log = $conn->prepare("INSERT INTO system_logs (actor_user_id, action_type, related_id, related_table, log_context) VALUES (?, 'APPROVED_RESULT', ?, 'categories', ?)");
+                $stmt_log->bind_param("iis", $current_user_id, $category_id, $log_context);
+                $stmt_log->execute();
+                $stmt_log->close();
 
                 $conn->commit();
                 $alert_message = "SUCCESS: Results verified and approved!";
@@ -58,7 +85,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
             $stmt_cat->close();
 
         } 
-        // Action: Reject
+        // 2. Action: Reject
         elseif ($_POST['action'] === 'reject_result') {
             $rejection_reason = trim($_POST['rejection_reason']) ?: 'Evidence mismatch or data error.';
             
@@ -72,6 +99,20 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
             $stmt_cat->execute();
             
             if ($stmt_cat->affected_rows > 0) {
+                // Log Activity with Smart Context
+                $context = [
+                    'parent_event_name' => $log_event_name,
+                    'category_name' => $log_cat_name,
+                    'division_name' => $log_div_name,
+                    'action' => 'Reject',
+                    'reason' => $rejection_reason
+                ];
+                $log_context = json_encode($context);
+                $stmt_log = $conn->prepare("INSERT INTO system_logs (actor_user_id, action_type, related_id, related_table, log_context) VALUES (?, 'REJECTED_RESULT', ?, 'categories', ?)");
+                $stmt_log->bind_param("iis", $current_user_id, $category_id, $log_context);
+                $stmt_log->execute();
+                $stmt_log->close();
+
                 $conn->commit();
                 $alert_message = "SUCCESS: Results rejected. The Tournament Manager has been notified.";
                 $alert_type = "warning";
@@ -81,7 +122,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
             $stmt_cat->close();
         }
         
-        // Action: Revoke
+        // 3. Action: Revoke
         elseif ($_POST['action'] === 'revoke_result') {
             $revoke_reason = trim($_POST['revoke_reason']) ?: 'Approval revoked by Director.';
 
@@ -97,6 +138,20 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
             $stmt_cat->execute();
             
             if ($stmt_cat->affected_rows > 0) {
+                // Log Activity with Smart Context
+                $context = [
+                    'parent_event_name' => $log_event_name,
+                    'category_name' => $log_cat_name,
+                    'division_name' => $log_div_name,
+                    'action' => 'Revoke',
+                    'reason' => $revoke_reason
+                ];
+                $log_context = json_encode($context);
+                $stmt_log = $conn->prepare("INSERT INTO system_logs (actor_user_id, action_type, related_id, related_table, log_context) VALUES (?, 'REVOKED_RESULT', ?, 'categories', ?)");
+                $stmt_log->bind_param("iis", $current_user_id, $category_id, $log_context);
+                $stmt_log->execute();
+                $stmt_log->close();
+                
                 $conn->commit();
                 $alert_message = "SUCCESS: Approval revoked. Result sent back for correction.";
                 $alert_type = "warning";
@@ -473,43 +528,103 @@ elseif (stripos($row['game_name'], 'Other') !== false) {
         .results-table thead th { background: #f8fafc; color: #475569; font-weight: 600; font-size: 0.8rem; text-transform: uppercase; padding: 1rem 1.25rem; border-bottom: 1px solid #e2e8f0; }
         .results-table tbody td { padding: 1.25rem; vertical-align: middle; border-bottom: 1px solid #f1f3f5; }
         
-        /* Modal Split View with ZOOM */
+        /* --- Premium Document Viewer Styles --- */
         .evidence-col {
-            background: #0f172a; 
+            background-color: #0f172a; 
+            /* Subtle Grid Background */
+            background-image: 
+                linear-gradient(rgba(255, 255, 255, 0.03) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(255, 255, 255, 0.03) 1px, transparent 1px);
+            background-size: 20px 20px;
             display: flex;
-            align-items: flex-start;
+            align-items: center;
             justify-content: center;
-            height: 500px;
-            overflow: auto; /* ENABLE SCROLLING */
+            height: 100%; min-height: 500px;
+            overflow: auto;
             position: relative;
             border-radius: 8px 0 0 8px;
-            cursor: zoom-in;
         }
+
         .evidence-col::-webkit-scrollbar { width: 8px; height: 8px; }
         .evidence-col::-webkit-scrollbar-track { background: #1e293b; }
         .evidence-col::-webkit-scrollbar-thumb { background: #475569; border-radius: 4px; }
 
         .evidence-img {
-            max-width: 100%;
-            max-height: 100%;
+            max-width: 95%;
+            max-height: 95%;
             object-fit: contain;
-            transition: all 0.3s ease; 
+            /* Butter-smooth zoom transitions */
+            transition: transform 0.3s cubic-bezier(0.25, 1, 0.5, 1); 
+            box-shadow: 0 10px 40px rgba(0,0,0,0.6); /* Deep floating shadow */
+            cursor: zoom-in;
+            transform-origin: center center;
             margin: auto;
         }
-        .evidence-img.zoomed {
-            max-width: none;
-            max-height: none;
-            width: 200%; 
-            cursor: zoom-out;
+
+        /* Floating Toolbar */
+        .evidence-tools {
+            position: fixed; /* Keep it locked to the bottom of the viewer */
+            bottom: 25px;
+            left: 29%; /* Centered roughly under the image col */
+            transform: translateX(-50%);
+            background: rgba(15, 23, 42, 0.85);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255,255,255,0.15);
+            padding: 8px 20px;
+            border-radius: 30px;
+            display: flex;
+            gap: 15px;
+            z-index: 10;
+            box-shadow: 0 8px 20px rgba(0,0,0,0.4);
+        }
+        
+        .evidence-tools button, .evidence-tools a {
+            background: transparent;
+            border: none;
+            color: rgba(255,255,255,0.8);
+            font-size: 1.1rem;
+            cursor: pointer;
+            transition: all 0.2s;
+            padding: 0 5px;
+            text-decoration: none;
+        }
+        
+        .evidence-tools button:hover, .evidence-tools a:hover { 
+            color: #1abc9c; /* Mint accent color on hover */
+            transform: translateY(-1px);
         }
         
         .data-col { padding-left: 1.5rem; }
-        .winner-card { border: 1px solid #f1f3f5; border-radius: 8px; padding: 1rem; margin-bottom: 0.75rem; display: flex; align-items: center; }
-        .winner-card.gold { background: linear-gradient(to right, #fffbf0, #fff); border-left: 4px solid var(--gold); }
-        .winner-card.silver { background: linear-gradient(to right, #f8f9fa, #fff); border-left: 4px solid var(--silver); }
-        .winner-card.bronze { background: linear-gradient(to right, #fff7ed, #fff); border-left: 4px solid var(--bronze); }
+        /* --- Premium Medal Cards (Verification Modal) --- */
+        .medal-card {
+            background: #ffffff;
+            border-radius: 12px; 
+            padding: 1.25rem;
+            margin-bottom: 1rem;
+            border: 2px solid transparent;
+            display: flex;
+            align-items: center;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.03);
+            transition: transform 0.2s ease;
+        }
+        .medal-card:hover { transform: translateY(-2px); }
         
-        .winner-icon { font-size: 1.5rem; margin-right: 1rem; }
+        .medal-card.gold-card { border-color: #fef08a; box-shadow: 0 8px 20px rgba(250, 204, 21, 0.08); }
+        .medal-card.silver-card { border-color: #e2e8f0; box-shadow: 0 8px 20px rgba(148, 163, 184, 0.08); }
+        .medal-card.bronze-card { border-color: #ffedd5; box-shadow: 0 8px 20px rgba(249, 115, 22, 0.08); }
+
+        .medal-icon-box {
+            width: 50px; height: 50px;
+            border-radius: 12px;
+            display: flex; align-items: center; justify-content: center;
+            font-size: 1.5rem;
+            flex-shrink: 0;
+            margin-right: 15px;
+        }
+        .gold-icon { background: #fef9c3; color: #eab308; }
+        .silver-icon { background: #f1f5f9; color: #94a3b8; }
+        .bronze-icon { background: #ffedd5; color: #ea580c; }
+
         .text-gold { color: var(--gold); } .text-silver { color: var(--silver); } .text-bronze { color: var(--bronze); }
         
         .verification-arrow { display: flex; align-items: center; justify-content: center; color: #2563eb; font-weight: 700; font-size: 0.9rem; margin: 1rem 0; text-transform: uppercase; letter-spacing: 1px; }
@@ -978,7 +1093,7 @@ elseif (stripos($row['game_name'], 'Other') !== false) {
             </li>
             <li class="nav-item">
                 <a class="nav-link <?= ($current_page == 'events.php') ? 'active' : '' ?>" href="events.php">
-                    <i class="fas fa-calendar-alt me-2"></i> <span>Manage Events (L1-L3)</span>
+                    <i class="fas fa-calendar-alt me-2"></i> <span>Manage Events </span>
                 </a>
             </li>
 
@@ -1303,11 +1418,24 @@ elseif (stripos($row['game_name'], 'Other') !== false) {
                 <div class="modal-body p-0">
                     <div class="row g-0">
                         <!-- LEFT COL: EVIDENCE IMAGE -->
-                        <div class="col-lg-7 evidence-col bg-dark">
-                            <div id="evidenceContainer" class="text-center w-100 p-3">
-                                <img src="" id="modalEvidenceImg" class="evidence-img shadow-lg rounded" alt="Evidence Tally Sheet">
-                                <div id="noEvidenceMsg" class="text-white-50 d-none">
-                                    <i class="fas fa-image fa-3x mb-3"></i><br>No digital evidence uploaded for this event.
+                        <div class="col-lg-7 evidence-col">
+                            
+                            <div class="evidence-tools d-none" id="evidenceToolbar">
+                                <button type="button" id="btnZoomOut" title="Zoom Out"><i class="fas fa-search-minus"></i></button>
+                                <button type="button" id="btnZoomReset" title="Fit to Screen"><i class="fas fa-compress"></i></button>
+                                <button type="button" id="btnZoomIn" title="Zoom In"><i class="fas fa-search-plus"></i></button>
+                                <div style="width: 1px; background: rgba(255,255,255,0.2); margin: 0 5px;"></div>
+                                <a href="#" id="btnOpenFull" target="_blank" title="Open Image in New Tab">
+                                    <i class="fas fa-external-link-alt"></i>
+                                </a>
+                            </div>
+
+                            <div id="evidenceContainer" class="w-100 h-100 d-flex align-items-center justify-content-center p-3">
+                                <img src="" id="modalEvidenceImg" class="evidence-img d-none" alt="Evidence Tally Sheet">
+                                
+                                <div id="noEvidenceMsg" class="text-white-50 d-none text-center">
+                                    <i class="fas fa-file-invoice fa-3x mb-3 opacity-50"></i><br>
+                                    <span class="small fw-bold text-uppercase" style="letter-spacing: 1px;">No Digital Evidence Uploaded</span>
                                 </div>
                             </div>
                         </div>
@@ -1315,84 +1443,90 @@ elseif (stripos($row['game_name'], 'Other') !== false) {
                         <!-- RIGHT COL: DIGITAL DATA -->
                         <div class="col-lg-5 data-col bg-white p-4 d-flex flex-column">
     
-    <div class="mb-4 border-bottom pb-3">
-        <h6 class="text-uppercase text-muted fw-bold small mb-2" style="letter-spacing: 1px;">Digital Entry Comparison</h6>
-        <h4 class="fw-bold text-dark mb-2" id="modalEventTitle">Event Name</h4>
-        
-        <div class="d-flex align-items-center text-muted small">
-            <i class="fas fa-user-circle me-2 text-primary opacity-50"></i>
-            <span class="me-1">Submitted by:</span>
-            <span class="fw-bold text-dark" id="modalSubmittedBy">Loading...</span>
-        </div>
-    </div>
+                            <div class="mb-4 border-bottom pb-3">
+                                <h6 class="text-uppercase text-muted fw-bold small mb-2" style="letter-spacing: 1px;">Digital Entry Comparison</h6>
+                                <h4 class="fw-bold text-dark mb-2" id="modalEventTitle">Event Name</h4>
+                                
+                                <div class="d-flex align-items-center text-muted small">
+                                    <i class="fas fa-user-circle me-2 text-primary opacity-50"></i>
+                                    <span class="me-1">Submitted by:</span>
+                                    <span class="fw-bold text-dark" id="modalSubmittedBy">Loading...</span>
+                                </div>
+                            </div>
 
-    <div class="winner-card gold mb-3">
-        <i class="fas fa-medal winner-icon text-gold fa-2x"></i>
-        <div class="flex-grow-1 ps-3">
-            <div class="small fw-bold text-warning text-uppercase" style="font-size: 0.7rem;">Gold Winner</div>
-            <div class="fw-bold text-dark fs-6" id="modalGoldName">Team A</div>
-        </div>
-        <div class="text-end ps-2">
-            <div class="badge bg-warning text-dark rounded-pill mb-1" id="modalGoldCount" style="min-width: 40px;">0</div>
-            <div class="text-muted fw-bold text-uppercase" style="font-size: 0.6rem;">Medals</div>
-        </div>
-    </div>
+                            <div class="medal-card gold-card mb-3">
+                                <div class="medal-icon-box gold-icon">
+                                    <i class="fas fa-award"></i>
+                                </div>
+                                <div class="flex-grow-1">
+                                    <div class="small fw-bold text-warning text-uppercase" style="font-size: 0.7rem; letter-spacing: 0.5px;">Gold Winner</div>
+                                    <div class="fw-bold text-dark fs-6 mt-1" id="modalGoldName" style="line-height: 1.2;">Team A</div>
+                                </div>
+                                <div class="text-end ps-2">
+                                    <div class="badge bg-warning text-dark rounded-pill mb-1 px-3 py-2 fs-6 shadow-sm" id="modalGoldCount">0</div>
+                                    <div class="text-muted fw-bold text-uppercase d-block" style="font-size: 0.65rem; letter-spacing: 0.5px;">Medals</div>
+                                </div>
+                            </div>
 
-    <div class="winner-card silver mb-3">
-        <i class="fas fa-medal winner-icon text-silver fa-2x"></i>
-        <div class="flex-grow-1 ps-3">
-            <div class="small fw-bold text-secondary text-uppercase" style="font-size: 0.7rem;">Silver Winner</div>
-            <div class="fw-bold text-dark fs-6" id="modalSilverName">Team B</div>
-        </div>
-        <div class="text-end ps-2">
-            <div class="badge bg-secondary text-white rounded-pill mb-1" id="modalSilverCount" style="min-width: 40px;">0</div>
-            <div class="text-muted fw-bold text-uppercase" style="font-size: 0.6rem;">Medals</div>
-        </div>
-    </div>
+                            <div class="medal-card silver-card mb-3">
+                                <div class="medal-icon-box silver-icon">
+                                    <i class="fas fa-award"></i>
+                                </div>
+                                <div class="flex-grow-1">
+                                    <div class="small fw-bold text-secondary text-uppercase" style="font-size: 0.7rem; letter-spacing: 0.5px;">Silver Winner</div>
+                                    <div class="fw-bold text-dark fs-6 mt-1" id="modalSilverName" style="line-height: 1.2;">Team B</div>
+                                </div>
+                                <div class="text-end ps-2">
+                                    <div class="badge bg-secondary text-white rounded-pill mb-1 px-3 py-2 fs-6 shadow-sm" id="modalSilverCount">0</div>
+                                    <div class="text-muted fw-bold text-uppercase d-block" style="font-size: 0.65rem; letter-spacing: 0.5px;">Medals</div>
+                                </div>
+                            </div>
 
-    <div class="winner-card bronze mb-4">
-        <i class="fas fa-medal winner-icon fa-2x" style="color: #cd7f32;"></i>
-        <div class="flex-grow-1 ps-3">
-            <div class="small fw-bold text-uppercase" style="font-size: 0.7rem; color: #cd7f32;">Bronze Winner</div>
-            <div class="fw-bold text-dark fs-6" id="modalBronzeName">Team C</div>
-        </div>
-        <div class="text-end ps-2">
-            <div class="badge bg-light text-dark border rounded-pill mb-1" id="modalBronzeCount" style="min-width: 40px;">0</div>
-            <div class="text-muted fw-bold text-uppercase" style="font-size: 0.6rem;">Medals</div>
-        </div>
-    </div>
+                            <div class="medal-card bronze-card mb-4">
+                                <div class="medal-icon-box bronze-icon">
+                                    <i class="fas fa-award"></i>
+                                </div>
+                                <div class="flex-grow-1">
+                                    <div class="small fw-bold text-uppercase" style="font-size: 0.7rem; color: #ea580c; letter-spacing: 0.5px;">Bronze Winner</div>
+                                    <div class="fw-bold text-dark fs-6 mt-1" id="modalBronzeName" style="line-height: 1.2;">Team C</div>
+                                </div>
+                                <div class="text-end ps-2">
+                                    <div class="badge bg-light text-dark border rounded-pill mb-1 px-3 py-2 fs-6 shadow-sm" id="modalBronzeCount">0</div>
+                                    <div class="text-muted fw-bold text-uppercase d-block" style="font-size: 0.65rem; letter-spacing: 0.5px;">Medals</div>
+                                </div>
+                            </div>
 
-    <div class="verification-arrow mb-3 text-primary bg-light py-2 rounded fw-bold small">
-        Does the data match the evidence?
-    </div>
+                            <div class="verification-arrow mb-3 text-primary bg-light py-2 rounded fw-bold small">
+                                Does the data match the evidence?
+                            </div>
 
-    <div class="mt-auto d-grid gap-2">
-        <form method="POST" id="approveForm">
-            <input type="hidden" name="action" value="approve_result">
-            <input type="hidden" name="category_id" id="approveCatId">
-            <button type="submit" class="btn btn-success w-100 py-2 fw-bold shadow-sm text-uppercase" style="letter-spacing: 0.5px;">
-                <i class="fas fa-check-circle me-2"></i> YES, Approve Result
-            </button>
-        </form>
-        <button type="button" class="btn btn-outline-danger w-100 fw-bold text-uppercase" id="btnShowReject" style="letter-spacing: 0.5px;">
-            <i class="fas fa-times-circle me-2"></i> NO, Reject (Mismatch)
-        </button>
-    </div>
+                            <div class="mt-auto d-grid gap-2">
+                                <form method="POST" id="approveForm">
+                                    <input type="hidden" name="action" value="approve_result">
+                                    <input type="hidden" name="category_id" id="approveCatId">
+                                    <button type="submit" class="btn btn-success w-100 py-2 fw-bold shadow-sm text-uppercase" style="letter-spacing: 0.5px;">
+                                        <i class="fas fa-check-circle me-2"></i> YES, Approve Result
+                                    </button>
+                                </form>
+                                <button type="button" class="btn btn-outline-danger w-100 fw-bold text-uppercase" id="btnShowReject" style="letter-spacing: 0.5px;">
+                                    <i class="fas fa-times-circle me-2"></i> NO, Reject (Mismatch)
+                                </button>
+                            </div>
 
-    <div id="rejectSection" class="d-none mt-3 p-3 bg-light rounded border border-danger">
-        <form method="POST">
-            <input type="hidden" name="action" value="reject_result">
-            <input type="hidden" name="category_id" id="rejectCatId">
-            <label class="form-label text-danger fw-bold small">Reason for Rejection:</label>
-            <textarea name="rejection_reason" class="form-control mb-2" rows="2" placeholder="e.g. Image shows Team B won Gold..." required></textarea>
-            <div class="d-flex gap-2">
-                <button type="submit" class="btn btn-danger btn-sm flex-grow-1">Confirm Reject</button>
-                <button type="button" class="btn btn-light btn-sm border" id="btnCancelReject">Cancel</button>
-            </div>
-        </form>
-    </div>
+                            <div id="rejectSection" class="d-none mt-3 p-3 bg-light rounded border border-danger">
+                                <form method="POST">
+                                    <input type="hidden" name="action" value="reject_result">
+                                    <input type="hidden" name="category_id" id="rejectCatId">
+                                    <label class="form-label text-danger fw-bold small">Reason for Rejection:</label>
+                                    <textarea name="rejection_reason" class="form-control mb-2" rows="2" placeholder="e.g. Image shows Team B won Gold..." required></textarea>
+                                    <div class="d-flex gap-2">
+                                        <button type="submit" class="btn btn-danger btn-sm flex-grow-1">Confirm Reject</button>
+                                        <button type="button" class="btn btn-light btn-sm border" id="btnCancelReject">Cancel</button>
+                                    </div>
+                                </form>
+                            </div>
 
-</div>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -1546,36 +1680,98 @@ elseif (stripos($row['game_name'], 'Other') !== false) {
                 document.getElementById('approveCatId').value = catId;
                 document.getElementById('rejectCatId').value = catId;
 
-                // Handle Image & Zoom
+                // --- Handle Professional Image Zoom & Pan ---
                 const imgEl = document.getElementById('modalEvidenceImg');
                 const noImgEl = document.getElementById('noEvidenceMsg');
                 const evidenceContainer = document.querySelector('.evidence-col');
+                const toolbar = document.getElementById('evidenceToolbar');
+                const btnOpenFull = document.getElementById('btnOpenFull');
 
-                // Reset Zoom State
-                imgEl.classList.remove('zoomed');
-                evidenceContainer.scrollTop = 0;
-                evidenceContainer.scrollLeft = 0;
-                evidenceContainer.style.cursor = 'zoom-in';
+                // Variables for Zoom and Pan state
+                let scale = 1;
+                let panning = false;
+                let pointX = 0;
+                let pointY = 0;
+                let startX = 0;
+                let startY = 0;
+
+                // Function to apply transforms (Move & Zoom)
+                function setTransform() {
+                    imgEl.style.transform = `translate(${pointX}px, ${pointY}px) scale(${scale})`;
+                }
+
+                // Reset function for when modal opens or "Fit to Screen" is clicked
+                function resetViewer() {
+                    scale = 1;
+                    pointX = 0;
+                    pointY = 0;
+                    setTransform();
+                }
 
                 if (evidenceUrl && evidenceUrl !== '') {
                     imgEl.src = evidenceUrl;
+                    btnOpenFull.href = evidenceUrl; // Assign link to toolbar button
+                    
                     imgEl.classList.remove('d-none');
+                    toolbar.classList.remove('d-none'); // Show frosted glass toolbar
                     noImgEl.classList.add('d-none');
+                    
+                    resetViewer();
 
-                    // Zoom Click Handler
-                    imgEl.onclick = function() {
-                        this.classList.toggle('zoomed');
-                        if (this.classList.contains('zoomed')) {
-                            evidenceContainer.style.cursor = 'zoom-out';
-                            this.title = "Click to zoom out";
-                        } else {
-                            evidenceContainer.style.cursor = 'zoom-in';
-                            this.title = "Click to zoom in";
-                        }
+                    // 1. Mouse Wheel Zoom
+                    evidenceContainer.onwheel = function(e) {
+                        e.preventDefault(); // Prevent page from scrolling
+                        const zoomSpeed = 0.15;
+                        // Determine scroll direction
+                        let delta = e.deltaY < 0 ? zoomSpeed : -zoomSpeed; 
+                        scale += delta;
+                        
+                        // Limit zoom: Minimum 0.5x, Maximum 4x
+                        scale = Math.min(Math.max(0.5, scale), 4); 
+                        setTransform();
                     };
-                    imgEl.title = "Click to zoom in";
+
+                    // 2. Drag to Pan (Click and move)
+                    evidenceContainer.onmousedown = function(e) {
+                        // Don't pan if they are clicking the toolbar
+                        if (e.target.closest('#evidenceToolbar')) return; 
+                        
+                        e.preventDefault();
+                        panning = true;
+                        startX = e.clientX - pointX;
+                        startY = e.clientY - pointY;
+                        imgEl.style.cursor = 'grabbing'; // Clenched hand cursor
+                    };
+
+                    evidenceContainer.onmousemove = function(e) {
+                        if (!panning) return;
+                        pointX = e.clientX - startX;
+                        pointY = e.clientY - startY;
+                        setTransform();
+                    };
+
+                    // Stop panning when mouse is released or leaves the container
+                    evidenceContainer.onmouseup = function() { 
+                        panning = false; 
+                        imgEl.style.cursor = 'grab'; // Open hand cursor
+                    };
+                    evidenceContainer.onmouseleave = function() { 
+                        panning = false; 
+                        imgEl.style.cursor = 'grab'; 
+                    };
+
+                    // 3. Wire up Toolbar Buttons
+                    document.getElementById('btnZoomIn').onclick = () => {
+                        scale = Math.min(scale + 0.25, 4); setTransform();
+                    };
+                    document.getElementById('btnZoomOut').onclick = () => {
+                        scale = Math.max(scale - 0.25, 0.5); setTransform();
+                    };
+                    document.getElementById('btnZoomReset').onclick = resetViewer;
+
                 } else {
                     imgEl.classList.add('d-none');
+                    toolbar.classList.add('d-none'); // Hide toolbar if no image
                     noImgEl.classList.remove('d-none');
                 }
 

@@ -493,7 +493,7 @@ function render_event_list($managed_data, $college_map)
                             data-action="add"
                             data-event-id="' . $event_id . '" 
                             data-event-name="' . $event_name . '">';
-            echo '      <i class="fas fa-plus me-2"></i> Add Category';
+            echo '      <i class="fas fa-plus me-2"></i> Add Category / Division';
             echo '    </button>';
             
             echo '  </div>';
@@ -518,7 +518,7 @@ function render_event_list($managed_data, $college_map)
                 echo '      <div class="d-flex flex-column align-items-center justify-content-center">';
                 echo '          <i class="fas fa-clipboard-list fa-2x mb-3 opacity-25"></i>';
                 echo '          <h6 class="fw-bold">No Categories Yet</h6>';
-                echo '          <p class="small mb-0">Click <span class="badge bg-primary text-white"><i class="fas fa-plus"></i> Add Category</span> above to set up Men\'s, Women\'s, etc.</p>';
+                echo '          <p class="small mb-0">Click <span class="badge bg-primary text-white"><i class="fas fa-plus"></i> Add Category / Division</span> above to set up Men\'s, Women\'s, etc.</p>';
                 echo '      </div>';
                 echo '  </td>';
                 echo '</tr>';

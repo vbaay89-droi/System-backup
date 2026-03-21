@@ -250,10 +250,10 @@ $conn->close();
             font-weight: 800;
             font-size: 2.5rem;
             background: linear-gradient(270deg, var(--primary-green), var(--primary-dark), #81C784, var(--accent-gold));
-background-size: 400% 400%;
--webkit-background-clip: text;
--webkit-text-fill-color: transparent;
-animation: gradientShift 6s ease infinite;
+            background-size: 400% 400%;
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            animation: gradientShift 6s ease infinite;
             margin: 0;
         }
 
@@ -810,10 +810,10 @@ animation: gradientShift 6s ease infinite;
                 </div>
                 <div class="hero-header">
                     <div class="hero-title-group">
-    <img src="images/SIGLAKASTEST.png" alt="Logo">
-    <h1>Live Medal Standings</h1>
-    
-</div>
+                        <img src="images/sealionlogo.png" alt="Logo">
+                        <h1>Live Medal Standings</h1>
+                        
+                    </div>
                     <div class="hero-controls">
                         <div class="last-updated" id="last-updated-display">
     <span class="live-dot"></span>

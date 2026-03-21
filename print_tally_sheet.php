@@ -19,6 +19,7 @@ $sql = "SELECT
             g.game_name, 
             ge.event_name, 
             c.category_name, 
+            c.division_name,
             c.event_date, 
             c.event_time, 
             c.venue,
@@ -29,7 +30,7 @@ $sql = "SELECT
         FROM categories c
         JOIN game_events ge ON c.event_id = ge.event_id
         JOIN games g ON ge.game_id = g.game_id
-        LEFT JOIN event_manager_assignments ema ON ge.event_id = ema.event_id
+        LEFT JOIN tournament_manager_assignments ema ON ge.event_id = ema.event_id
         LEFT JOIN users u ON ema.user_id = u.id
         WHERE c.category_id = ?";
 
@@ -39,6 +40,24 @@ $stmt->execute();
 $data = $stmt->get_result()->fetch_assoc();
 
 if (!$data) die("Event not found.");
+
+// --- Format Category & Division ---
+$cat_name = trim($data['category_name'] ?? '');
+$div_name = trim($data['division_name'] ?? '');
+$display_name = "";
+
+// Ignore internal placeholder names
+$is_main_event = ($cat_name === 'Main Event' || $cat_name === 'Main Competition' || strpos($cat_name, 'No Category') !== false);
+
+if (!$is_main_event && !empty($cat_name)) {
+    $display_name .= $cat_name;
+}
+if (!empty($div_name)) {
+    $display_name .= (!empty($display_name) ? ' - ' : '') . $div_name;
+}
+if (empty($display_name)) {
+    $display_name = "Main Event";
+}
 
 // --- Display Logic ---
 $date_display = ($data['event_date']) ? date('F d, Y', strtotime($data['event_date'])) : '';
@@ -176,13 +195,13 @@ $bronze_cnt = ($data['bronze_count'] > 0) ? $data['bronze_count'] : '';
         </div>
 
         <div class="info-grid">
-            <div class="info-item"><span class="info-label">GAME (L1):</span> <span class="info-value"><?= htmlspecialchars($data['game_name']) ?></span></div>
+            <div class="info-item"><span class="info-label">GAME:</span> <span class="info-value"><?= htmlspecialchars($data['game_name']) ?></span></div>
             <div class="info-item"><span class="info-label">DATE:</span> <span class="info-value"><?= $date_display ?></span></div>
             
-            <div class="info-item"><span class="info-label">EVENT (L2):</span> <span class="info-value"><?= htmlspecialchars($data['event_name']) ?></span></div>
+            <div class="info-item"><span class="info-label">EVENT:</span> <span class="info-value"><?= htmlspecialchars($data['event_name']) ?></span></div>
             <div class="info-item"><span class="info-label">TIME:</span> <span class="info-value"><?= $time_display ?></span></div>
             
-            <div class="info-item"><span class="info-label">CATEGORY / DIVISION:</span> <span class="info-value"><?= htmlspecialchars($data['category_name']) ?></span></div>
+            <div class="info-item"><span class="info-label">CATEGORY / DIVISION:</span> <span class="info-value"><?= htmlspecialchars($display_name) ?></span></div>
             <div class="info-item"><span class="info-label">VENUE:</span> <span class="info-value"><?= $venue_display ?></span></div>
         </div>
 

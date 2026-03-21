@@ -777,7 +777,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             <img src="images/PIT.png" alt="Logo" class="me-2 brand-logo" style="height: 50px; width: 48px; object-fit: contain;">
             <div class="d-flex flex-column lh-sm">
                 <strong class="text-white brand-heading" style="font-size: 1.25rem;">PIT SIGLAKAS MEDAL TALLY</strong>
-                <small class="text-light brand-subheading" style="font-size: 0.75rem;">Official College Tournament System</small>
+                <small class="text-light brand-subheading" style="font-size: 0.75rem;">Official College Medal Tally System</small>
             </div>
         </a>
         <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav"
@@ -815,6 +815,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
           <div class="logo-container">
             <img src="images/PIT.png" alt="PIT Logo" class="main-logo">
             <img src="images/COTE.png" alt="Siglakas Logo" class="main-logo">
+            <img src="images/sealionlogo.png" alt="Siglakas Logo" class="main-logo">
           </div>
           <h1 class="brand-title">
             SmartScore: A Web-Based Medal Tally Platform for Siglakas Events
