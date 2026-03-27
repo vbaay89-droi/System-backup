@@ -151,7 +151,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
                 $stmt_log->bind_param("iis", $current_user_id, $category_id, $log_context);
                 $stmt_log->execute();
                 $stmt_log->close();
-                
+
                 $conn->commit();
                 $alert_message = "SUCCESS: Approval revoked. Result sent back for correction.";
                 $alert_type = "warning";
@@ -1055,7 +1055,7 @@ elseif (stripos($row['game_name'], 'Other') !== false) {
             <a class="navbar-brand d-flex align-items-center" href="sports_director_dashboard.php">
                 <img src="../images/PIT.png" alt="Logo" class="me-2" style="height: 50px; width: 48px; object-fit: contain;">
                 <div class="d-flex flex-column lh-sm">
-                    <strong class="text-white" style="font-size: 1.25rem;">PIT SPORTS TALLYING</strong>
+                    <strong class="text-white" style="font-size: 1.25rem;">PIT SIGLAKAS MEDAL TALLY</strong>
                     <small class="text-light" style="font-size: 0.75rem;">Sports Director Panel</small>
                 </div>
             </a>

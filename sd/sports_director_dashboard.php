@@ -162,6 +162,12 @@ function formatLogEntry($conn, $log, $current_user_id) {
             $icon = "fas fa-times-circle text-danger"; 
             break;
 
+        
+        case 'REVOKED_RESULT': 
+            $msg = "$actor <span class='text-warning'>revoked</span> the approved results for <strong>\"$smart_name\"</strong>."; 
+            $icon = "fas fa-undo-alt text-warning"; 
+            break;
+
         // --- 3. High-Level Administrative Actions ---
         case 'CREATED_GAME': 
             $msg = "$actor created a new game: <strong>" . htmlspecialchars($ctx['game_name']??'a game') . "</strong>."; 
@@ -739,7 +745,7 @@ if ($log_res) {
             <a class="navbar-brand d-flex align-items-center" href="sports_director_dashboard.php">
                 <img src="../images/PIT.png" alt="Logo" class="me-2" style="height: 50px; width: 48px; object-fit: contain;">
                 <div class="d-flex flex-column lh-sm">
-                    <strong class="text-white" style="font-size: 1.25rem;">PIT SPORTS TALLYING</strong>
+                    <strong class="text-white" style="font-size: 1.25rem;">PIT SIGLAKAS MEDAL TALLY</strong>
                     <small class="text-light" style="font-size: 0.75rem;">Sports Director Panel</small>
                 </div>
             </a>

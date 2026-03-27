@@ -117,8 +117,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     } else {
                         $display_name = implode(' - ', $display_parts);
                         // Determine the specific type for the alert
-$item_type = ($has_cat && !empty($division_name)) ? "category and division" : (!empty($division_name) ? "division" : "category");
-$alert_message = "Success! You added a new $item_type: <strong>" . htmlspecialchars($display_name) . "</strong>.";
+                        $item_type = ($has_cat && !empty($division_name)) ? "category and division" : (!empty($division_name) ? "division" : "category");
+                        $alert_message = "Success! You added a new $item_type: <strong>" . htmlspecialchars($display_name) . "</strong>.";
                     }
                     
                 } else {

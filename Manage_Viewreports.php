@@ -776,7 +776,7 @@ function getStatusBadge($status) {
             <a class="navbar-brand d-flex align-items-center" href="sd/sports_director_dashboard.php">
                 <img src="images/PIT.png" alt="Logo" class="me-2 brand-logo" style="height: 50px; width: 48px; object-fit: contain;">
                 <div class="d-flex flex-column lh-sm">
-                    <strong class="text-white" style="font-size: 1.25rem;">PIT SPORTS TALLYING</strong>
+                    <strong class="text-white" style="font-size: 1.25rem;">PIT SIGLAKAS MEDAL TALLY</strong>
                     <small class="text-light" style="font-size: 0.75rem;">Sports Director Panel</small>
                 </div>
             </a>

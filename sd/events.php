@@ -1256,7 +1256,7 @@ $pending_results_count = $conn->query("SELECT COUNT(*) FROM categories WHERE sta
             <a class="navbar-brand d-flex align-items-center" href="sports_director_dashboard.php">
                 <img src="../images/PIT.png" alt="Logo" class="me-2" style="height: 50px; width: 48px; object-fit: contain;">
                 <div class="d-flex flex-column lh-sm">
-                    <strong class="text-white" style="font-size: 1.25rem;">PIT SPORTS TALLYING</strong>
+                    <strong class="text-white" style="font-size: 1.25rem;">PIT SIGLAKAS MEDAL TALLY</strong>
                     <small class="text-light" style="font-size: 0.75rem;">Sports Director Panel</small>
                 </div>
             </a>
@@ -1645,9 +1645,9 @@ $pending_results_count = $conn->query("SELECT COUNT(*) FROM categories WHERE sta
         <div class="modal fade" id="addGameModal" tabindex="-1">
             <div class="modal-dialog">
                 <div class="modal-content">
-                    <div class="modal-header">
-                        <h5 class="modal-title"><i class="fas fa-plus-circle"></i>Add New Game </h5>
-                        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                    <div class="modal-header bg-dark text-white px-4 pt-4 pb-3" style="border-bottom: none !important; box-shadow: none !important;">
+                        <h5 class="modal-title fw-bold"><i class="fas fa-info-circle text-info me-2"></i>Tournament Setup Guide</h5>
+                        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
                     </div>
                     <form action="events.php" method="POST">
                         <div class="modal-body">
@@ -1782,7 +1782,7 @@ $pending_results_count = $conn->query("SELECT COUNT(*) FROM categories WHERE sta
                             <input type="hidden" name="event_id" id="assign_event_id">
                             <p>Assigning manager for: <strong id="assign_event_name" class="text-dark"></strong></p>
                             <div class="mb-3">
-                                <label for="user_id" class="form-label fw-bold">Select Manager</label>
+                                <label for="user_id" class="form-label fw-bold">Select Tournament Manager</label>
                                 <select class="form-select" id="assign_user_id" name="user_id">
                                     <option value="0">-- Unassign --</option>
                                     
@@ -2003,37 +2003,63 @@ $pending_results_count = $conn->query("SELECT COUNT(*) FROM categories WHERE sta
         <div class="modal fade" id="helpModal" tabindex="-1" aria-hidden="true">
             <div class="modal-dialog modal-dialog-centered modal-lg">
                 <div class="modal-content border-0 shadow-lg">
-                    <div class="modal-header border-bottom-0 pb-0">
-                        <h5 class="modal-title fw-bold "><i class="fas fa-info-circle text-primary me-2"></i>Tournament Setup Guide</h5>
-                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                    <div class="modal-header bg-dark text-white px-4 pt-4 pb-3" style="border-bottom: none !important; box-shadow: none !important;">
+                        <h5 class="modal-title fw-bold "><i class="fas fa-info-circle me-2"></i>Tournament Setup Guide</h5>
+                        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
                     </div>
+                    
                     <div class="modal-body p-4">
-                        <div class="row g-4">
-                            <div class="col-md-6">
-                                <div class="p-3 bg-light rounded h-100 border">
-                                    <h6 class="fw-bold text-primary mb-2"><i class="fas fa-layer-group me-2"></i>1. Add Games</h6>
-                                    <p class="small text-muted mb-0">Start by creating broad groups for the tournament in the first tab. Examples include <strong>"Athletics"</strong>, <strong>"Ball Games"</strong>, or <strong>"Racket Games"</strong>.</p>
-                                </div>
+                        <p class="text-muted mb-4 border-bottom pb-3" style="font-size: 0.95rem;">
+                            This module establishes the core structure of the tournament. As Sports Director, your primary role is to define top-level games, configure event rules, and delegate operational responsibilities to Tournament Managers.
+                        </p>
+
+                        <div class="d-flex align-items-start mb-4">
+                            <div class="bg-secondary bg-opacity-10 text-secondary rounded-circle d-flex align-items-center justify-content-center flex-shrink-0 me-3 mt-1" style="width: 45px; height: 45px;">
+                                <h5 class="m-0 fw-bold">1</h5>
                             </div>
-                            <div class="col-md-6">
-                                <div class="p-3 bg-light rounded h-100 border">
-                                    <h6 class="fw-bold text-success mb-2"><i class="fas fa-calendar-day me-2"></i>2. Create Events</h6>
-                                    <p class="small text-muted mb-0">Go to the second tab to add individual events (like <strong>"100m Sprint"</strong> or <strong>"Basketball"</strong>) and link them to the Game group you just created.</p>
-                                </div>
+                            <div>
+                                <h6 class="fw-bold text-dark mb-1">Establish Game Classifications <span class="badge bg-light text-secondary ms-2 border fw-normal">Games Tab</span></h6>
+                                <p class="small text-muted mb-2">Create broad classifications grouping related sports.</p>
+                                <p class="small text-dark fw-medium mb-0 bg-light p-2 rounded border border-light"><i class="fas fa-layer-group text-secondary me-2"></i><em>Examples: Athletics, Ball Games, or Racket Games.</em></p>
                             </div>
-                            <div class="col-md-6">
-                                <div class="p-3 bg-light rounded h-100 border">
-                                    <h6 class="fw-bold text-info text-dark mb-2"><i class="fas fa-user-plus me-2"></i>3. Assign Managers</h6>
-                                    <p class="small text-muted mb-0">Back in the <strong>Events</strong> tab, click the <span class="badge bg-light text-primary border"><i class="fas fa-user-plus"></i></span> icon to delegate an Tournament Manager to handle the live scoring.</p>
-                                </div>
+                        </div>
+
+                        <div class="d-flex align-items-start mb-4">
+                            <div class="bg-secondary bg-opacity-10 text-secondary rounded-circle d-flex align-items-center justify-content-center flex-shrink-0 me-3 mt-1" style="width: 45px; height: 45px;">
+                                <h5 class="m-0 fw-bold">2</h5>
                             </div>
-                            <div class="col-md-6">
-                                <div class="p-3 bg-light rounded h-100 border">
-                                    <h6 class="fw-bold text-warning text-dark mb-2"><i class="fas fa-tags me-2"></i>4. Define Categories & Divisions</h6>
-                                    <p class="small text-muted mb-0">In the final tab, specify the exact medal categories (e.g., <strong>"Men's"</strong>, <strong>"Women's"</strong>, or <strong>"Lightweight"</strong>) where athletes will compete.</p>
+                            <div>
+                                <h6 class="fw-bold text-dark mb-1">Create Events & Configure Rules <span class="badge bg-light text-secondary ms-2 border fw-normal">Events Tab</span></h6>
+                                <p class="small text-muted mb-2">Define specific sporting events and link them to respective classifications.</p>
+                                <div class="bg-light border rounded p-3 shadow-sm">
+                                    <p class="small text-secondary mb-0 fw-medium">
+                                        <i class="fas fa-lock me-1"></i> <strong>Configuration Note:</strong> Utilize the "Fixed Medal Count" toggle for team sports. This ensures the system automatically awards the correct multiplier of medals (e.g., 5 medals for a Basketball team win) to prevent calculation discrepancies.
+                                    </p>
                                 </div>
                             </div>
                         </div>
+
+                        <div class="d-flex align-items-start mb-4">
+                            <div class="bg-secondary bg-opacity-10 text-secondary rounded-circle d-flex align-items-center justify-content-center flex-shrink-0 me-3 mt-1" style="width: 45px; height: 45px;">
+                                <h5 class="m-0 fw-bold">3</h5>
+                            </div>
+                            <div>
+                                <h6 class="fw-bold text-dark mb-1">Assign Tournament Managers <span class="badge bg-light text-secondary ms-2 border fw-normal">Events Tab</span></h6>
+                                <p class="small text-muted mb-0">Click the <span class="badge bg-light text-dark border px-2"><i class="fas fa-user-plus"></i></span> icon to assign an authorized manager. <strong>This Assigns responsibility of setting up specific divisions, conducting the match, and uploading verified tally sheets directly to them.</strong></p>
+                            </div>
+                        </div>
+
+                        <div class="d-flex align-items-start">
+                            <div class="bg-light text-muted rounded-circle d-flex align-items-center justify-content-center flex-shrink-0 me-3 mt-1 border" style="width: 45px; height: 45px;">
+                                <h5 class="m-0 fw-bold">4</h5>
+                            </div>
+                            <div>
+                                <h6 class="fw-bold text-dark mb-1">Pre-define Divisions <span class="badge bg-light text-secondary ms-2 border fw-normal">Optional (Categories Tab)</span></h6>
+                                <p class="small text-muted mb-2">Since assigned Tournament Managers configure their own brackets, this step is optional for the Sports Director.</p>
+                                <p class="small text-muted mb-0 fst-italic"><i class="fas fa-info-circle me-1"></i> If necessary, this tab permits pre-configuring specific divisions (e.g., "Men's Division") or categories on their behalf.</p>
+                            </div>
+                        </div>
+
                     </div>
                     <div class="modal-footer border-top-0 pt-0">
                         <button type="button" class="btn btn-secondary px-4 rounded-pill" data-bs-dismiss="modal">Got it</button>

@@ -815,7 +815,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
           <div class="logo-container">
             <img src="images/PIT.png" alt="PIT Logo" class="main-logo">
             <img src="images/COTE.png" alt="Siglakas Logo" class="main-logo">
-            <img src="images/sealionlogo.png" alt="Siglakas Logo" class="main-logo">
           </div>
           <h1 class="brand-title">
             SmartScore: A Web-Based Medal Tally Platform for Siglakas Events

@@ -820,60 +820,60 @@ try {
                 </div>
             
             <div class="row g-4">
-    <div class="col-lg-6">
-        <h5 class="section-title">Quick Actions</h5>
-        <div class="dashboard-card p-0 overflow-hidden"> <div class="list-group list-group-flush">
-                <a href="my_events.php" class="list-group-item list-group-item-action py-3 px-4 d-flex justify-content-between align-items-center border-bottom">
-                    <div>
-                        <i class="fas fa-trophy me-3 text-primary fa-lg"></i>
-                        <span class="fw-bold text-dark">Manage My Events</span>
-                        <div class="small text-muted mt-1 ps-5">Update results and upload evidence</div>
-                    </div>
-                    <i class="fas fa-chevron-right text-muted"></i>
-                </a>
-                <a href="Eventpage.php" target="_blank" class="list-group-item list-group-item-action py-3 px-4 d-flex justify-content-between align-items-center border-bottom">
-                    <div>
-                        <i class="fas fa-globe me-3 text-info fa-lg"></i>
-                        <span class="fw-bold text-dark">Public Tally Site</span>
-                    </div>
-                    <i class="fas fa-external-link-alt text-muted small"></i>
-                </a>
-                <a href="admin_profile.php" class="list-group-item list-group-item-action py-3 px-4 d-flex justify-content-between align-items-center">
-                    <div>
-                        <i class="fas fa-user-circle me-3 text-secondary fa-lg"></i>
-                        <span class="fw-bold text-dark">My Profile</span>
-                    </div>
-                    <i class="fas fa-chevron-right text-muted"></i>
-                </a>
-            </div>
-        </div>
-    </div>
-
-    <div class="col-lg-6">
-        <h5 class="section-title">Recent Activity</h5>
-        <div class="dashboard-card p-0 overflow-hidden">
-            <div class="activity-log-container">
-                <?php if (empty($processed_logs)): ?>
-                    <div class="p-4 text-center text-muted">No recent activity.</div>
-                <?php else: ?>
-                    <?php foreach ($processed_logs as $log_entry): ?>
-                        <div class="d-flex align-items-start p-3 border-bottom">
-                            <div class="icon-square rounded-circle me-3 bg-light text-muted" style="width: 40px; height: 40px; font-size: 1rem;">
-                                <i class="<?= $log_entry['icon'] ?>"></i>
-                            </div>
-                            <div>
-                                <div class="text-dark small"><?= $log_entry['message'] ?></div>
-                                <div class="text-muted" style="font-size: 0.75rem; margin-top: 2px;">
-                                    <i class="far fa-clock me-1"></i><?= $log_entry['time'] ?>
-                                </div>
+                    <div class="col-lg-6">
+                        <h5 class="section-title">Quick Actions</h5>
+                        <div class="dashboard-card p-0 overflow-hidden"> <div class="list-group list-group-flush">
+                                <a href="my_events.php" class="list-group-item list-group-item-action py-3 px-4 d-flex justify-content-between align-items-center border-bottom">
+                                    <div>
+                                        <i class="fas fa-trophy me-3 text-primary fa-lg"></i>
+                                        <span class="fw-bold text-dark">Manage My Events</span>
+                                        <div class="small text-muted mt-1 ps-5">Update results and upload evidence</div>
+                                    </div>
+                                    <i class="fas fa-chevron-right text-muted"></i>
+                                </a>
+                                <a href="Eventpage.php" target="_blank" class="list-group-item list-group-item-action py-3 px-4 d-flex justify-content-between align-items-center border-bottom">
+                                    <div>
+                                        <i class="fas fa-globe me-3 text-info fa-lg"></i>
+                                        <span class="fw-bold text-dark">Public Tally Site</span>
+                                    </div>
+                                    <i class="fas fa-external-link-alt text-muted small"></i>
+                                </a>
+                                <a href="admin_profile.php" class="list-group-item list-group-item-action py-3 px-4 d-flex justify-content-between align-items-center">
+                                    <div>
+                                        <i class="fas fa-user-circle me-3 text-secondary fa-lg"></i>
+                                        <span class="fw-bold text-dark">My Profile</span>
+                                    </div>
+                                    <i class="fas fa-chevron-right text-muted"></i>
+                                </a>
                             </div>
                         </div>
-                    <?php endforeach; ?>
-                <?php endif; ?>
-            </div>
-        </div>
-    </div>
-</div>
+                    </div>
+
+                    <div class="col-lg-6">
+                        <h5 class="section-title">Recent Activity</h5>
+                        <div class="dashboard-card p-0 overflow-hidden">
+                            <div class="activity-log-container">
+                                <?php if (empty($processed_logs)): ?>
+                                    <div class="p-4 text-center text-muted">No recent activity.</div>
+                                <?php else: ?>
+                                    <?php foreach ($processed_logs as $log_entry): ?>
+                                        <div class="d-flex align-items-start p-3 border-bottom">
+                                            <div class="icon-square rounded-circle me-3 bg-light text-muted" style="width: 40px; height: 40px; font-size: 1rem;">
+                                                <i class="<?= $log_entry['icon'] ?>"></i>
+                                            </div>
+                                            <div>
+                                                <div class="text-dark small"><?= $log_entry['message'] ?></div>
+                                                <div class="text-muted" style="font-size: 0.75rem; margin-top: 2px;">
+                                                    <i class="far fa-clock me-1"></i><?= $log_entry['time'] ?>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    <?php endforeach; ?>
+                                <?php endif; ?>
+                            </div>
+                        </div>
+                    </div>
+                </div>
             </div>
         </div>
     </div>
