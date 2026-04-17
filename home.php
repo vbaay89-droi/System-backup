@@ -763,6 +763,7 @@ $conn->close();
         <div class="container">
             <div class="hero-section">
                 <div class="news-ticker-box mb-4">
+                    
                     <div class="ticker-label">JUST IN</div>
                     <div class="ticker-wrap">
                         <div class="ticker-move <?php echo empty($recent_winners) ? 'fast-ticker' : ''; ?>">
@@ -816,11 +817,16 @@ $conn->close();
                     </div>
                     <div class="hero-controls">
                         <div class="last-updated" id="last-updated-display">
-    <span class="live-dot"></span>
-    <i class="far fa-clock me-2"></i><?= $formattedTime ?>
-</div>
+                            <span class="live-dot"></span>
+                            <i class="far fa-clock me-2"></i><?= $formattedTime ?>
+                        </div>
                         <span id="refresh-timer" class="badge bg-danger"></span>
-                        <a href="print_standings.php" target="_blank" class="btn btn-primary print-btn text-decoration-none">
+                        
+                        <a href="#" onclick="window.open('live_tv.php?t=' + countdown, '_blank'); return false;" class="btn btn-light text-secondary border ms-2" style="border-radius: 50px; font-weight: 600;" title="Launch Fullscreen TV Mode">
+                            <i class="fas fa-tv me-2"></i>TV Mode
+                        </a>
+
+                        <a href="print_standings.php" target="_blank" class="btn btn-primary print-btn text-decoration-none ms-2">
                             <i class="fas fa-print me-2"></i>Print
                         </a>
                     </div>

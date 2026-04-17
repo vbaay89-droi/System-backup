@@ -939,8 +939,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         <i class="fas fa-user-shield fa-3x text-secondary mb-3 opacity-50"></i>
         <p class="mb-3">For security purposes, automatic password resets are disabled for administrative accounts.</p>
         <div class="alert alert-light border text-start d-inline-block w-100">
-            <p class="mb-1 fw-bold"><i class="fas fa-building me-2 text-success"></i>Visit the Sports Coordinator Office</p>
-            <p class="mb-0 small text-muted ms-4">Cas Building, Physical Education Department</p>
+            <p class="mb-1 fw-bold"><i class="fas fa-building me-2 text-success"></i>Visit the Management Information System Office</p>
+            <p class="mb-0 small text-muted ms-4">MIS office, Information Communication Technology(ICT)</p>
             <hr class="my-2">
             <p class="mb-1 fw-bold"><i class="fas fa-envelope me-2 text-success"></i>Email Support</p>
             <p class="mb-0 small text-muted ms-4">op@pit.edu.ph</p>
