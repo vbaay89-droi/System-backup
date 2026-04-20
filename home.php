@@ -845,7 +845,7 @@ $conn->close();
                     [ $rank_icon_html, $label ] = getRankMeta($rank);
                     ?>
                     
-                    <div class="entry" style="--team-color: <?= htmlspecialchars($unit_color) ?>;">
+                    <div class="entry" id="team-<?= htmlspecialchars($college_code) ?>" style="--team-color: <?= htmlspecialchars($unit_color) ?>;">
                         <div class="left">
                             <div class="rank-icon">
                                 <?= $rank_icon_html ?>
@@ -1051,109 +1051,131 @@ $conn->close();
     }
 
     function updateStandings(newMedalTally, lastUpdatedTime) {
-    const overallListContainer = document.getElementById('overall-standings-list'); 
-    const lastUpdatedEl = document.getElementById('last-updated-display');
-    // We still try to get the print body, but we handle it differently
-    const printTableBody = document.getElementById('print-table-body'); 
+        const overallListContainer = document.getElementById('overall-standings-list'); 
+        const lastUpdatedEl = document.getElementById('last-updated-display');
 
-    // Only return if the MAIN elements are missing. 
-    // We don't care if the print table is missing.
-    if (!overallListContainer || !lastUpdatedEl) return;
+        if (!overallListContainer || !lastUpdatedEl) return;
 
-    if (lastUpdatedTime) {
-        const date = new Date(lastUpdatedTime);
-        const formatted = date.toLocaleDateString('en-US', { month: '2-digit', day: '2-digit', year: 'numeric' }) + 
-                          ' at ' + 
-                          date.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true }).toUpperCase();
-        lastUpdatedEl.innerHTML = `<i class="far fa-clock me-2"></i>Updated on ${formatted}`;
-    }
+        if (lastUpdatedTime) {
+            const date = new Date(lastUpdatedTime);
+            const formatted = date.toLocaleDateString('en-US', { month: '2-digit', day: '2-digit', year: 'numeric' }) + 
+                              ' at ' + 
+                              date.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true }).toUpperCase();
+            lastUpdatedEl.innerHTML = `<span class="live-dot"></span><i class="far fa-clock me-2"></i>Updated on ${formatted}`;
+        }
 
-    let overallHtml = '';
-    let printHtml = '';
-    let rank = 1;
-    
-    if (newMedalTally.length === 0) {
-        overallHtml = '<div class="entry"><p class="text-center text-muted m-0 w-100">No medal standings to display yet.</p></div>';
-        printHtml = '<tr><td colspan="6" class="text-center text-muted">No medal data available</td></tr>';
-    } else {
-        newMedalTally.forEach(tally => {
-            const totalMedals = tally.total;
-            const collegeCode = tally.college_code || 'DEFAULT';
-            const logoUrl = tally.logo_url || defaultLogo; 
-            const unitColor = tally.unit_color || '#cccccc';
-            
-            const label = getRankLabel(rank);
-            const rankIconHtml = getRankIcon(rank);
-
-            // ... (Your existing overallHtml generation string stays here) ...
-            overallHtml += `
-                <div class="entry" style="--team-color: ${unitColor};">
-                    <div class="left">
-                        <div class="rank-icon">${rankIconHtml}</div>
-                        <img src="${logoUrl}" alt="${tally.college_name}" class="school-logo" onerror="this.onerror=null; this.src='${defaultLogo}'">
-                        <div>
-                            <div>
-                                <strong class="college-code">${collegeCode}</strong>
-                                <span class="badge bg-light text-dark ms-2"><strong>${label}</strong></span>
-                            </div>
-                            <small class="text-muted" style="font-size: 0.9rem;">${tally.college_name}</small>
-                        </div>
-                    </div>
-                    <div class="right">
-                        <div class="medal-col gold">
-                            <div class="medal-header">
-                                <div class="medal-icon-wrapper"><img src="gold.png" alt="Gold"></div>
-                                <span class="medal-label gold-text">Gold</span>
-                            </div>
-                            <div class="medal-count">${tally.gold}</div>
-                        </div>
-                        <div class="medal-col silver">
-                            <div class="medal-header">
-                                <div class="medal-icon-wrapper"><img src="silver.png" alt="Silver"></div>
-                                <span class="medal-label silver-text">Silver</span>
-                            </div>
-                            <div class="medal-count">${tally.silver}</div>
-                        </div>
-                        <div class="medal-col bronze">
-                            <div class="medal-header">
-                                <div class="medal-icon-wrapper"><img src="bronze.png" alt="Bronze"></div>
-                                <span class="medal-label bronze-text">Bronze</span>
-                            </div>
-                            <div class="medal-count">${tally.bronze}</div>
-                        </div>
-                        <div class="medal-col total">
-                            <div class="medal-header"><span class="medal-label total-text">Total</span></div>
-                            <div class="medal-count">${totalMedals}</div>
-                        </div>
-                    </div>
-                </div>
-            `; 
-
-            // Only build print HTML if we actually have a print table to put it in
-            if (printTableBody) {
-                printHtml += `
-                    <tr>
-                        <td>${rank}</td>
-                        <td>${tally.college_name}</td>
-                        <td>${tally.gold}</td>
-                        <td>${tally.silver}</td>
-                        <td>${tally.bronze}</td>
-                        <td>${tally.total}</td>
-                    </tr>
-                `;
+        // --- FLIP STEP 1: FIRST ---
+        // Record the current vertical position of every team row before we update the HTML
+        const firstPositions = {};
+        document.querySelectorAll('.entry').forEach(el => {
+            if (el.id) {
+                firstPositions[el.id] = el.getBoundingClientRect().top;
             }
-            rank++;
+        });
+
+        // Build the new HTML
+        let overallHtml = '';
+        let rank = 1;
+        
+        if (newMedalTally.length === 0) {
+            overallHtml = '<div class="entry"><p class="text-center text-muted m-0 w-100">No medal standings to display yet.</p></div>';
+        } else {
+            newMedalTally.forEach(tally => {
+                const totalMedals = tally.total;
+                const collegeCode = tally.college_code || 'DEFAULT';
+                const logoUrl = tally.logo_url || defaultLogo; 
+                const unitColor = tally.unit_color || '#cccccc';
+                
+                const label = getRankLabel(rank);
+                const rankIconHtml = getRankIcon(rank);
+
+                overallHtml += `
+                    <div class="entry" id="team-${collegeCode}" style="--team-color: ${unitColor};">
+                        <div class="left">
+                            <div class="rank-icon">${rankIconHtml}</div>
+                            <img src="${logoUrl}" alt="${tally.college_name}" class="school-logo" onerror="this.onerror=null; this.src='${defaultLogo}'">
+                            <div>
+                                <div>
+                                    <strong class="college-code">${collegeCode}</strong>
+                                    <span class="badge bg-light text-dark ms-2"><strong>${label}</strong></span>
+                                </div>
+                                <small class="text-muted" style="font-size: 1rem;">${tally.college_name}</small>
+                            </div>
+                        </div>
+                        <div class="right">
+                            <div class="medal-col gold">
+                                <div class="medal-header">
+                                    <div class="medal-icon-wrapper"><img src="gold.png" alt="Gold"></div>
+                                    <span class="medal-label gold-text">Gold</span>
+                                </div>
+                                <div class="medal-count">${tally.gold}</div>
+                            </div>
+                            <div class="medal-col silver">
+                                <div class="medal-header">
+                                    <div class="medal-icon-wrapper"><img src="silver.png" alt="Silver"></div>
+                                    <span class="medal-label silver-text">Silver</span>
+                                </div>
+                                <div class="medal-count">${tally.silver}</div>
+                            </div>
+                            <div class="medal-col bronze">
+                                <div class="medal-header">
+                                    <div class="medal-icon-wrapper"><img src="bronze.png" alt="Bronze"></div>
+                                    <span class="medal-label bronze-text">Bronze</span>
+                                </div>
+                                <div class="medal-count">${tally.bronze}</div>
+                            </div>
+                            <div class="medal-col total">
+                                <div class="medal-header"><span class="medal-label total-text">Total</span></div>
+                                <div class="medal-count">${totalMedals}</div>
+                            </div>
+                        </div>
+                    </div>
+                `; 
+                rank++;
+            });
+        }
+        
+        // Inject the new HTML into the DOM
+        overallListContainer.innerHTML = overallHtml;
+
+        // --- FLIP STEP 2: LAST, INVERT, PLAY ---
+        // Wait for the browser to render the new HTML, then animate the movement
+        requestAnimationFrame(() => {
+            document.querySelectorAll('.entry').forEach(newEl => {
+                if (!newEl.id) return;
+
+                const firstTop = firstPositions[newEl.id];
+                
+                // If this team existed before the update, calculate its movement
+                if (firstTop !== undefined) {
+                    const lastTop = newEl.getBoundingClientRect().top;
+                    const deltaY = firstTop - lastTop; // How far did it move?
+
+                    // If it moved up or down, animate it
+                    if (deltaY !== 0) {
+                        // INVERT: Instantly move the new element back to its old position
+                        newEl.style.transform = `translateY(${deltaY}px)`;
+                        newEl.style.transition = 'none';
+
+                        // Force the browser to register the inverted position
+                        requestAnimationFrame(() => {
+                            // PLAY: Smoothly slide it to its actual new position
+                            newEl.style.transform = 'translateY(0)';
+                            // Using a cubic-bezier for a premium, smooth broadcast slide
+                            newEl.style.transition = 'transform 0.8s cubic-bezier(0.4, 0.0, 0.2, 1)';
+                        });
+                    }
+                } else {
+                    // Optional: If a completely new team is added to the database mid-event, fade them in
+                    newEl.style.opacity = '0';
+                    requestAnimationFrame(() => {
+                        newEl.style.transition = 'opacity 1s ease';
+                        newEl.style.opacity = '1';
+                    });
+                }
+            });
         });
     }
-    
-    // Update the Main List
-    overallListContainer.innerHTML = overallHtml;
-    
-    // Update the Print Table ONLY if it exists
-    if (printTableBody) {
-        printTableBody.innerHTML = printHtml;
-    }
-}
         
     function fetchNewStandings() {
         fetch('fetch_standings.php?_=' + Date.now())

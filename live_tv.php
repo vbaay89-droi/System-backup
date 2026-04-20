@@ -152,13 +152,14 @@ $conn->close();
             opacity: 1;
         }
         
+        /* --- CORE LAYOUT CLASSES (These were missing!) --- */
         .main-content {
             flex: 1 0 auto;
             position: relative;
             z-index: 1;
-            padding-top: 15px; 
-            padding-bottom: 15px;
-            height: 100vh; /* Force exactly one screen height */
+            padding-top: 10px;
+            padding-bottom: 10px;
+            height: 100vh;
             display: flex;
             flex-direction: column;
         }
@@ -166,13 +167,13 @@ $conn->close();
             flex-grow: 1;
             display: flex;
             flex-direction: column;
-            max-width: 95%; /* Use more horizontal TV space */
+            max-width: 95%;
         }
         .hero-section {
             background: var(--bg-white);
             border-radius: 20px;
             box-shadow: var(--shadow-lg);
-            padding: 1.5rem 2rem; /* Reduced from 2.5rem */
+            padding: 1rem 2rem;
             margin-bottom: 0;
             position: relative;
             overflow: hidden;
@@ -184,7 +185,7 @@ $conn->close();
             content: '';
             position: absolute;
             top: 0; left: 0; right: 0;
-            height: 8px; /* Slightly thicker for TV */
+            height: 8px;
             background: linear-gradient(90deg, var(--primary-green), var(--accent-gold), var(--accent-silver), var(--primary-green));
             background-size: 200% 100%;
             animation: shimmerBar 3s linear infinite;
@@ -197,17 +198,18 @@ $conn->close();
             display: flex;
             flex-direction: column; 
             align-items: center; 
-            gap: 0.5rem; /* Tighter gap */
-            margin-bottom: 1rem;
+            gap: 0.25rem;
+            margin-bottom: 0.5rem;
             border-bottom: 1px solid #eee;
-            padding-bottom: 1rem;
+            padding-bottom: 0.5rem;
         }
         #overall-standings-list {
             display: flex;
             flex-direction: column;
             flex-grow: 1;
-            justify-content: space-evenly; /* Auto-distributes rows to fit the screen */
-            gap: 0.5rem; /* Replaces large margins */
+            justify-content: space-evenly;
+            gap: 0.2rem; /* Squeeze the minimum gap */
+            overflow: hidden; /* Failsafe: Force hide scrollbars */
         }
         .hero-title-group {
             display: flex;
@@ -215,7 +217,7 @@ $conn->close();
             gap: 1rem;
         }
         .hero-title-group img {
-            height: 80px; /* Slightly larger for TV */
+            height: 60px;
             animation: float 3s ease-in-out infinite;
         }
         @keyframes float {
@@ -225,7 +227,7 @@ $conn->close();
         .hero-title-group h1 {
             font-family: 'Poppins', sans-serif;
             font-weight: 800;
-            font-size: 3rem; /* Larger for TV */
+            font-size: 2.2rem;
             background: linear-gradient(270deg, var(--primary-green), var(--primary-dark), #81C784, var(--accent-gold));
             background-size: 400% 400%;
             -webkit-background-clip: text;
@@ -233,7 +235,6 @@ $conn->close();
             animation: gradientShift 6s ease infinite;
             margin: 0;
         }
-
         @keyframes gradientShift {
             0% { background-position: 0% 50%; }
             50% { background-position: 100% 50%; }
@@ -273,53 +274,51 @@ $conn->close();
             display: inline-flex;
             align-items: center;
         }
-        
+
         /* --- ENTRY STYLES --- */
         /* --- COMPACT ENTRY STYLES FOR TV --- */
         .entry {
             display: flex;
             justify-content: space-between;
             align-items: center;
-            border-radius: 16px;
-            padding: 0.8rem 1.5rem; /* Reduced padding */
-            margin-bottom: 0; /* Let flex gap handle spacing */
+            border-radius: 12px;
+            padding: 0.2rem 1rem; /* Dramatically reduced from 0.4rem */
+            margin-bottom: 0; 
             background: var(--bg-white);
-            box-shadow: var(--shadow-md);
+            box-shadow: var(--shadow-sm); 
             transition: var(--transition);
             position: relative;
             overflow: hidden;
             --team-color: #cccccc; 
             border-left: 4px solid var(--team-color);
         }
-        .left { display: flex; align-items: center; gap: 1rem; }
+
+        .left { display: flex; align-items: center; gap: 0.5rem; } /* Tighter gap */
         
         .rank-icon { 
-            width: 55px; /* Scaled down */
-            height: 55px; 
+            width: 35px; /* Scaled down from 45px */
+            height: 35px; 
             border-radius: 50%; 
             display: flex; align-items: center; justify-content: center; 
-            font-size: 1.2rem; 
+            font-size: 0.9rem; /* Smaller text */
             color: white; font-weight: 800; 
             box-shadow: var(--shadow-md); position: relative; 
             background: var(--team-color);
         }
-        .rank-icon::after { content: ''; position: absolute; inset: -4px; border-radius: 50%; background: inherit; opacity: 0.2; z-index: -1; }
         
-        .school-logo { width: 60px; height: 60px; object-fit: cover; border-radius: 50%; border: 3px solid #f0f0f0; box-shadow: var(--shadow-sm); transition: var(--transition); }
-        .college-code { font-size: 1.3rem; font-weight: 800; color: var(--text-dark); font-family: 'Poppins', sans-serif; }
-        .badge { padding: 0.3rem 0.7rem; border-radius: 50px; font-weight: 600; font-size: 0.75rem; box-shadow: var(--shadow-sm); }
+        .school-logo { width: 40px; height: 40px; object-fit: cover; border-radius: 50%; border: 2px solid #f0f0f0; box-shadow: var(--shadow-sm); transition: var(--transition); }
+        .college-code { font-size: 1rem; font-weight: 800; color: var(--text-dark); font-family: 'Poppins', sans-serif; }
+        .badge { padding: 0.2rem 0.5rem; border-radius: 50px; font-weight: 600; font-size: 0.65rem; box-shadow: var(--shadow-sm); }
         
-        .right { display: flex; align-items: center; gap: 2rem; }
-        .medal-col { text-align: center; min-width: 65px; }
-        .medal-header { display: flex; flex-direction: column; align-items: center; gap: 0.2rem; margin-bottom: 0.2rem; }
-        .medal-header img { width: 28px; height: 28px; filter: drop-shadow(0 2px 4px rgba(0,0,0,0.2)); }
-        .medal-label { font-weight: 700; font-size: 0.8rem; text-transform: uppercase; }
-        .gold-text { color: var(--accent-gold); text-shadow: 0 1px 2px rgba(255, 215, 0, 0.3); }
-        .silver-text { color: var(--accent-silver); text-shadow: 0 1px 2px rgba(192, 192, 192, 0.3); }
-        .bronze-text { color: var(--accent-bronze); text-shadow: 0 1px 2px rgba(205, 127, 50, 0.3); }
-        .total-text { color: var(--primary-green); font-weight: 900; }
-        .medal-count { font-size: 1.8rem; font-weight: 800; color: var(--text-dark); font-family: 'Poppins', sans-serif; line-height: 1; }
-        .medal-col.total .medal-count { font-size: 2.2rem; color: var(--primary-green); }
+        .right { display: flex; align-items: center; gap: 1rem; } /* Tighter gap */
+        .medal-col { text-align: center; min-width: 45px; } /* Thinner columns */
+        .medal-header { display: flex; flex-direction: column; align-items: center; gap: 0.1rem; margin-bottom: 0.1rem; }
+        .medal-header img { width: 16px; height: 16px; filter: drop-shadow(0 2px 4px rgba(0,0,0,0.2)); } /* Smaller medal icons */
+        .medal-label { font-weight: 700; font-size: 0.6rem; text-transform: uppercase; }
+        
+        /* Scaled Down Medal Numbers */
+        .medal-count { font-size: 1.3rem; font-weight: 800; color: var(--text-dark); font-family: 'Poppins', sans-serif; line-height: 1; }
+        .medal-col.total .medal-count { font-size: 1.5rem; color: var(--primary-green); }
 
         .entry:hover { 
             transform: translateX(8px); 
@@ -341,16 +340,16 @@ $conn->close();
         .news-ticker-box {
             background-color: #212529 !important; 
             color: #ffffff !important;           
-            height: 55px;                        
+            height: 40px;
             display: flex;
             align-items: center;
-            border-radius: 12px;
+            border-radius: 8px;
             overflow: hidden;
             box-shadow: 0 8px 20px rgba(0,0,0,0.3); 
             border: 1px solid #343a40;
             position: relative; 
             z-index: 10000; 
-            margin-bottom: 1.5rem; 
+            margin-bottom: 0.75rem;
         }
         .ticker-label {
             background: #dc3545;
@@ -374,7 +373,7 @@ $conn->close();
             top: 0;
             width: 0;
             height: 0;
-            border-top: 55px solid #dc3545; 
+            border-top: 40px solid #dc3545; 
             border-right: 12px solid transparent;
             z-index: 2;
         }
@@ -499,7 +498,7 @@ $conn->close();
                     [ $rank_icon_html, $label ] = getRankMeta($rank);
                     ?>
                     
-                    <div class="entry" style="--team-color: <?= htmlspecialchars($unit_color) ?>;">
+                    <div class="entry" id="team-<?= htmlspecialchars($college_code) ?>" style="--team-color: <?= htmlspecialchars($unit_color) ?>;">
                         <div class="left">
                             <div class="rank-icon">
                                 <?= $rank_icon_html ?>
@@ -670,6 +669,15 @@ $conn->close();
             lastUpdatedEl.innerHTML = `<span class="live-dot"></span><i class="far fa-clock me-2"></i>Updated on ${formatted}`;
         }
 
+        // --- FLIP STEP 1: FIRST ---
+        // Record the exact vertical position of every team row BEFORE we update the HTML
+        const firstPositions = {};
+        document.querySelectorAll('#overall-standings-list .entry').forEach(el => {
+            if (el.id) {
+                firstPositions[el.id] = el.getBoundingClientRect().top;
+            }
+        });
+
         let overallHtml = '';
         let rank = 1;
         
@@ -686,7 +694,7 @@ $conn->close();
                 const rankIconHtml = getRankIcon(rank);
 
                 overallHtml += `
-                    <div class="entry" style="--team-color: ${unitColor};">
+                    <div class="entry" id="team-${collegeCode}" style="--team-color: ${unitColor};">
                         <div class="left">
                             <div class="rank-icon">${rankIconHtml}</div>
                             <img src="${logoUrl}" alt="${tally.college_name}" class="school-logo" onerror="this.onerror=null; this.src='${defaultLogo}'">
@@ -731,7 +739,45 @@ $conn->close();
             });
         }
         
+        // Update the DOM with the new HTML
         overallListContainer.innerHTML = overallHtml;
+
+        // --- FLIP STEP 2: LAST, INVERT, PLAY ---
+        // Wait for the browser to render the new HTML, then animate the movement
+        requestAnimationFrame(() => {
+            document.querySelectorAll('#overall-standings-list .entry').forEach(newEl => {
+                if (!newEl.id) return;
+
+                const firstTop = firstPositions[newEl.id];
+                
+                // If this team existed before the update, calculate its movement
+                if (firstTop !== undefined) {
+                    const lastTop = newEl.getBoundingClientRect().top;
+                    const deltaY = firstTop - lastTop; // How far did it move?
+
+                    // If it moved up or down, animate it
+                    if (deltaY !== 0) {
+                        // INVERT: Instantly snap the new element back to its old position
+                        newEl.style.transform = `translateY(${deltaY}px)`;
+                        newEl.style.transition = 'none';
+
+                        // Force the browser to register the inverted position
+                        requestAnimationFrame(() => {
+                            // PLAY: Smoothly slide it to its actual new position
+                            newEl.style.transform = 'translateY(0)';
+                            newEl.style.transition = 'transform 0.8s cubic-bezier(0.4, 0.0, 0.2, 1)';
+                        });
+                    }
+                } else {
+                    // Optional: If a completely new team is added to the database mid-event, fade them in smoothly
+                    newEl.style.opacity = '0';
+                    requestAnimationFrame(() => {
+                        newEl.style.transition = 'opacity 1s ease';
+                        newEl.style.opacity = '1';
+                    });
+                }
+            });
+        });
     }
         
     function fetchNewStandings() {
