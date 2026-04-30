@@ -16,18 +16,21 @@ if (!isset($_SESSION['user_id'])) {
 }
 $user_id = $_SESSION['user_id']; 
 
-// --- FETCH USER FULL NAME ---
-// We query the DB specifically to get the full_name to avoid showing the email/username
-$stmt_name = $conn->prepare("SELECT full_name, username FROM users WHERE id = ?");
+// --- FETCH USER FULL NAME & PROFILE PICTURE ---
+$stmt_name = $conn->prepare("SELECT full_name, username, profile_picture FROM users WHERE id = ?");
 $stmt_name->bind_param("i", $user_id);
 $stmt_name->execute();
-$user_data = $stmt_name->get_result()->fetch_assoc();
+$user = $stmt_name->get_result()->fetch_assoc(); // Changed to $user to match your navbar
 $stmt_name->close();
 
 // Use full_name if available, otherwise fallback to username, then default text
-$name = !empty($user_data['full_name']) ? $user_data['full_name'] : ($user_data['username'] ?? 'Sports Director');
+$name = !empty($user['full_name']) ? $user['full_name'] : ($user['username'] ?? 'Sports Director');
 
-$current_page = basename($_SERVER['PHP_SELF']);
+// Adjust the profile picture path because we are inside the /sd/ subfolder!
+$profile_pic_path = '';
+if (!empty($user['profile_picture'])) {
+    $profile_pic_path = '../' . $user['profile_picture'];
+}
 
 // --- 2. DATA FETCHING & LOGIC ---
 
@@ -754,9 +757,15 @@ if ($log_res) {
             </button>
             <div class="dropdown user-dropdown ms-auto me-2 me-lg-0">
                 <a href="#" class="dropdown-toggle" id="userDropdown" data-bs-toggle="dropdown" aria-expanded="false">
-                    <i class="fas fa-user-circle" style="font-size: 36px; margin-right: 10px;"></i>
-                    <span class="user-name d-none d-lg-inline"><?= htmlspecialchars($name); ?></span>
-                </a>
+                
+                <?php if (!empty($profile_pic_path) && file_exists($profile_pic_path)): ?>
+                    <img src="<?= htmlspecialchars($profile_pic_path) ?>" alt="Profile" style="width: 42px; height: 42px; border-radius: 50%; object-fit: cover; margin-right: 10px; border: 2px solid rgba(255,255,255,0.2);">
+                <?php else: ?>
+                    <i class="fas fa-user-circle" style="font-size:36px;margin-right:10px;"></i>
+                <?php endif; ?>
+                
+                <span class="user-name d-none d-lg-inline"><?= htmlspecialchars($name); ?></span>
+            </a>
                 <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="userDropdown">
                     <li><a class="dropdown-item" href="../admin_profile.php"><i class="fas fa-user-circle me-2"></i> Profile</a></li>
                     <li><a class="dropdown-item" href="../Tournament_Manager_page.php" target="_blank"><i class="fas fa-globe me-2"></i> Public Site</a></li>
@@ -1069,7 +1078,7 @@ if ($log_res) {
             </div>
             <div class="footer-bottom">
                 <small>&copy; <?php echo date("Y"); ?> PIT SILAKAS MEDAL TALLY. All rights reserved.</small><br>
-                <small>Developed by Jayvee Baybyon</small>
+                <small>Developed by Jayvee Baybayon</small>
             </div>
         </div>
     </footer>

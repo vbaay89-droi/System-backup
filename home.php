@@ -937,7 +937,7 @@ $conn->close();
             <div class="footer-bottom">
                 <small> ver.8 </small><br>
                 <small>&copy; <?php echo date("Y"); ?> PIT SILAKAS MEDAL TALLY. All rights reserved.</small><br>
-                <small>Developed by Jayvee Baybyon</small>
+                <small>Developed by Jayvee Baybayon</small>
             </div>
         </div>
     </footer>
