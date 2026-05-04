@@ -81,11 +81,11 @@ $formattedTime = $lastUpdated ? date("m/d/Y \a\\t h:i A", strtotime($lastUpdated
 function getRankMeta(int $rank): array {
     switch ($rank) {
         case 1:
-            return ['<img src="trophy1.svg" alt="Champion Trophy" style="width: 45px; height: 45px;">', 'Champion'];
+            return ['<img src="trophy1.svg" alt="Champion Trophy" style="width: 42px; height: 42px; object-fit: contain;">', 'Champion'];
         case 2:
-            return ['<img src="secondplace.svg" alt="1st Runner-up" style="width: 45px; height: 45px;">', '1st Runner-up'];
+            return ['<img src="secondplace.svg" alt="1st Runner-up" style="width: 42px; height: 42px; object-fit: contain;">', '1st Runner-up'];
         case 3:
-            return ['<img src="thirdplace.svg" alt="2nd Runner-up" style="width: 45px; height: 45px;">', '2nd Runner-up'];
+            return ['<img src="thirdplace.svg" alt="2nd Runner-up" style="width: 42px; height: 42px; object-fit: contain;">', '2nd Runner-up'];
         default: 
             $runnerUpCount = $rank - 1;
             return [(string)$rank, $runnerUpCount . 'th Runner-up'];
@@ -500,7 +500,7 @@ $conn->close();
                     
                     <div class="entry" id="team-<?= htmlspecialchars($college_code) ?>" style="--team-color: <?= htmlspecialchars($unit_color) ?>;">
                         <div class="left">
-                            <div class="rank-icon">
+                            <div class="rank-icon" <?= ($rank <= 3) ? 'style="background: transparent; box-shadow: none;"' : '' ?>>
                                 <?= $rank_icon_html ?>
                             </div>
                             <img src="<?= htmlspecialchars($tally_row['logo_url'] ?? $default_logo) ?>" 
@@ -575,9 +575,9 @@ $conn->close();
     
     function getRankIcon(rank) {
          switch (rank) {
-            case 1: return '<img src="trophy1.svg" alt="Champion Trophy" style="width: 45px; height: 45px;">';
-            case 2: return '<img src="secondplace.svg" alt="1st Runner-up" style="width: 45px; height: 45px;">';
-            case 3: return '<img src="thirdplace.svg" alt="2nd Runner-up" style="width: 45px; height: 45px;">';
+            case 1: return '<img src="trophy1.svg" alt="Champion Trophy" style="width: 42px; height: 42px; object-fit: contain;">';
+            case 2: return '<img src="secondplace.svg" alt="1st Runner-up" style="width: 42px; height: 42px; object-fit: contain;">';
+            case 3: return '<img src="thirdplace.svg" alt="2nd Runner-up" style="width: 42px; height: 42px; object-fit: contain;">';
             default: return rank; 
         }
     }
@@ -696,7 +696,7 @@ $conn->close();
                 overallHtml += `
                     <div class="entry" id="team-${collegeCode}" style="--team-color: ${unitColor};">
                         <div class="left">
-                            <div class="rank-icon">${rankIconHtml}</div>
+                            <div class="rank-icon" ${rank <= 3 ? 'style="background: transparent; box-shadow: none;"' : ''}>${rankIconHtml}</div>
                             <img src="${logoUrl}" alt="${tally.college_name}" class="school-logo" onerror="this.onerror=null; this.src='${defaultLogo}'">
                             <div>
                                 <div>

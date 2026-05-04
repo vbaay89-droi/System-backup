@@ -16,13 +16,22 @@ if (
 
 $current_user_id = $_SESSION['user_id'];
 
-// --- FETCH NAME LOGIC ---
-$stmt_name = $conn->prepare("SELECT full_name, username FROM users WHERE id = ?");
+// --- FETCH NAME & PROFILE PICTURE LOGIC ---
+$stmt_name = $conn->prepare("SELECT full_name, username, profile_picture FROM users WHERE id = ?");
 $stmt_name->bind_param("i", $current_user_id);
 $stmt_name->execute();
 $result_name = $stmt_name->get_result();
 $user_data = $result_name->fetch_assoc();
 $stmt_name->close();
+
+$name = !empty($user_data['full_name']) ? $user_data['full_name'] : ($user_data['username'] ?? 'Sports Director');
+$current_page = basename($_SERVER['PHP_SELF']);
+
+// Define the profile picture path (adding ../ because we are inside a subfolder)
+$profile_pic_path = '';
+if (!empty($user_data['profile_picture'])) {
+    $profile_pic_path = $user_data['profile_picture']; 
+}
 
 // Determine Name
 if (!empty($user_data['full_name'])) {
@@ -71,25 +80,31 @@ if (isset($_POST['add_user'])) {
         if ($stmt->num_rows > 0) {
             $_SESSION['message'] = "Error: Email '{$username_email}' already exists.";
             $_SESSION['message_type'] = 'danger';
+            $stmt->close();
         } else {
             $stmt->close();
+            
             // Insert user
-            // UPDATED: Explicitly set 'is_approved' to 1 so they don't appear in pending requests
-            $stmt = $conn->prepare("INSERT INTO users (full_name, username, email, password, role, status, is_approved) VALUES (?, ?, ?, ?, ?, ?, 1)");
+            $sql = "INSERT INTO users (full_name, username, email, password, role, status, is_approved) VALUES (?, ?, ?, ?, ?, ?, 1)";
+            $stmt = $conn->prepare($sql);
             
-            // Note: We don't need to bind '1' because we hardcoded it in the SQL above.
-            // So the bind_param stays the same (6 strings).
-            $stmt->bind_param("ssssss", $full_name, $username_email, $username_email, $hashed_password, $role, $status);
-            
-            if ($stmt->execute()) {
-                $_SESSION['message'] = "User '{$full_name}' created successfully.";
-                $_SESSION['message_type'] = 'success';
-            } else {
-                $_SESSION['message'] = "Error creating user: " . $stmt->error;
+            // CHECK IF PREPARE FAILED (Usually means a missing database column)
+            if ($stmt === false) {
+                $_SESSION['message'] = "Database Error: " . $conn->error;
                 $_SESSION['message_type'] = 'danger';
+            } else {
+                $stmt->bind_param("ssssss", $full_name, $username_email, $username_email, $hashed_password, $role, $status);
+                
+                if ($stmt->execute()) {
+                    $_SESSION['message'] = "User '{$full_name}' created successfully.";
+                    $_SESSION['message_type'] = 'success';
+                } else {
+                    $_SESSION['message'] = "Error creating user: " . $stmt->error;
+                    $_SESSION['message_type'] = 'danger';
+                }
+                $stmt->close();
             }
         }
-        $stmt->close();
     }
     header("Location: Manage_Users.php");
     exit();
@@ -839,7 +854,13 @@ $pending_results_count = $conn->query("SELECT COUNT(*) FROM categories WHERE sta
             </button>
             <div class="dropdown user-dropdown ms-auto me-2 me-lg-0">
                 <a href="#" class="dropdown-toggle" id="userDropdown" data-bs-toggle="dropdown" aria-expanded="false">
-                    <i class="fas fa-user-circle" style="font-size: 36px; margin-right: 10px; color: rgba(255,255,255,0.8);"></i>
+                
+                    <?php if (!empty($profile_pic_path) && file_exists($profile_pic_path)): ?>
+                        <img src="<?= htmlspecialchars($profile_pic_path) ?>" alt="Profile" style="width: 42px; height: 42px; border-radius: 50%; object-fit: cover; margin-right: 10px; border: 2px solid rgba(255,255,255,0.2);">
+                    <?php else: ?>
+                        <i class="fas fa-user-circle" style="font-size:36px;margin-right:10px;"></i>
+                    <?php endif; ?>
+                    
                     <span class="user-name d-none d-lg-inline"><?= htmlspecialchars($name); ?></span>
                 </a>
                 <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="userDropdown">
@@ -1204,12 +1225,12 @@ $pending_results_count = $conn->query("SELECT COUNT(*) FROM categories WHERE sta
                         <p>Are you sure you want to permanently delete this user?</p>
                         <h5 class="text-center fw-bold my-3 text-danger" id="delete_user_name"></h5>
                         <div class="alert alert-warning d-flex align-items-start mb-0" style="border-left: 4px solid #f59e0b;">
-    <i class="fas fa-exclamation-triangle me-3 mt-1" style="font-size: 1.25rem;"></i>
-    <div>
-        <strong>Warning!</strong><br>
-        <small>This action cannot be undone. All data associated with this user will be permanently deleted.</small>
-    </div>
-</div>
+                        <i class="fas fa-exclamation-triangle me-3 mt-1" style="font-size: 1.25rem;"></i>
+                        <div>
+                            <strong>Warning!</strong><br>
+                            <small>This action cannot be undone. All data associated with this user will be permanently deleted.</small>
+                        </div>
+                    </div>
                     </div>
                     <div class="modal-footer">
                         <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>

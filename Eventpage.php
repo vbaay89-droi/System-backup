@@ -35,9 +35,11 @@ $sql_fetch_events = "
         ge.event_name AS category,
         g.game_name AS sport_name,
         
-        COALESCE(u.full_name, u.username) AS manager_name , c.event_date
-        , c.event_time
-        , c.venue
+        COALESCE(u.full_name, u.username) AS manager_name,
+        u.profile_picture AS manager_photo, /* <-- NEW LINE ADDED HERE */
+        c.event_date,
+        c.event_time,
+        c.venue
         
     FROM categories c
     JOIN game_events ge ON c.event_id = ge.event_id
@@ -292,7 +294,6 @@ $conn->close();
             left: 0;
             width: 4px;
             height: 100%;
-            background: linear-gradient(180deg, #4CAF50 0%, #2E7D32 100%);
             opacity: 0;
             transition: opacity 0.3s ease;
         }
@@ -300,7 +301,7 @@ $conn->close();
         .stat-card:hover {
             transform: translateY(-8px);
             box-shadow: 0 12px 32px rgba(0,0,0,0.1);
-            border-color: rgba(76, 175, 80, 0.3);
+            
         }
 
         .stat-card:hover::before {
@@ -1890,8 +1891,20 @@ $conn->close();
                 const originalStatus = event.event_status || 'Unknown';
                 const displayStatus = formatStatusTextForCard(originalStatus);
                 
-                const managerNameHtml = event.manager_name ? 
-                    `<div class="sport-card-manager"><i class="fas fa-user-tie"></i>Manager: ${escapeHtml(event.manager_name)}</div>` : '';
+                // --- NEW: MANAGER PHOTO LOGIC ---
+                let managerNameHtml = '';
+                if (event.manager_name) {
+                    // Check if photo exists, otherwise use default avatar
+                    const photoUrl = event.manager_photo ? escapeHtml(event.manager_photo) : 'images/default_avatar.png';
+                    
+                    managerNameHtml = `
+                        <div class="sport-card-manager d-flex align-items-center mt-3 pt-2 border-top">
+                            <img src="${photoUrl}" alt="Manager" 
+                                 style="width: 26px; height: 26px; border-radius: 50%; object-fit: cover; margin-right: 8px; border: 1px solid #e0e0e0;"
+                                 onerror="this.onerror=null; this.src='images/default_avatar.png';">
+                            <span class="text-muted small fw-semibold">Manager: <span class="text-dark">${escapeHtml(event.manager_name)}</span></span>
+                        </div>`;
+                }
                 
                 // Get the icon using our new helper
                 const iconClass = getEventIconJS(sportName, mainTitle);

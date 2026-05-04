@@ -1042,8 +1042,12 @@ function truncate_text($text, $length = 100, $suffix = '...') {
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
     
     <script>
-    // LIGHTBOX FUNCTIONS
     function openLightbox(src, captionText) {
+        // NEW: Force the browser to drop focus from the clicked image
+        if (document.activeElement) {
+            document.activeElement.blur(); 
+        }
+
         const lightbox = document.getElementById('lightboxOverlay');
         const img = document.getElementById('lightboxImg');
         const caption = document.getElementById('caption');
@@ -1086,7 +1090,7 @@ function truncate_text($text, $length = 100, $suffix = '...') {
         const searchInput = document.getElementById('searchInput');
         const sortSelect = document.getElementById('sortSelect');
         const grid = document.getElementById('college-roster-grid');
-        const allCards = Array.from(grid.querySelectorAll('.college-card-wrapper'));
+        let allCards = Array.from(grid.querySelectorAll('.college-card-wrapper')); // <-- FIXED TO LET
         const noResultsMessage = document.getElementById('no-results-message');
 
         function filterAndSort() {
@@ -1505,5 +1509,17 @@ function truncate_text($text, $length = 100, $suffix = '...') {
 
         // START
         startTeamUpdates();
+
+        // --- FIX: ARIA-HIDDEN FOCUS BUG ON DETAILS MODAL ---
+const detailsModalEl = document.getElementById('detailsModal');
+
+if (detailsModalEl) {
+    // When the modal starts to hide, force the active element (the close button) to lose focus
+    detailsModalEl.addEventListener('hide.bs.modal', function () {
+        if (document.activeElement) {
+            document.activeElement.blur();
+        }
+    });
+}
     });
     </script>

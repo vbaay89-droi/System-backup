@@ -45,7 +45,8 @@ $sql = "
         ge.event_name AS category,
         g.game_name AS sport_name,
         
-        COALESCE(u.full_name, u.username) AS manager_name
+        COALESCE(u.full_name, u.username) AS manager_name,
+        u.profile_picture AS manager_photo
         
     FROM categories c
     JOIN game_events ge ON c.event_id = ge.event_id
@@ -66,17 +67,16 @@ if (!$result) {
     die("SQL ERROR: " . $conn->error);
 }
 
-if ($result) {
-    while ($row = $result->fetch_assoc()) {
+while ($row = $result->fetch_assoc()) {
         // Sanitize null values
         $row['description'] = $row['description'] ?? 'No description provided.';
         $row['event_date'] = $row['event_date'] ?? 'TBA';
         $row['event_time'] = $row['event_time'] ?? 'TBA';
         $row['manager_name'] = $row['manager_name'] ?? null;
+        $row['manager_photo'] = $row['manager_photo'] ?? null; // <-- Added this line
         
         $events[] = $row;
     }
-}
 
 // Return the data
 echo json_encode($events);

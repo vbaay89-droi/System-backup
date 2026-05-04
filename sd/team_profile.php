@@ -196,7 +196,25 @@ while ($row = $result_gallery->fetch_assoc()) {
     
     $gallery_photos[] = $row;
 }
+
 $stmt_gallery->close();
+
+// --- FETCH NAME & PROFILE PICTURE LOGIC ---
+$stmt_name = $conn->prepare("SELECT full_name, username, profile_picture FROM users WHERE id = ?");
+$stmt_name->bind_param("i", $current_user_id);
+$stmt_name->execute();
+$result_name = $stmt_name->get_result();
+$user_data = $result_name->fetch_assoc();
+$stmt_name->close();
+
+$name = !empty($user_data['full_name']) ? $user_data['full_name'] : ($user_data['username'] ?? 'Sports Director');
+$current_page = basename($_SERVER['PHP_SELF']);
+
+// Define the profile picture path (adding ../ because we are inside a subfolder)
+$profile_pic_path = '';
+if (!empty($user_data['profile_picture'])) {
+    $profile_pic_path = '../' . $user_data['profile_picture'];
+}
 
 
 // Count sidebar badges
@@ -215,167 +233,136 @@ $pending_results_count = $conn->query("SELECT COUNT(*) FROM categories WHERE sta
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=Poppins:wght@400;500;600;700;800&display=swap" rel="stylesheet">
     <style>
         /* ... CSS Unchanged ... */
-        :root { --sidebar-width: 260px; --header-height: 82px; --transition: all 0.3s ease; --card-shadow: 0 5px 20px rgba(0, 0, 0, 0.08); --bg-light: #F8F9FA; }
-        body { background-color: var(--bg-light); margin: 0; padding: 0; min-height: 100vh; font-family: 'Inter', sans-serif; display: flex; flex-direction: column; }
-        .navbar { background: linear-gradient(135deg, #1a1a1a 0%, #2d2d2d 100%) !important; box-shadow: 0 4px 20px rgba(0,0,0,0.15); padding: 1rem 1.5rem; height: var(--header-height); position: fixed; top: 0; left: 0; right: 0; z-index: 1050; }
-        .user-dropdown .dropdown-toggle { color: white; display: flex; align-items: center; text-decoration: none; padding: 8px 12px; border-radius: 8px; }
-        .user-dropdown .dropdown-toggle img { width: 36px; height: 36px; border-radius: 50%; object-fit: cover; margin-right: 10px; }
-        .sidebar { width: var(--sidebar-width); position: fixed; top: var(--header-height); left: 0; height: calc(100vh - var(--header-height)); background: #2c3e50; color: white; box-shadow: 5px 0 15px rgba(0,0,0,0.2); z-index: 1040; transition: width var(--transition); overflow-y: auto; }
-        .sidebar-nav { padding: 20px 0; }
-        .sidebar-nav .nav-link { color: rgba(255, 255, 255, 0.7); font-size: 1.05rem; font-weight: 500; padding: 12px 25px; transition: var(--transition); border-left: 5px solid transparent; margin: 2px 0; display: flex; align-items: center; text-decoration: none; }
-        .sidebar-nav .nav-link i { width: 30px; text-align: center; flex-shrink: 0; font-size: 0.95em; }
-        .sidebar-nav .nav-link:hover { color: white; background: rgba(255, 255, 255, 0.05); border-left-color: #1abc9c; }
-        .sidebar-nav .nav-link.active { color: white; background: rgba(255, 255, 255, 0.1); border-left-color: #3498db; font-weight: 600; }
-        .sidebar-nav .nav-title { padding: 10px 25px; font-size: 0.75rem; font-weight: 600; color: rgba(255, 255, 255, 0.4); text-transform: uppercase; letter-spacing: 1px; }
-        .main-content { flex: 1 0 auto; padding: 30px; margin-top: var(--header-height); margin-left: var(--sidebar-width); transition: margin-left var(--transition); min-height: calc(100vh - var(--header-height)); }
-        /* Footer */
-        footer {
-            flex-shrink: 0;
-            /* REMOVED background color here so .footer-main can work */
-            box-shadow: 0 -2px 10px rgba(0,0,0,0.1);
-            padding-left: var(--sidebar-width);
-            transition: padding-left var(--transition);
-            position: relative;
-            z-index: 1041;
-        }
+:root { --sidebar-width: 260px; --header-height: 82px; --transition: all 0.3s ease; --card-shadow: 0 5px 20px rgba(0, 0, 0, 0.08); --bg-light: #F8F9FA; }
+body { background-color: var(--bg-light); margin: 0; padding: 0; min-height: 100vh; font-family: 'Inter', sans-serif; display: flex; flex-direction: column; }
+.navbar { background: linear-gradient(135deg, #1a1a1a 0%, #2d2d2d 100%) !important; box-shadow: 0 4px 20px rgba(0,0,0,0.15); padding: 1rem 1.5rem; height: var(--header-height); position: fixed; top: 0; left: 0; right: 0; z-index: 1050; }
+.user-dropdown .dropdown-toggle { color: white; display: flex; align-items: center; text-decoration: none; padding: 8px 12px; border-radius: 8px; }
+.user-dropdown .dropdown-toggle img { width: 36px; height: 36px; border-radius: 50%; object-fit: cover; margin-right: 10px; }
 
-        /* --- FOOTER STYLES (MATCHING HOME.PHP) --- */
-    .footer-main {
-        flex-shrink: 0;
-        background: linear-gradient(135deg, #1a1a1a 0%, #2d2d2d 100%);
-        color: rgba(255,255,255,0.7);
-        padding: 3rem 0 2rem 0;
-        box-shadow: 0 -4px 20px rgba(0,0,0,0.15);
-        position: relative;
-        z-index: 1;
-    }
+/* SIDEBAR — now with mobile off-canvas support */
+.sidebar { width: var(--sidebar-width); position: fixed; top: var(--header-height); left: 0; height: calc(100vh - var(--header-height)); background: #2c3e50; color: white; box-shadow: 5px 0 15px rgba(0,0,0,0.2); z-index: 1040; transition: transform 0.3s ease; overflow-y: auto; }
+.sidebar-nav { padding: 20px 0; }
+.sidebar-nav .nav-link { color: rgba(255, 255, 255, 0.7); font-size: 1.05rem; font-weight: 500; padding: 12px 25px; transition: var(--transition); border-left: 5px solid transparent; margin: 2px 0; display: flex; align-items: center; text-decoration: none; }
+.sidebar-nav .nav-link i { width: 30px; text-align: center; flex-shrink: 0; font-size: 0.95em; }
+.sidebar-nav .nav-link:hover { color: white; background: rgba(255, 255, 255, 0.05); border-left-color: #1abc9c; }
+.sidebar-nav .nav-link.active { color: white; background: rgba(255, 255, 255, 0.1); border-left-color: #3498db; font-weight: 600; }
+.sidebar-nav .nav-title { padding: 10px 25px; font-size: 0.75rem; font-weight: 600; color: rgba(255, 255, 255, 0.4); text-transform: uppercase; letter-spacing: 1px; }
 
-    .footer-main .footer-logo-group {
-        display: flex;
-        align-items: center;
-        gap: 12px;
-        margin-bottom: 1rem;
-    }
+/* SIDEBAR OVERLAY (shown when sidebar is open on mobile) */
+.sidebar-overlay { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 1039; }
+.sidebar-overlay.show { display: block; }
 
-    .footer-main .footer-logo-group img {
-        height: 50px !important;
-        width: 50px !important;
-        object-fit: contain;
-    }
+.main-content { flex: 1 0 auto; padding: 30px; margin-top: var(--header-height); margin-left: var(--sidebar-width); transition: margin-left var(--transition); min-height: calc(100vh - var(--header-height)); }
 
-    .footer-main .footer-logo-group h5 {
-        margin: 0;
-        font-size: 1.1rem;
-        font-weight: 700;
-        color: #fff;
-        line-height: 1.2;
-    }
+/* Footer */
+footer {
+    flex-shrink: 0;
+    box-shadow: 0 -2px 10px rgba(0,0,0,0.1);
+    padding-left: var(--sidebar-width);
+    transition: padding-left var(--transition);
+    position: relative;
+    z-index: 1041;
+}
 
-    .footer-main p {
-        font-size: 0.9rem;
-        max-width: 400px;
-    }
+/* --- FOOTER STYLES (MATCHING HOME.PHP) --- */
+.footer-main {
+    flex-shrink: 0;
+    background: linear-gradient(135deg, #1a1a1a 0%, #2d2d2d 100%);
+    color: rgba(255,255,255,0.7);
+    padding: 3rem 0 2rem 0;
+    box-shadow: 0 -4px 20px rgba(0,0,0,0.15);
+    position: relative;
+    z-index: 1;
+}
 
-    .footer-main h6 {
-        font-family: 'Poppins', sans-serif;
-        color: #fff;
-        font-weight: 600;
-        margin-bottom: 1rem;
-        text-transform: uppercase;
-        letter-spacing: 0.5px;
-    }
+.footer-main .footer-logo-group {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 1rem;
+}
 
-    .footer-main .footer-links {
-        list-style: none;
-        padding: 0;
-    }
+.footer-main .footer-logo-group img {
+    height: 50px !important;
+    width: 50px !important;
+    object-fit: contain;
+}
 
-    .footer-main .footer-links li {
-        margin-bottom: 0.5rem;
-    }
+.footer-main .footer-logo-group h5 {
+    margin: 0;
+    font-size: 1.1rem;
+    font-weight: 700;
+    color: #fff;
+    line-height: 1.2;
+}
 
-    .footer-main .footer-links a {
-        text-decoration: none;
-        color: rgba(255,255,255,0.7);
-        transition: var(--transition);
-    }
+.footer-main p {
+    font-size: 0.9rem;
+    max-width: 400px;
+}
 
-    .footer-main .footer-links a:hover {
-        color: #fff;
-        padding-left: 5px;
-    }
+.footer-main h6 {
+    font-family: 'Poppins', sans-serif;
+    color: #fff;
+    font-weight: 600;
+    margin-bottom: 1rem;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
 
-    .footer-bottom {
-        border-top: 1px solid rgba(255,255,255,0.1);
-        padding-top: 1.5rem;
-        margin-top: 2rem;
-        text-align: center;
-        font-size: 0.85rem;
-    }
+.footer-main .footer-links {
+    list-style: none;
+    padding: 0;
+}
 
-    @media (max-width: 767.98px) {
-      .logo-container {
-        gap: 1rem;
-      }
-      .main-logo {
-        width: 80px;
-        height: 80px;
-      }
-      .brand-title {
-        font-size: 1.5rem;
-      }
-      .login-container h2 {
-        font-size: 1.5rem;
-      }
-    }
+.footer-main .footer-links li {
+    margin-bottom: 0.5rem;
+}
 
-    @media (max-width: 991px) {
-            /* 1. Center text on smaller screens */
-            .footer-main { 
-                text-align: center; 
-            }
-            
-            /* 2. Center the logo group (Image + Text) */
-            .footer-main .footer-logo-group { 
-                justify-content: center; 
-            }
-            
-            /* 3. Add spacing between columns so they don't look cramped */
-            .footer-main .row > div { 
-                margin-bottom: 2rem; 
-            }
-            
-            /* 4. Ensure the last column doesn't have extra margin */
-            .footer-main .row > div:last-child {
-                margin-bottom: 0;
-            }
-        }
-        
-        .section-title { font-family: 'Poppins', sans-serif; font-weight: 600; color: #333; }
-        .card { border: none; border-radius: 15px; box-shadow: var(--card-shadow); }
-        .user-dropdown .dropdown-toggle { color: white; display: flex; align-items: center; text-decoration: none; padding: 8px 12px; border-radius: 8px; transition: var(--transition); }
-        .user-dropdown .dropdown-toggle:hover { background-color: rgba(255, 255, 255, 0.1); }
-        .user-dropdown .dropdown-toggle .user-name { font-weight: 600; font-size: 0.95rem; }
-        .navbar-profile-icon { width: 36px; height: 36px; font-size: 36px; text-align: center; line-height: 1; border-radius: 50%; margin-right: 10px; color: rgba(255,255,255,0.8); }
+.footer-main .footer-links a {
+    text-decoration: none;
+    color: rgba(255,255,255,0.7);
+    transition: var(--transition);
+}
 
-        .profile-header { background: #ffffff; border-radius: 15px; box-shadow: var(--card-shadow); }
-        .profile-logo { width: 120px; height: 120px; border-radius: 50%; object-fit: cover; border: 5px solid #fff; box-shadow: 0 4px 10px rgba(0,0,0,0.1); }
-        .stat-card-mini { text-align: center; padding: 1rem; border-radius: 10px; background: var(--bg-light); }
-        .stat-card-mini .count { font-size: 2rem; font-weight: 700; }
-        .stat-card-mini .label { font-size: 0.9rem; text-transform: uppercase; color: #6c757d; }
-        .stat-gold .count { color: #ffc107; }
-        .stat-silver .count { color: #6c757d; }
-        .stat-bronze .count { color: #cd7f32; }
+.footer-main .footer-links a:hover {
+    color: #fff;
+    padding-left: 5px;
+}
 
-        /* GALLERY STYLES */
-        .gallery-card { transition: transform 0.3s ease; border-radius: 12px; overflow: hidden; border: 0; box-shadow: 0 4px 10px rgba(0,0,0,0.05); }
-        .gallery-card:hover { transform: translateY(-5px); box-shadow: 0 10px 20px rgba(0,0,0,0.1); }
-        .gallery-img-wrapper { position: relative; height: 200px; overflow: hidden; }
-        .gallery-img { width: 100%; height: 100%; object-fit: cover; transition: transform 0.5s ease; }
-        .gallery-card:hover .gallery-img { transform: scale(1.05); }
-        .gallery-badge { position: absolute; top: 10px; right: 10px; background: rgba(255, 215, 0, 0.9); color: #000; font-weight: 700; padding: 5px 10px; border-radius: 50px; font-size: 0.8rem; box-shadow: 0 2px 5px rgba(0,0,0,0.2); }
+.footer-bottom {
+    border-top: 1px solid rgba(255,255,255,0.1);
+    padding-top: 1.5rem;
+    margin-top: 2rem;
+    text-align: center;
+    font-size: 0.85rem;
+}
 
-        /* STRENGTHS TAB STYLES */
+.section-title { font-family: 'Poppins', sans-serif; font-weight: 600; color: #333; }
+.card { border: none; border-radius: 15px; box-shadow: var(--card-shadow); }
+.user-dropdown .dropdown-toggle { color: white; display: flex; align-items: center; text-decoration: none; padding: 8px 12px; border-radius: 8px; transition: var(--transition); }
+.user-dropdown .dropdown-toggle:hover { background-color: rgba(255, 255, 255, 0.1); }
+.user-dropdown .dropdown-toggle .user-name { font-weight: 600; font-size: 0.95rem; }
+.navbar-profile-icon { width: 36px; height: 36px; font-size: 36px; text-align: center; line-height: 1; border-radius: 50%; margin-right: 10px; color: rgba(255,255,255,0.8); }
+
+.profile-header { background: #ffffff; border-radius: 15px; box-shadow: var(--card-shadow); }
+.profile-logo { width: 120px; height: 120px; border-radius: 50%; object-fit: cover; border: 5px solid #fff; box-shadow: 0 4px 10px rgba(0,0,0,0.1); }
+.stat-card-mini { text-align: center; padding: 1rem; border-radius: 10px; background: var(--bg-light); }
+.stat-card-mini .count { font-size: 2rem; font-weight: 700; }
+.stat-card-mini .label { font-size: 0.9rem; text-transform: uppercase; color: #6c757d; }
+.stat-gold .count { color: #ffc107; }
+.stat-silver .count { color: #6c757d; }
+.stat-bronze .count { color: #cd7f32; }
+
+/* GALLERY STYLES */
+.gallery-card { transition: transform 0.3s ease; border-radius: 12px; overflow: hidden; border: 0; box-shadow: 0 4px 10px rgba(0,0,0,0.05); }
+.gallery-card:hover { transform: translateY(-5px); box-shadow: 0 10px 20px rgba(0,0,0,0.1); }
+.gallery-img-wrapper { position: relative; height: 200px; overflow: hidden; }
+.gallery-img { width: 100%; height: 100%; object-fit: cover; transition: transform 0.5s ease; }
+.gallery-card:hover .gallery-img { transform: scale(1.05); }
+.gallery-badge { position: absolute; top: 10px; right: 10px; background: rgba(255, 215, 0, 0.9); color: #000; font-weight: 700; padding: 5px 10px; border-radius: 50px; font-size: 0.8rem; box-shadow: 0 2px 5px rgba(0,0,0,0.2); }
+
+/* STRENGTHS TAB STYLES */
 .strength-card {
     border: 1px solid #eee;
     border-radius: 12px;
@@ -422,11 +409,129 @@ $pending_results_count = $conn->query("SELECT COUNT(*) FROM categories WHERE sta
 .rank-1 { background: #FFD700; color: #000; box-shadow: 0 2px 5px rgba(255, 215, 0, 0.4); }
 .rank-2 { background: #C0C0C0; color: #000; }
 .rank-3 { background: #CD7F32; color: #fff; }
+
+/* ============================================
+   MOBILE RESPONSIVE OVERRIDES
+   ============================================ */
+
+/* --- TABLET & BELOW (< 992px): Hide sidebar, shift content --- */
+@media (max-width: 991.98px) {
+    .sidebar {
+        transform: translateX(-100%);
+        height: calc(100vh - var(--header-height)) !important;
+        z-index: 1045;
+    }
+    .sidebar.show {
+        transform: translateX(0);
+    }
+    .main-content {
+        margin-left: 0;
+    }
+    footer {
+        padding-left: 0;
+    }
+}
+
+/* --- SMALL TABLETS (< 768px): Table column adjustments --- */
+@media (max-width: 767.98px) {
+    /* Footer centering */
+    .footer-main {
+        text-align: center;
+    }
+    .footer-main .footer-logo-group {
+        justify-content: center;
+    }
+    .footer-main .row > div {
+        margin-bottom: 2rem;
+    }
+    .footer-main .row > div:last-child {
+        margin-bottom: 0;
+    }
+
+    /* Overview tab: hide Game column, tighten medal columns */
+    #overview table th:first-child,
+    #overview table td:first-child {
+        display: none;
+    }
+    #overview table th:nth-child(4),
+    #overview table th:nth-child(5),
+    #overview table th:nth-child(6),
+    #overview table td:nth-child(4),
+    #overview table td:nth-child(5),
+    #overview table td:nth-child(6) {
+        width: 44px;
+        padding: 0.4rem 0.2rem;
+        font-size: 0.9rem;
+        text-align: center;
+    }
+
+    /* Gallery image height reduction */
+    .gallery-img-wrapper { height: 160px; }
+}
+
+/* --- PHONES (< 576px): Full mobile treatment --- */
+@media (max-width: 575.98px) {
+    /* Main content padding */
+    .main-content { padding: 15px 12px; }
+
+    /* Profile header */
+    .profile-header { padding: 1rem !important; }
+    .profile-logo { width: 80px; height: 80px; }
+    .profile-header h1.section-title { font-size: 1.25rem; }
+    .profile-header p.fs-5 { font-size: 0.95rem !important; }
+
+    /* Stat cards */
+    .stat-card-mini { padding: 0.65rem 0.4rem; }
+    .stat-card-mini .count { font-size: 1.6rem; }
+    .stat-card-mini .label { font-size: 0.7rem; }
+
+    /* Nav tabs: hide icons, shrink text */
+    #teamProfileTabs .nav-link {
+        font-size: 0.78rem;
+        padding: 0.5rem 0.2rem;
+    }
+    #teamProfileTabs .nav-link i { display: none; }
+
+    /* Gallery: smaller image height */
+    .gallery-img-wrapper { height: 130px; }
+    .gallery-badge { font-size: 0.7rem; padding: 3px 7px; }
+
+    /* Strengths tab */
+    .strength-card { padding: 10px; }
+    .leaderboard-item { padding: 8px 6px; }
+    .rank-circle { width: 28px; height: 28px; font-size: 0.8rem; margin-right: 10px; }
+
+    /* Gallery lightbox modal */
+    #galleryModal .modal-dialog { margin: 0.5rem; }
+    #galleryModal .btn-close {
+        top: -2.5rem !important;
+        background-color: rgba(0,0,0,0.8) !important;
+    }
+
+    /* Footer logo */
+    .footer-main .footer-logo-group img {
+        height: 38px !important;
+        width: 38px !important;
+    }
+    .footer-main .footer-logo-group h5 { font-size: 0.95rem; }
+}
+
+/* --- VERY SMALL PHONES (< 400px) --- */
+@media (max-width: 400px) {
+    .stat-card-mini .count { font-size: 1.3rem; }
+    .stat-card-mini .label { font-size: 0.65rem; }
+    #teamProfileTabs .nav-link { font-size: 0.72rem; padding: 0.45rem 0.15rem; }
+    .profile-header h1.section-title { font-size: 1.1rem; }
+}
     </style>
 </head>
 <body>
+    <div class="sidebar-overlay" id="sidebarOverlay"></div>
     <nav class="navbar navbar-dark bg-dark">
         <div class="container-fluid d-flex align-items-center justify-content-between">
+            <button id="sidebarToggle" class="btn btn-link text-white me-2 d-lg-none p-1" style="font-size:1.2rem;">
+    <i class="fas fa-bars"></i>
+</button>
             <a class="navbar-brand d-flex align-items-center" href="sports_director_dashboard.php">
                 <img src="../images/PIT.png" alt="Logo" class="me-2" style="height: 50px; width: 48px; object-fit: contain;">
                 <div class="d-flex flex-column lh-sm">
@@ -436,7 +541,13 @@ $pending_results_count = $conn->query("SELECT COUNT(*) FROM categories WHERE sta
             </a>
             <div class="dropdown user-dropdown ms-auto me-2 me-lg-0">
                 <a href="#" class="dropdown-toggle" id="userDropdown" data-bs-toggle="dropdown" aria-expanded="false">
-                    <i class="fas fa-user-circle navbar-profile-icon"></i>
+                
+                    <?php if (!empty($profile_pic_path) && file_exists($profile_pic_path)): ?>
+                        <img src="<?= htmlspecialchars($profile_pic_path) ?>" alt="Profile" style="width: 42px; height: 42px; border-radius: 50%; object-fit: cover; margin-right: 10px; border: 2px solid rgba(255,255,255,0.2);">
+                    <?php else: ?>
+                        <i class="fas fa-user-circle" style="font-size:36px;margin-right:10px;"></i>
+                    <?php endif; ?>
+                    
                     <span class="user-name d-none d-lg-inline"><?= htmlspecialchars($name); ?></span>
                 </a>
                 <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="userDropdown">
@@ -907,9 +1018,18 @@ $pending_results_count = $conn->query("SELECT COUNT(*) FROM categories WHERE sta
             
             // Sidebar Toggle (for Mobile)
             const sidebarToggle = document.getElementById('sidebarToggle');
+            const sidebarOverlay = document.getElementById('sidebarOverlay');
+
             if (sidebarToggle) {
-                sidebarToggle.addEventListener('click', function() {
+                sidebarToggle.addEventListener('click', function () {
                     sidebar.classList.toggle('show');
+                    sidebarOverlay.classList.toggle('show');
+                });
+            }
+            if (sidebarOverlay) {
+                sidebarOverlay.addEventListener('click', function () {
+                    sidebar.classList.remove('show');
+                    sidebarOverlay.classList.remove('show');
                 });
             }
         });

@@ -16,20 +16,24 @@ $username = isset($_SESSION['username']) ? $_SESSION['username'] : 'Tournament M
 $current_page = basename($_SERVER['PHP_SELF']);
 
 // --- NEW: FETCH FULL NAME FROM DB ---
-// 1. Prepare a query to get the full_name and username for this specific ID
-$stmt = $conn->prepare("SELECT full_name, username FROM users WHERE id = ?");
-$stmt->bind_param("i", $user_id); // Bind the logged-in user's ID
-$stmt->execute();
-$result = $stmt->get_result();
-$user_data = $result->fetch_assoc(); // Get the data as an array
-$stmt->close();
+// --- FETCH NAME & PROFILE PICTURE LOGIC ---
+$stmt_name = $conn->prepare("SELECT full_name, username, profile_picture FROM users WHERE id = ?");
+$stmt_name->bind_param("i", $user_id); // <--- FIXED: Must be $user_id
+$stmt_name->execute();
+$result_name = $stmt_name->get_result();
+$user_data = $result_name->fetch_assoc();
+$stmt_name->close();
 
-// 2. Decide which name to display
-// If 'full_name' is not empty, use it. Otherwise, fallback to 'username'.
+// Define the profile picture path (NO ../ because this file is in the root folder)
+$profile_pic_path = '';
+if (!empty($user_data['profile_picture'])) {
+    $profile_pic_path = $user_data['profile_picture']; 
+}
+
 if (!empty($user_data['full_name'])) {
     $display_name = $user_data['full_name'];
 } else {
-    $display_name = $user_data['username'] ?? $username; // Fallback
+    $display_name = $user_data['username'] ?? $username; 
 }
 
 // 2. FORM HANDLING (Add/Edit/Delete Category)
@@ -1131,7 +1135,15 @@ sort($all_venues);
             </a>
             <div class="dropdown user-dropdown ms-auto me-2 me-lg-0">
                 <a href="#" class="dropdown-toggle" id="userDropdown" data-bs-toggle="dropdown" aria-expanded="false">
-                    <i class="fas fa-user-circle" style="font-size: 36px; margin-right: 10px;"></i>
+                
+                    <?php if (!empty($profile_pic_path)): ?>
+                        <img src="<?= htmlspecialchars($profile_pic_path) ?>" alt="Profile" 
+                             style="width: 42px; height: 42px; border-radius: 50%; object-fit: cover; margin-right: 10px; border: 2px solid rgba(255,255,255,0.2);"
+                             onerror="this.onerror=null; this.outerHTML='<i class=\'fas fa-user-circle\' style=\'font-size:36px;margin-right:10px;\'></i>';">
+                    <?php else: ?>
+                        <i class="fas fa-user-circle" style="font-size:36px;margin-right:10px;"></i>
+                    <?php endif; ?>
+                    
                     <span class="user-name d-none d-lg-inline"><?= htmlspecialchars($display_name); ?></span>
                 </a>
                 <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="userDropdown">

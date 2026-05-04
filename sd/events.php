@@ -15,8 +15,8 @@ if (!isset($_SESSION['user_id'])) {
 
 $current_user_id = $_SESSION['user_id'];
 
-// --- FETCH NAME LOGIC ---
-$stmt_name = $conn->prepare("SELECT full_name, username FROM users WHERE id = ?");
+// --- FETCH NAME & PROFILE PICTURE LOGIC ---
+$stmt_name = $conn->prepare("SELECT full_name, username, profile_picture FROM users WHERE id = ?");
 $stmt_name->bind_param("i", $current_user_id);
 $stmt_name->execute();
 $result_name = $stmt_name->get_result();
@@ -25,6 +25,12 @@ $stmt_name->close();
 
 $name = !empty($user_data['full_name']) ? $user_data['full_name'] : ($user_data['username'] ?? 'Sports Director');
 $current_page = basename($_SERVER['PHP_SELF']);
+
+// Define the profile picture path (adding ../ because we are inside a subfolder)
+$profile_pic_path = '';
+if (!empty($user_data['profile_picture'])) {
+    $profile_pic_path = '../' . $user_data['profile_picture'];
+}
 
 // --- PHP ACTIONS (Create/Update/Delete/Assign) ---
 
@@ -1265,7 +1271,13 @@ $pending_results_count = $conn->query("SELECT COUNT(*) FROM categories WHERE sta
             </button>
             <div class="dropdown user-dropdown ms-auto me-2 me-lg-0">
                 <a href="#" class="dropdown-toggle" id="userDropdown" data-bs-toggle="dropdown" aria-expanded="false">
-                    <i class="fas fa-user-circle" style="font-size: 36px; margin-right: 10px; color: rgba(255,255,255,0.8);"></i>
+                
+                    <?php if (!empty($profile_pic_path) && file_exists($profile_pic_path)): ?>
+                        <img src="<?= htmlspecialchars($profile_pic_path) ?>" alt="Profile" style="width: 42px; height: 42px; border-radius: 50%; object-fit: cover; margin-right: 10px; border: 2px solid rgba(255,255,255,0.2);">
+                    <?php else: ?>
+                        <i class="fas fa-user-circle" style="font-size:36px;margin-right:10px;"></i>
+                    <?php endif; ?>
+                    
                     <span class="user-name d-none d-lg-inline"><?= htmlspecialchars($name); ?></span>
                 </a>
                 <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="userDropdown">

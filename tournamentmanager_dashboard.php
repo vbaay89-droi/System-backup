@@ -12,13 +12,19 @@ $user_id = (int)$_SESSION['user_id'];
 $username = isset($_SESSION['username']) ? $_SESSION['username'] : 'Tournament Manager';
 $current_page = basename($_SERVER['PHP_SELF']);
 
-// --- FETCH FULL NAME FROM DB ---
-$stmt = $conn->prepare("SELECT full_name, username FROM users WHERE id = ?");
-$stmt->bind_param("i", $user_id); 
-$stmt->execute();
-$result = $stmt->get_result();
-$user_data = $result->fetch_assoc(); 
-$stmt->close();
+// --- FETCH NAME & PROFILE PICTURE LOGIC ---
+$stmt_name = $conn->prepare("SELECT full_name, username, profile_picture FROM users WHERE id = ?");
+$stmt_name->bind_param("i", $user_id); // <--- FIXED: Must be $user_id
+$stmt_name->execute();
+$result_name = $stmt_name->get_result();
+$user_data = $result_name->fetch_assoc();
+$stmt_name->close();
+
+// Define the profile picture path (NO ../ because this file is in the root folder)
+$profile_pic_path = '';
+if (!empty($user_data['profile_picture'])) {
+    $profile_pic_path = $user_data['profile_picture']; 
+}
 
 if (!empty($user_data['full_name'])) {
     $display_name = $user_data['full_name'];
@@ -701,7 +707,15 @@ try {
             </button>
             <div class="dropdown user-dropdown ms-auto me-2 me-lg-0">
                 <a href="#" class="dropdown-toggle" id="userDropdown" data-bs-toggle="dropdown" aria-expanded="false">
-                    <i class="fas fa-user-circle" style="font-size: 36px; margin-right: 10px;"></i>
+                
+                    <?php if (!empty($profile_pic_path)): ?>
+                        <img src="<?= htmlspecialchars($profile_pic_path) ?>" alt="Profile" 
+                             style="width: 42px; height: 42px; border-radius: 50%; object-fit: cover; margin-right: 10px; border: 2px solid rgba(255,255,255,0.2);"
+                             onerror="this.onerror=null; this.outerHTML='<i class=\'fas fa-user-circle\' style=\'font-size:36px;margin-right:10px;\'></i>';">
+                    <?php else: ?>
+                        <i class="fas fa-user-circle" style="font-size:36px;margin-right:10px;"></i>
+                    <?php endif; ?>
+                    
                     <span class="user-name d-none d-lg-inline"><?= htmlspecialchars($display_name); ?></span>
                 </a>
                 <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="userDropdown">

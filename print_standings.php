@@ -199,13 +199,13 @@ $default_logo = 'images/default_avatar.png';
         <div class="signatures">
             <div class="sig-block">
                 <p>Prepared by:</p>
-                <div class="sig-line">JAYVEE BAAY</div>
-                <small>System Administrator</small>
+                <div class="sig-line"></div>
+                <small></small>
             </div>
             
             <div class="sig-block">
                 <p>Certified Correct:</p>
-                <div class="sig-line">SPORTS DIRECTOR NAME</div>
+                <div class="sig-line"></div>
                 <small>Sports Director</small>
             </div>
         </div>
@@ -213,7 +213,7 @@ $default_logo = 'images/default_avatar.png';
         <div class="signatures" style="margin-top: 30px; justify-content: center;">
              <div class="sig-block">
                 <p>Noted by:</p>
-                <div class="sig-line">DR. COLLEGE PRESIDENT</div>
+                <div class="sig-line"></div>
                 <small>College President / Chairman</small>
             </div>
         </div>
