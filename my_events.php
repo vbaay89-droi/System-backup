@@ -786,41 +786,81 @@ sort($all_venues);
    ========================================= */
 @media (max-width: 991.98px) {
 
-    /* === 1. NAVBAR COMPACT === */
-    .navbar { 
-        padding: 0.5rem 1rem !important; 
-        height: 60px !important;
-        align-items: center;
+    /* 1. COMPACT NAVBAR & LAYOUT */
+    .navbar {
+        padding: 0.5rem 1rem !important;
+        height: 60px !important; /* Fixed compact height */
     }
     
-    .navbar .container-fluid {
+    .navbar > .container-fluid {
+        display: flex !important;
         flex-wrap: nowrap !important;
-        gap: 8px;
+        align-items: center !important;
+        justify-content: space-between !important;
+        gap: 10px; /* Clean spacing between elements */
     }
     
-    /* Brand Shrink */
+    /* A. LEFT: Toggler Button */
+    .navbar-toggler {
+        order: 1 !important; /* First item */
+        border: 1px solid rgba(255,255,255,0.1);
+        padding: 4px 8px;
+        font-size: 1.1rem;
+        margin-right: 5px !important;
+    }
+    .navbar-toggler:focus { box-shadow: none; }
+
+    /* B. CENTER: Brand Logo & Text */
     .navbar-brand {
-        max-width: 60%;
+        order: 2 !important; /* Second item */
+        margin-right: auto !important; 
+        display: flex;
+        align-items: center;
+        flex-grow: 1; /* Take up remaining middle space */
+        min-width: 0; /* CRITICAL: Allows text-overflow to work in Flexbox */
     }
-    .navbar-brand img { 
-        height: 30px !important; 
-        width: 30px !important;
-        margin-right: 6px !important;
+    .navbar-brand img {
+        height: 28px !important; /* Minimized PIT logo */
+        width: 28px !important;
+        margin-right: 8px !important;
+        flex-shrink: 0; /* Prevents logo from squishing */
     }
-    .navbar-brand .brand-heading { 
-        font-size: 0.8rem !important;
-        line-height: 1.2;
+    .navbar-brand .lh-sm {
+        min-width: 0; /* CRITICAL for ellipsis */
+        flex-grow: 1;
     }
-    .navbar-brand small { 
-        display: none !important;
+    .navbar-brand strong {
+        font-size: 0.8rem !important; /* Slightly smaller for mobile */
+        white-space: normal !important; /* CRITICAL: Allows text to wrap to a second line */
+        line-height: 1.2 !important; /* Keeps the wrapped text tight and clean */
+        display: block;
+        word-wrap: break-word;
     }
+    .navbar-brand small { display: none !important; } /* Hide subtext */
+
+    /* C. RIGHT: Profile Menu Icon */
+    .user-dropdown {
+        order: 3 !important; /* Third item */
+        margin-left: 0 !important; 
+        flex-shrink: 0; /* Prevents profile pic from squishing */
+    }
+    .user-dropdown .user-name { display: none !important; }
     
-    /* User Dropdown Compact */
-    .user-dropdown .user-name { 
-        display: none !important;
-    }
+    /* Minimized Profile Image */
     .user-dropdown .dropdown-toggle {
-        padding: 6px !important;
+        padding: 2px !important; /* Remove bulky padding */
+    }
+    .user-dropdown .dropdown-toggle img {
+        width: 30px !important; /* Minimized profile photo */
+        height: 30px !important;
+        margin-right: 0 !important;
+        border: 1px solid rgba(255,255,255,0.2) !important;
+    }
+    /* Fallback Icon */
+    .user-dropdown .dropdown-toggle i { 
+        font-size: 26px !important; 
+        margin: 0 !important;
+        color: #fff;
     }
 
     /* === 2. SIDEBAR === */
@@ -1126,6 +1166,7 @@ sort($all_venues);
 
     <nav class="navbar navbar-dark bg-dark">
         <div class="container-fluid d-flex align-items-center justify-content-between">
+            
             <a class="navbar-brand d-flex align-items-center" href="tournamentmanager_dashboard.php">
                 <img src="images/PIT.png" alt="Logo" class="me-2" style="height: 50px; width: 48px; object-fit: contain;">
                 <div class="d-flex flex-column lh-sm">
@@ -1133,6 +1174,11 @@ sort($all_venues);
                     <small class="text-light" style="font-size: 0.75rem;">Tournament Manager Panel</small>
                 </div>
             </a>
+            
+            <!-- NEW: ADD THIS BUTTON HERE -->
+            <button class="navbar-toggler d-lg-none" type="button" id="mobileToggle">
+                <span class="navbar-toggler-icon"></span>
+            </button>
             <div class="dropdown user-dropdown ms-auto me-2 me-lg-0">
                 <a href="#" class="dropdown-toggle" id="userDropdown" data-bs-toggle="dropdown" aria-expanded="false">
                 
@@ -1637,6 +1683,16 @@ sort($all_venues);
         // --- MAIN EXECUTION ON PAGE LOAD ---
         document.addEventListener('DOMContentLoaded', function () {
             
+            // --- NEW: MOBILE SIDEBAR TOGGLE ---
+            const mobileToggle = document.getElementById('mobileToggle');
+            const sidebar = document.getElementById('sidebar');
+            if (mobileToggle && sidebar) {
+                mobileToggle.addEventListener('click', function() {
+                    sidebar.classList.toggle('show');
+                });
+            }
+            // ----------------------------------
+
             const eventsContainer = document.getElementById('events-container');
             if (eventsContainer) {
                 initDynamicComponents(eventsContainer);
@@ -1849,7 +1905,7 @@ sort($all_venues);
                 }, 250);
             });
             
-            const sidebar = document.getElementById('sidebar');
+            // "const sidebar" was removed here because it was already declared at the top!
             const footer = document.querySelector('footer');
             const navbar = document.querySelector('.navbar');
 

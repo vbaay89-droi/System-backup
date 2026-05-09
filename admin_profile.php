@@ -284,6 +284,14 @@ if (!empty($user['full_name'])) {
 
         /* Form elements */
         .pf-label { display: block; font-size: 12px; color: #6b7280; margin-bottom: 6px; font-weight: 500; }
+
+        /* --- REQUIRED FIELD ASTERISK --- */
+        .pf-label-required::after {
+            content: " *";
+            color: #ef4444; /* Bootstrap danger red */
+            font-weight: bold;
+        }
+
         .pf-input { width: 100%; box-sizing: border-box; font-size: 14px; padding: 9px 12px; border-radius: 8px; border: 1px solid #e5e7eb; background: #f9fafb; color: #1f2937; transition: border-color 0.15s, box-shadow 0.15s; outline: none; font-family: 'Inter', sans-serif; }
         .pf-input:focus { border-color: #93c5fd; box-shadow: 0 0 0 3px rgba(147,197,253,0.25); background: #fff; }
         .pf-input:disabled { color: #9ca3af; cursor: not-allowed; }
@@ -318,6 +326,20 @@ if (!empty($user['full_name'])) {
             .footer-main .footer-logo-group { justify-content: center; }
             .footer-main .row > div { margin-bottom: 2rem; }
             .footer-main .row > div:last-child { margin-bottom: 0; }
+        }
+
+        /* --- UNSAVED PROFILE PICTURE PULSE --- */
+        @keyframes unsaved-pulse-animation {
+            0% { box-shadow: 0 0 0 0 rgba(0, 255, 0, 0.7); border-color: rgba(0, 255, 0, 1); }
+            70% { box-shadow: 0 0 0 15px rgba(0, 255, 0, 0); border-color: rgba(0, 255, 0, 0.5); }
+            100% { box-shadow: 0 0 0 0 rgba(0, 255, 0, 0); border-color: rgba(0, 255, 0, 1); }
+        }
+        
+        .unsaved-pulse {
+            animation: unsaved-pulse-animation 2s infinite !important;
+            /* CHANGED: Border color is now explicitly green to match the pulse */
+            border: 3px solid green !important;
+            transition: all 0.3s ease;
         }
     </style>
 </head>
@@ -476,9 +498,10 @@ if (!empty($user['full_name'])) {
         <div class="identity-card">
             <div class="identity-avatar" style="overflow: hidden;">
             <?php if (!empty($user['profile_picture']) && file_exists($user['profile_picture'])): ?>
-                <img src="<?= htmlspecialchars($user['profile_picture']) ?>" alt="Profile" style="width: 100%; height: 100%; object-fit: cover;">
+                <img id="preview_image" src="<?= htmlspecialchars($user['profile_picture']) ?>" alt="Profile" style="width: 100%; height: 100%; object-fit: cover;">
             <?php else: ?>
-                <span><?= htmlspecialchars($initials) ?></span>
+                <img id="preview_image" src="#" alt="Profile preview" style="width: 100%; height: 100%; object-fit: cover; display: none;">
+                <span id="preview_initials"><?= htmlspecialchars($initials) ?></span>
             <?php endif; ?>
         </div>
             <div class="identity-info">
@@ -535,32 +558,31 @@ if (!empty($user['full_name'])) {
 
                 <form action="admin_profile.php" method="POST" enctype="multipart/form-data">
                     <div class="mb-3">
-                        <label for="current_password" class="pf-label">Current password</label>
+                        <label for="current_password" class="pf-label pf-label-required">Current password</label>
                         <input type="password" class="pf-input" id="current_password" name="current_password" placeholder="••••••••" required>
                     </div>
                     <div class="mb-3">
-                        <label for="new_password" class="pf-label">New password</label>
+                        <label for="new_password" class="pf-label pf-label-required">New password</label>
                         <input type="password" class="pf-input" id="new_password" name="new_password" placeholder="••••••••" required>
                     </div>
                     <div class="mb-4">
-                        <label for="confirm_password" class="pf-label">Confirm new password</label>
+                        <label for="confirm_password" class="pf-label pf-label-required">Confirm new password</label>
                         <input type="password" class="pf-input" id="confirm_password" name="confirm_password" placeholder="••••••••" required>
                     </div>
                     <button type="submit" name="change_password" class="pf-btn">Update password</button>
                 </form>
             </div>
 
-            <!-- Right bottom: Update email -->
             <div class="profile-card">
                 <p class="card-section-label">Update email</p>
 
                 <form action="admin_profile.php" method="POST" enctype="multipart/form-data">
                     <div class="mb-3">
-                        <label for="new_email" class="pf-label">New email address</label>
+                        <label for="new_email" class="pf-label pf-label-required">New email address</label>
                         <input type="email" class="pf-input" id="new_email" name="new_email" placeholder="new@email.com" required>
                     </div>
                     <div class="mb-3">
-                        <label for="current_password_for_email" class="pf-label">Password to confirm</label>
+                        <label for="current_password_for_email" class="pf-label pf-label-required">Password to confirm</label>
                         <input type="password" class="pf-input" id="current_password_for_email" name="current_password_for_email" placeholder="••••••••" required>
                     </div>
                     <p class="pf-hint mb-3"><i class="fas fa-envelope me-1"></i>A verification link will be sent to your new address.</p>
@@ -648,6 +670,42 @@ if (!empty($user['full_name'])) {
             window.addEventListener('scroll', adjustSidebarHeight, { passive: true });
             window.addEventListener('resize', adjustSidebarHeight);
             setTimeout(adjustSidebarHeight, 100);
+        }
+
+        // --- LIVE PROFILE PICTURE PREVIEW ---
+        const profileInput = document.getElementById('profile_picture');
+        const previewImage = document.getElementById('preview_image');
+        const previewInitials = document.getElementById('preview_initials');
+
+        if (profileInput && previewImage) {
+            profileInput.addEventListener('change', function(event) {
+                const file = event.target.files[0];
+                
+                // Check if a file was actually selected
+                if (file) {
+                    const reader = new FileReader();
+                    
+                    // When the file is read, update the image source
+                    reader.onload = function(e) {
+                        previewImage.src = e.target.result;
+                        previewImage.style.display = 'block'; // Make sure it's visible
+                        
+                        // Hide the initials if they exist
+                        if (previewInitials) {
+                            previewInitials.style.display = 'none';
+                        }
+                        
+                        // NEW: Add the pulse animation to the avatar container
+                        const avatarContainer = previewImage.closest('.identity-avatar');
+                        if (avatarContainer) {
+                            avatarContainer.classList.add('unsaved-pulse');
+                        }
+                    }
+                    
+                    // Read the image file as a data URL
+                    reader.readAsDataURL(file);
+                }
+            });
         }
     });
 </script>

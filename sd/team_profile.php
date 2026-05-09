@@ -516,12 +516,199 @@ footer {
     .footer-main .footer-logo-group h5 { font-size: 0.95rem; }
 }
 
-/* --- VERY SMALL PHONES (< 400px) --- */
-@media (max-width: 400px) {
-    .stat-card-mini .count { font-size: 1.3rem; }
-    .stat-card-mini .label { font-size: 0.65rem; }
-    #teamProfileTabs .nav-link { font-size: 0.72rem; padding: 0.45rem 0.15rem; }
-    .profile-header h1.section-title { font-size: 1.1rem; }
+/* =========================================
+   MOBILE OPTIMIZATION (Sports Director)
+   ========================================= */
+@media (max-width: 991.98px) {
+    
+    /* 1. COMPACT NAVBAR & LAYOUT */
+    .navbar {
+        padding: 0.5rem 1rem !important;
+        height: 60px !important; /* Fixed compact height */
+    }
+    
+    .navbar > .container-fluid {
+        display: flex !important;
+        flex-wrap: nowrap !important;
+        align-items: center !important;
+        justify-content: space-between !important;
+        gap: 10px; /* Clean spacing between elements */
+    }
+    
+    /* A. LEFT: Toggler Button */
+    .navbar-toggler {
+        order: 1 !important; /* First item */
+        border: 1px solid rgba(255,255,255,0.1);
+        padding: 4px 8px;
+        font-size: 1.1rem;
+        margin-right: 5px !important;
+    }
+    .navbar-toggler:focus { box-shadow: none; }
+
+    /* B. CENTER: Brand Logo & Text */
+    .navbar-brand {
+        order: 2 !important; /* Second item */
+        margin-right: auto !important; 
+        display: flex;
+        align-items: center;
+        flex-grow: 1; /* Take up remaining middle space */
+        min-width: 0; /* CRITICAL: Allows text-overflow to work in Flexbox */
+    }
+    .navbar-brand img {
+        height: 28px !important; /* Minimized PIT logo */
+        width: 28px !important;
+        margin-right: 8px !important;
+        flex-shrink: 0; /* Prevents logo from squishing */
+    }
+    .navbar-brand .lh-sm {
+        min-width: 0; /* CRITICAL for ellipsis */
+        flex-grow: 1;
+    }
+    .navbar-brand strong {
+        font-size: 0.8rem !important; /* Slightly smaller for mobile */
+        white-space: normal !important; /* CRITICAL: Allows text to wrap to a second line */
+        line-height: 1.2 !important; /* Keeps the wrapped text tight and clean */
+        display: block;
+        word-wrap: break-word;
+    }
+    .navbar-brand small { display: none !important; } /* Hide subtext */
+
+    /* C. RIGHT: Profile Menu Icon */
+    .user-dropdown {
+        order: 3 !important; /* Third item */
+        margin-left: 0 !important; 
+        flex-shrink: 0; /* Prevents profile pic from squishing */
+    }
+    .user-dropdown .user-name { display: none !important; }
+    
+    /* Minimized Profile Image */
+    .user-dropdown .dropdown-toggle {
+        padding: 2px !important; /* Remove bulky padding */
+    }
+    .user-dropdown .dropdown-toggle img {
+        width: 30px !important; /* Minimized profile photo */
+        height: 30px !important;
+        margin-right: 0 !important;
+        border: 1px solid rgba(255,255,255,0.2) !important;
+    }
+    /* Fallback Icon */
+    .user-dropdown .dropdown-toggle i { 
+        font-size: 26px !important; 
+        margin: 0 !important;
+        color: #fff;
+    }
+
+    /* 2. SIDEBAR DRAWER (Fix Gap & Animation) */
+    .sidebar {
+        position: fixed !important;
+        top: 60px !important; /* Matches Navbar Height */
+        left: -260px !important; /* Hidden */
+        width: 260px !important;
+        height: calc(100vh - 60px) !important;
+        background-color: #2c3e50 !important;
+        box-shadow: 5px 0 15px rgba(0,0,0,0.3);
+        transition: left 0.3s ease-in-out !important;
+        z-index: 1045;
+        overflow-y: auto;
+    }
+    .sidebar.show { left: 0 !important; } /* Slide In */
+    
+    /* Prevent text cutoff in menu */
+    .sidebar-nav .nav-link { 
+        white-space: nowrap; 
+        font-size: 0.95rem;
+    }
+
+    /* 3. MAIN CONTENT ADJUSTMENTS */
+    .main-content {
+        padding: 15px !important;
+        margin-top: 60px !important;
+        margin-left: 0 !important;
+    }
+
+    /* 4. COMPACT HERO SECTION */
+    .hero-section {
+        padding: 1.5rem !important;
+        margin-bottom: 1.5rem !important;
+        border-radius: 12px;
+        text-align: left;
+    }
+    .hero-section h1 { font-size: 1.5rem !important; margin-bottom: 5px; }
+    .hero-section h5 { font-size: 0.85rem !important; margin-bottom: 10px; }
+    .hero-section hr { margin: 10px 0 !important; width: 100% !important; }
+    
+    /* Hide Extra Elements */
+    .hero-section .col-lg-3, /* Big Icon */
+    .welcome-badge { display: none !important; }
+    
+    /* Truncate Description to 2 lines */
+    .hero-section p.lead {
+        font-size: 0.85rem !important;
+        line-height: 1.4 !important;
+        display: -webkit-box;
+        -webkit-line-clamp: 2;
+        -webkit-box-orient: vertical;
+        overflow: hidden;
+        margin-bottom: 0 !important;
+    }
+
+    /* 5. STATS GRID: 2 Columns Layout */
+    /* This forces the 4 main stats to sit 2x2 */
+    .col-md-6.col-lg-3 {
+        width: 50% !important; /* Force 50% width */
+        flex: 0 0 50%;
+        padding: 6px !important; /* Tighter spacing */
+    }
+    
+    /* Compact Stat Card */
+    .dashboard-card {
+        padding: 12px !important;
+        display: flex;
+        flex-direction: column; /* Stack Icon top, Text bottom */
+        align-items: center;
+        text-align: center;
+        justify-content: center;
+        min-height: 110px;
+    }
+    
+    /* Smaller Icons */
+    .icon-square {
+        width: 40px !important;
+        height: 40px !important;
+        font-size: 1.1rem !important;
+        margin-right: 0 !important;
+        margin-bottom: 8px;
+    }
+    
+    /* Smaller Text */
+    .stat-value { font-size: 1.4rem !important; margin-bottom: 0 !important; }
+    .stat-label { font-size: 0.65rem !important; letter-spacing: 0; }
+
+    /* 6. ACTION CENTER (Result Approvals / Requests) */
+    /* Keep these full width (stack vertically) as they need detail */
+    .col-lg-6 {
+        width: 100% !important;
+        margin-bottom: 15px;
+    }
+    
+    /* Compact Action Card */
+    .action-card { padding: 15px !important; }
+    .action-header { margin-bottom: 10px !important; }
+    .action-header h6 { font-size: 0.95rem; }
+    
+    /* Adjust Button & Badge */
+    .btn-action-soft {
+        padding: 8px 12px !important;
+        font-size: 0.85rem !important;
+    }
+    .badge {
+        font-size: 0.7rem !important;
+        padding: 4px 8px !important;
+    }
+
+    /* 7. FOOTER COMPACT */
+    .footer-main { padding: 2rem 1rem !important; text-align: center; }
+    .footer-main .footer-logo-group { justify-content: center; }
 }
     </style>
 </head>

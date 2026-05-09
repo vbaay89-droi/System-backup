@@ -537,44 +537,83 @@ $pending_results_count = $conn->query("SELECT COUNT(*) FROM categories WHERE sta
         .table .btn i { font-size: 14px !important; margin: 0 !important; }
     }
 
-    /* --- B. COMPACT NAVBAR & LAYOUT --- */
+    /* 1. COMPACT NAVBAR & LAYOUT */
     .navbar {
         padding: 0.5rem 1rem !important;
-        height: 60px !important;
+        height: 60px !important; /* Fixed compact height */
+    }
+    
+    .navbar > .container-fluid {
         display: flex !important;
         flex-wrap: nowrap !important;
         align-items: center !important;
+        justify-content: space-between !important;
+        gap: 10px; /* Clean spacing between elements */
     }
-
-    /* 1. Toggler (Visible on Mobile) */
+    
+    /* A. LEFT: Toggler Button */
     .navbar-toggler {
-        display: block !important;
-        order: 1 !important;
+        order: 1 !important; /* First item */
         border: 1px solid rgba(255,255,255,0.1);
         padding: 4px 8px;
-        font-size: 1.2rem;
-        margin-right: 10px !important;
+        font-size: 1.1rem;
+        margin-right: 5px !important;
     }
+    .navbar-toggler:focus { box-shadow: none; }
 
-    /* 2. Brand/Logo (Center-ish) */
+    /* B. CENTER: Brand Logo & Text */
     .navbar-brand {
-        order: 2 !important;
-        margin-right: auto !important;
+        order: 2 !important; /* Second item */
+        margin-right: auto !important; 
         display: flex;
         align-items: center;
-        max-width: 60%;
+        flex-grow: 1; /* Take up remaining middle space */
+        min-width: 0; /* CRITICAL: Allows text-overflow to work in Flexbox */
     }
-    .navbar-brand img { height: 30px !important; width: 30px !important; margin-right: 8px !important; }
-    .navbar-brand strong { font-size: 0.95rem !important; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-    .navbar-brand small { display: none !important; }
+    .navbar-brand img {
+        height: 28px !important; /* Minimized PIT logo */
+        width: 28px !important;
+        margin-right: 8px !important;
+        flex-shrink: 0; /* Prevents logo from squishing */
+    }
+    .navbar-brand .lh-sm {
+        min-width: 0; /* CRITICAL for ellipsis */
+        flex-grow: 1;
+    }
+    .navbar-brand strong {
+        font-size: 0.8rem !important; /* Slightly smaller for mobile */
+        white-space: normal !important; /* CRITICAL: Allows text to wrap to a second line */
+        line-height: 1.2 !important; /* Keeps the wrapped text tight and clean */
+        display: block;
+        word-wrap: break-word;
+    }
+    .navbar-brand small { display: none !important; } /* Hide subtext */
 
-    /* 3. User Icon (Right) */
+    /* C. RIGHT: Profile Menu Icon */
     .user-dropdown {
-        order: 3 !important;
-        margin-left: 0 !important;
+        order: 3 !important; /* Third item */
+        margin-left: 0 !important; 
+        flex-shrink: 0; /* Prevents profile pic from squishing */
     }
     .user-dropdown .user-name { display: none !important; }
-    .user-dropdown .dropdown-toggle i { font-size: 26px !important; margin: 0 !important; color: #fff; }
+    
+    /* Minimized Profile Image */
+    .user-dropdown .dropdown-toggle {
+        padding: 2px !important; /* Remove bulky padding */
+    }
+    .user-dropdown .dropdown-toggle img {
+        width: 30px !important; /* Minimized profile photo */
+        height: 30px !important;
+        margin-right: 0 !important;
+        border: 1px solid rgba(255,255,255,0.2) !important;
+    }
+    /* Fallback Icon */
+    .user-dropdown .dropdown-toggle i { 
+        font-size: 26px !important; 
+        margin: 0 !important;
+        color: #fff;
+    }
+
 
     /* --- C. SIDEBAR DRAWER (Hidden by default on Mobile) --- */
     .sidebar {

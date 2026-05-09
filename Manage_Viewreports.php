@@ -295,6 +295,10 @@ function getStatusBadge($status) {
             font-size: 1.1rem; 
         }
         
+        /* NEW: Default desktop width for the dropdown wrapper */
+        .sort-select-wrapper { 
+            width: 200px; 
+        }
         /* Table Container */
         .report-table-container { 
             background: #ffffff; 
@@ -515,14 +519,24 @@ function getStatusBadge($status) {
    MOBILE OPTIMIZATION (Sports Director)
    ========================================= */
 @media (max-width: 991.98px) {
+            
+    /* --- UPDATE GLOBAL VARIABLE FOR MOBILE --- */
+    :root { 
+        --header-height: 60px; 
+    }
     
     /* 1. COMPACT NAVBAR & LAYOUT */
     .navbar {
         padding: 0.5rem 1rem !important;
-        height: 60px !important; /* Fixed compact height */
+        height: var(--header-height) !important; 
+    }
+    
+    .navbar > .container-fluid {
         display: flex !important;
         flex-wrap: nowrap !important;
         align-items: center !important;
+        justify-content: space-between !important;
+        gap: 10px; /* Clean spacing between elements */
     }
     
     /* A. LEFT: Toggler Button */
@@ -530,73 +544,64 @@ function getStatusBadge($status) {
         order: 1 !important; /* First item */
         border: 1px solid rgba(255,255,255,0.1);
         padding: 4px 8px;
-        font-size: 1.2rem;
-        margin-right: 10px !important;
+        font-size: 1.1rem;
+        margin-right: 5px !important;
     }
     .navbar-toggler:focus { box-shadow: none; }
 
-    /* B. LEFT/CENTER: Brand Logo */
-    /* margin-right: auto PUSHES the Profile Icon to the far right */
+    /* B. CENTER: Brand Logo & Text */
     .navbar-brand {
         order: 2 !important; /* Second item */
-        margin-right: auto !important; /* THE KEY SPACER */
+        margin-right: auto !important; 
         display: flex;
         align-items: center;
-        max-width: 60%;
+        flex-grow: 1; /* Take up remaining middle space */
+        min-width: 0; /* CRITICAL: Allows text-overflow to work in Flexbox */
     }
     .navbar-brand img {
-        height: 30px !important;
-        width: 30px !important;
+        height: 28px !important; /* Minimized PIT logo */
+        width: 28px !important;
         margin-right: 8px !important;
+        flex-shrink: 0; /* Prevents logo from squishing */
+    }
+    .navbar-brand .lh-sm {
+        min-width: 0; /* CRITICAL for ellipsis */
+        flex-grow: 1;
     }
     .navbar-brand strong {
-        font-size: 0.95rem !important;
-        white-space: nowrap;
-        overflow: hidden;
-        text-overflow: ellipsis;
+        font-size: 0.8rem !important; /* Slightly smaller for mobile */
+        white-space: normal !important; /* CRITICAL: Allows text to wrap to a second line */
+        line-height: 1.2 !important; /* Keeps the wrapped text tight and clean */
+        display: block;
+        word-wrap: break-word;
     }
-    .navbar-brand small { display: none !important; }
+    .navbar-brand small { display: none !important; } /* Hide subtext */
 
     /* C. RIGHT: Profile Menu Icon */
     .user-dropdown {
         order: 3 !important; /* Third item */
         margin-left: 0 !important; 
-        position: relative;
+        flex-shrink: 0; /* Prevents profile pic from squishing */
     }
-    .user-dropdown .user-name { display: none !important; } /* Hide Name */
+    .user-dropdown .user-name { display: none !important; }
     
-    /* Icon Styling */
+    /* Minimized Profile Image */
+    .user-dropdown .dropdown-toggle {
+        padding: 2px !important; /* Remove bulky padding */
+    }
+    .user-dropdown .dropdown-toggle img {
+        width: 30px !important; /* Minimized profile photo */
+        height: 30px !important;
+        margin-right: 0 !important;
+        border: 1px solid rgba(255,255,255,0.2) !important;
+    }
+    /* Fallback Icon */
     .user-dropdown .dropdown-toggle i { 
         font-size: 26px !important; 
         margin: 0 !important;
-        color: #fff; /* Ensure visibility */
-        cursor: pointer;
+        color: #fff;
     }
 
-    /* Order 3: Brand Logo */
-    .navbar-brand {
-        order: 3 !important;
-        display: flex;
-        align-items: center;
-        max-width: 55%; /* Adjust width to prevent overflow */
-        margin-right: 0 !important;
-    }
-    .navbar-brand img {
-        height: 30px !important;
-        width: 30px !important;
-        margin-right: 8px !important;
-    }
-    .navbar-brand strong {
-        font-size: 0.95rem !important;
-        white-space: nowrap;
-        overflow: hidden;
-        text-overflow: ellipsis;
-    }
-    .navbar-brand small { display: none !important; }
-    
-    /* Compact Profile Menu */
-    .user-dropdown .user-name { display: none !important; }
-    .user-dropdown .dropdown-toggle i { font-size: 28px !important; margin: 0 !important; }
 
     /* 2. SIDEBAR DRAWER (Fix Gap & Animation) */
     .sidebar {
@@ -627,6 +632,8 @@ function getStatusBadge($status) {
     }
 }
             /* 1. Center text on smaller screens */
+            @media (max-width: 991px) {
+            /* 1. Center text on smaller screens */
             .footer-main { 
                 text-align: center; 
             }
@@ -645,6 +652,7 @@ function getStatusBadge($status) {
             .footer-main .row > div:last-child {
                 margin-bottom: 0;
             }
+        }
         /* =========================================
    MOBILE REPORTS OPTIMIZATION
    ========================================= */
@@ -777,9 +785,113 @@ function getStatusBadge($status) {
         margin-bottom: 15px;
     }
 }
+
+/* === PHONES & SMALL TABLETS (< 768px) === */
+        @media (max-width: 767.98px) {
+            /* Allow winner names to wrap to save horizontal space */
+            #eventResultsTable td:nth-child(3),
+            #eventResultsTable td:nth-child(4),
+            #eventResultsTable td:nth-child(5) {
+                min-width: 110px !important;
+                white-space: normal !important; /* Forces text to wrap */
+                line-height: 1.3;
+                font-size: 0.85rem;
+            }
+            #eventResultsTable th:nth-child(3),
+            #eventResultsTable th:nth-child(4),
+            #eventResultsTable th:nth-child(5) {
+                min-width: 110px !important;
+            }
+            /* Reduce winner count pill size */
+            .winner-count-pill { 
+                font-size: 0.65rem; 
+                padding: 0 3px; 
+            }
+        }
+
+/* === EXTRA SMALL PHONES (< 576px) === */
+        @media (max-width: 575.98px) {
+            
+            /* 1. Print Button Full Width */
+            .btn-print-report { 
+                width: 100%; 
+                padding: 12px; 
+            }
+            
+            /* 2. Tabs Compact Fix */
+            .nav-tabs .nav-link { 
+                font-size: 0.75rem !important; 
+                padding: 8px 10px !important; 
+                white-space: nowrap !important;
+            }
+            .nav-tabs .nav-link i { 
+                display: none !important; 
+            }
+
+            /* 3. Stack the Card Header & stretch the dropdown */
+            .card-header.d-flex { 
+                flex-direction: column; 
+                align-items: stretch !important;
+                gap: 12px;
+            }
+            .sort-select-wrapper { 
+                width: 100%; 
+            }
+
+            /* 4. MEDAL TABLE COMPACT FIX */
+            /* Shrink team logo */
+            .report-table td:nth-child(2) img {
+                width: 28px !important;
+                height: 28px !important;
+                margin-right: 8px !important;
+            }
+            
+            /* Hide full college name, keep short code */
+            .report-table td:nth-child(2) small {
+                display: none !important;
+            }
+            
+            /* Tighten medal number columns */
+            .report-table td:nth-child(3),
+            .report-table td:nth-child(4),
+            .report-table td:nth-child(5),
+            .report-table td:nth-child(6),
+            .report-table th:nth-child(3),
+            .report-table th:nth-child(4),
+            .report-table th:nth-child(5),
+            .report-table th:nth-child(6) {
+                padding: 8px 6px !important;
+                font-size: 0.9rem !important;
+            }
+        }
+
+        /* === ULTRA SMALL PHONES (< 400px) === */
+        @media (max-width: 400px) {
+            /* Squeeze the outer container padding */
+            .main-content { 
+                padding: 10px 8px !important; 
+            }
+            
+            /* Squeeze the inner card header padding and text */
+            .card-header { 
+                padding: 0.75rem 1rem !important; 
+            }
+            
+            .card-header h5 { 
+                font-size: 0.95rem; 
+            }
+            
+            /* Optional: Make the print button a tiny bit more compact here too */
+            .btn-print-report {
+                padding: 10px;
+                font-size: 0.85rem;
+            }
+        }
     </style>
 </head>
 <body>
+    
+    <div id="sidebarOverlay" style="display:none; position:fixed; inset:0; background:rgba(0,0,0,0.5); z-index:1044; backdrop-filter: blur(2px);"></div>
     
     <nav class="navbar navbar-dark bg-dark">
         <div class="container-fluid d-flex align-items-center justify-content-between">
@@ -894,15 +1006,15 @@ function getStatusBadge($status) {
               </ol>
             </nav>
 
-            <div class="d-flex justify-content-between align-items-center mb-4">
+            <div class="d-flex flex-column flex-sm-row justify-content-between align-items-start align-items-sm-center mb-4 gap-3">
     
-                <div class="page-header"> 
+                <div class="page-header mb-0 w-100 w-sm-auto"> 
                     <h1 class="section-title mb-0">
-                        </i>View Reports
+                        <i class="fas fa-file-alt text-primary me-2"></i>View Reports
                     </h1>
                 </div>
 
-                <button class="btn btn-secondary" onclick="window.open('print_official_report.php', '_blank')">
+                <button class="btn btn-secondary btn-print-report" onclick="window.open('print_official_report.php', '_blank')">
                     <i class="fas fa-print me-2"></i> Print Official Report
                 </button>
             </div>
@@ -932,7 +1044,7 @@ function getStatusBadge($status) {
                     <div class="card">
                         <div class="card-header d-flex justify-content-between align-items-center">
                             <h5 class="mb-0"><i class="fas fa-trophy text-warning me-2"></i>Overall Team Rankings</h5>
-                            <div style="width: 200px;">
+                            <div class="sort-select-wrapper">
                                 <select class="form-select form-select-sm" id="sortFilter" onchange="window.location.href = 'Manage_Viewreports.php?sort=' + this.value;">
                                     <option value="gold" <?= ($sort_key == 'gold') ? 'selected' : '' ?>>Standard Rank (Gold First)</option>
                                     <option value="total" <?= ($sort_key == 'total') ? 'selected' : '' ?>>Sort by Total Medals</option>
@@ -1140,12 +1252,12 @@ function getStatusBadge($status) {
         document.addEventListener('DOMContentLoaded', function () {
             
             // Initialize DataTables with Custom Empty Message Logic
+            // Initialize DataTables with Custom Empty Message Logic
             const tableOptions = {
                 "lengthMenu": [ [10, 25, 50, -1], [10, 25, 50, "All"] ],
                 "language": { 
                     "search": "", 
                     "searchPlaceholder": "Search records...",
-                    // Handled by DataTables JS now
                     "zeroRecords": `<div class="text-center text-muted p-5">
                                         <i class="fas fa-clipboard-list empty-state-icon" style="font-size: 3rem; color: #dee2e6; margin-bottom: 1rem;"></i>
                                         <p class="mb-0">No records found.</p>
@@ -1155,23 +1267,33 @@ function getStatusBadge($status) {
                                         <p class="mb-0">No data available.</p>
                                    </div>`
                 },
-                "dom": '<"d-flex justify-content-between align-items-center p-3"lf>t<"d-flex justify-content-between align-items-center p-3"ip>'
+                // CHANGED: Added flex-column, flex-sm-row, and gap-2 to make the Search/Length controls stack on mobile!
+                "dom": '<"d-flex flex-column flex-sm-row justify-content-between align-items-center p-3 gap-2"lf>t<"d-flex flex-column flex-sm-row justify-content-between align-items-center p-3 gap-2"ip>'
             };
             $('#matchResultsTable').DataTable(tableOptions);
             $('#eventResultsTable').DataTable(tableOptions);
 
-            // Sidebar Toggle
-            const mobileToggle = document.getElementById('mobileToggle');
-            if (mobileToggle) {
-                mobileToggle.addEventListener('click', function() {
-                    document.getElementById('sidebar').classList.toggle('show');
-                });
-            }
-            
-            // Dynamic Footer
-            const footer = document.querySelector('footer');
             const sidebar = document.getElementById('sidebar');
-            const navbar = document.querySelector('.navbar');
+        const mobileToggle = document.getElementById('mobileToggle');
+        const overlay = document.getElementById('sidebarOverlay'); // Grab the new overlay
+        const footer = document.querySelector('footer');
+        const navbar = document.querySelector('.navbar');
+
+        // 1. Toggle Menu & Overlay together
+        if (mobileToggle && sidebar && overlay) {
+            mobileToggle.addEventListener('click', function() {
+                const isOpen = sidebar.classList.toggle('show');
+                overlay.style.display = isOpen ? 'block' : 'none';
+            });
+        }
+
+        // 2. Click Overlay to Close Menu
+        if (overlay && sidebar) {
+            overlay.addEventListener('click', function() {
+                sidebar.classList.remove('show');
+                overlay.style.display = 'none';
+            });
+        }
 
             if (sidebar && footer && navbar) {
                 function adjustSidebarHeight() {
@@ -1258,7 +1380,29 @@ function getStatusBadge($status) {
                         { label: 'Bronze', data: <?= $chart_bronze; ?>, backgroundColor: '#CD7F32', borderColor: '#a05a2c', borderWidth: 1 }
                     ]
                 },
-                options: { responsive: true, maintainAspectRatio: false }
+                // CHANGED: Expanded options to fix X-axis label overlapping on mobile
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            position: 'bottom',
+                            labels: { boxWidth: 12, padding: 10, font: { size: 11 } }
+                        }
+                    },
+                    scales: {
+                        x: {
+                            ticks: {
+                                maxRotation: 45, /* Allows labels to tilt when squished */
+                                minRotation: 0,
+                                font: { size: 10 } /* Smaller text for mobile fit */
+                            }
+                        },
+                        y: {
+                            ticks: { font: { size: 10 } }
+                        }
+                    }
+                }
             });
 
             // Pie Chart (Updated with Percentages)

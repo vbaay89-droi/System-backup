@@ -260,42 +260,30 @@ $pending_results_count = $conn->query("SELECT COUNT(*) FROM categories WHERE sta
         /* ========================================
            MODERN ROW-CARD TABLE STYLES (CLEANED)
            ======================================== */
-        /* Make the outer wrapper invisible */
         .table-card { background: transparent; border: none; box-shadow: none; border-radius: 0; }
-        
-        /* Separate the rows and add vertical gaps! */
         .table-card table { width: 100%; border-collapse: separate; border-spacing: 0 12px; text-align: left; }
-        
-        /* Clean up the header */
         .table-card thead th { padding: 0 1.5rem 0.5rem; font-size: 0.75rem; font-weight: 600; text-transform: uppercase; color: #6b7280; letter-spacing: 0.05em; border-bottom: none; background: transparent; }
-        
-        /* Style the individual rows as floating cards */
         .table-card tbody tr { background-color: #fff; box-shadow: 0 2px 5px rgba(0,0,0,0.04); transition: all 0.2s ease; }
         .table-card tbody tr:hover { transform: translateY(-3px); box-shadow: 0 8px 15px rgba(0,0,0,0.08); }
-        
-        /* Remove inner borders and add padding */
         .table-card td { padding: 1.25rem 1.5rem; border: none; border-top: 1px solid #f3f4f6; border-bottom: 1px solid #f3f4f6; vertical-align: middle; }
-        
-        /* Add rounded corners and side borders ONLY to the outer edges of the row */
         .table-card td:first-child { border-left: 1px solid #f3f4f6; border-top-left-radius: 12px; border-bottom-left-radius: 12px; }
         .table-card td:last-child { border-right: 1px solid #f3f4f6; border-top-right-radius: 12px; border-bottom-right-radius: 12px; }
 
-        /* Typography & Element styling inside the cells */
         .season-name { font-weight: 700; color: #111827; font-size: 1.05rem; }
         .date-archived { display: flex; align-items: center; gap: 0.5rem; color: #6b7280; font-size: 0.85rem;}
-        .champion-cell { display: flex; align-items: center; gap: 0.75rem; font-weight: 600; color: #111827; font-size: 1.05rem; }
-        .logo-circle { width: 50px; height: 50px; border-radius: 50%; object-fit: cover; border: 1px solid #e5e7eb; background: #fff;}
+
+        /* UPDATED: champion-cell now prevents overflow on mobile */
+        .champion-cell { display: flex; align-items: center; gap: 0.75rem; font-weight: 600; color: #111827; font-size: 1.05rem; flex-wrap: wrap; min-width: 0; }
+        .logo-circle { width: 50px; height: 50px; border-radius: 50%; object-fit: cover; border: 1px solid #e5e7eb; background: #fff; flex-shrink: 0; }
         
         .stats-cell { text-align: center; }
         .stat-number { display: block; font-size: 1.1rem; font-weight: 700; color: #2563eb; line-height: 1; }
         .stat-label { font-size: 0.65rem; font-weight: 600; text-transform: uppercase; color: #9ca3af; }
         .divider { height: 1px; background: #e5e7eb; margin: 6px auto; width: 30px; }
         
-        /* Footer adjustments */
         .table-footer { padding: 1rem 0; background: transparent; display: flex; justify-content: space-between; align-items: center; border-top: none; }
         .table-footer-text { color: #6b7280; font-size: 0.875rem; }
         
-        /* Button styling */
         .btn-view-report { display: inline-flex; align-items: center; gap: 0.5rem; padding: 0.5rem 1.25rem; font-size: 0.875rem; font-weight: 600; border-radius: 0.5rem; transition: all 0.2s; border: 1px solid #3b82f6; color: #3b82f6; background: transparent; cursor: pointer; text-decoration: none;}
         .btn-view-report:hover { background: #3b82f6; color: white; box-shadow: 0 4px 6px rgba(59, 130, 246, 0.2); }
 
@@ -327,30 +315,132 @@ $pending_results_count = $conn->query("SELECT COUNT(*) FROM categories WHERE sta
         .footer-bottom { border-top: 1px solid rgba(255,255,255,0.1); padding-top: 1.5rem; margin-top: 2rem; text-align: center; font-size: 0.85rem; }
 
         /* ========================================
-           4. MOBILE RESPONSIVENESS (DASHBOARD)
+           4. MOBILE RESPONSIVENESS
            ======================================== */
+
+        /* --- SIDEBAR BACKDROP (NEW) --- */
+        .sidebar-backdrop {
+            display: none;
+            position: fixed;
+            inset: 0;
+            background: rgba(0, 0, 0, 0.45);
+            z-index: 1039;
+        }
+        .sidebar-backdrop.show { display: block; }
+
         @media (max-width: 991.98px) {
-            .navbar { padding: 0.5rem 1rem !important; height: 60px !important; display: flex !important; flex-wrap: nowrap !important; align-items: center !important; }
-            .navbar-toggler { order: 1; border: 1px solid rgba(255,255,255,0.1); padding: 4px 8px; font-size: 1.2rem; margin-right: 10px; }
+            /* 1. COMPACT NAVBAR & LAYOUT */
+            .navbar {
+                padding: 0.5rem 1rem !important;
+                height: 60px !important;
+            }
+            .navbar > .container-fluid {
+                display: flex !important;
+                flex-wrap: nowrap !important;
+                align-items: center !important;
+                justify-content: space-between !important;
+                gap: 10px;
+            }
+            .navbar-toggler {
+                order: 1 !important;
+                border: 1px solid rgba(255,255,255,0.1);
+                padding: 4px 8px;
+                font-size: 1.1rem;
+                margin-right: 5px !important;
+            }
             .navbar-toggler:focus { box-shadow: none; }
-            .navbar-brand { order: 2; margin-right: auto !important; display: flex; align-items: center; max-width: 60%; }
-            .navbar-brand img { height: 30px !important; width: 30px !important; margin-right: 8px !important; }
-            .navbar-brand strong { font-size: 0.95rem !important; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+            .navbar-brand {
+                order: 2 !important;
+                margin-right: auto !important;
+                display: flex;
+                align-items: center;
+                flex-grow: 1;
+                min-width: 0;
+            }
+            .navbar-brand img {
+                height: 28px !important;
+                width: 28px !important;
+                margin-right: 8px !important;
+                flex-shrink: 0;
+            }
+            .navbar-brand .lh-sm { min-width: 0; flex-grow: 1; }
+            .navbar-brand strong {
+                font-size: 0.8rem !important;
+                white-space: normal !important;
+                line-height: 1.2 !important;
+                display: block;
+                word-wrap: break-word;
+            }
             .navbar-brand small { display: none !important; }
-            .user-dropdown { order: 3; margin-left: 0 !important; }
+            .user-dropdown {
+                order: 3 !important;
+                margin-left: 0 !important;
+                flex-shrink: 0;
+            }
             .user-dropdown .user-name { display: none !important; }
-            .user-dropdown .dropdown-toggle i { font-size: 26px !important; margin: 0 !important; color: #fff; }
-            
-            .sidebar { top: 60px !important; left: -260px; height: calc(100vh - 60px) !important; }
+            .user-dropdown .dropdown-toggle { padding: 2px !important; }
+            .user-dropdown .dropdown-toggle img {
+                width: 30px !important;
+                height: 30px !important;
+                margin-right: 0 !important;
+                border: 1px solid rgba(255,255,255,0.2) !important;
+            }
+            .user-dropdown .dropdown-toggle i {
+                font-size: 26px !important;
+                margin: 0 !important;
+                color: #fff;
+            }
+
+            /* Sidebar */
+            .sidebar {
+                top: 60px !important;
+                bottom: 0 !important;
+                left: -260px;
+                height: auto !important;
+                padding-bottom: 20px;
+                transition: left 0.3s ease;
+            }
             .sidebar.show { left: 0; }
             .main-content { padding: 15px !important; margin-top: 60px !important; margin-left: 0 !important; }
             footer { padding-left: 0 !important; }
 
             .page-header { padding: 1.5rem !important; margin-bottom: 1.5rem !important; }
             .page-header .section-title { font-size: 1.5rem !important; }
-            
+
+            /* Tabs full width on mobile */
             .nav-tabs { flex-direction: column; gap: 0.5rem; padding: 0.75rem; }
-            .nav-tabs .nav-link { justify-content: center; font-size: 0.9rem; }
+            .nav-tabs .nav-link { justify-content: center; font-size: 0.9rem; width: 100%; }
+
+            /* Search bar full width */
+            .search-container { max-width: 100% !important; }
+        }
+
+        /* ========================================
+           SECTION 1 FIX: TABLE COLUMNS ON MOBILE
+           ======================================== */
+        @media (max-width: 767px) {
+            /* Hide Date Archived and Games & Events columns */
+            .table-card thead th:nth-child(2),
+            .table-card td:nth-child(2),
+            .table-card thead th:nth-child(4),
+            .table-card td:nth-child(4) {
+                display: none;
+            }
+
+            /* Reduce table cell padding on mobile */
+            .table-card td { padding: 1rem; }
+            .table-card thead th { padding: 0 1rem 0.5rem; }
+
+            /* Full-width view report button */
+            .btn-view-report {
+                width: 100%;
+                justify-content: center;
+                margin-top: 0.5rem;
+            }
+            .table-card td:last-child { text-align: left !important; }
+
+            /* Champion cell text truncation */
+            .champion-cell { font-size: 0.9rem; }
         }
 
         @media (max-width: 575.98px) {
@@ -366,7 +456,14 @@ $pending_results_count = $conn->query("SELECT COUNT(*) FROM categories WHERE sta
         #fullReportModal .modal-dialog { margin: 0; max-width: 100%; height: 100vh; }
         #fullReportModal .modal-content { height: 100%; border: none; border-radius: 0; }
 
-        /* MOVED VARIABLES TO ROOT SO PDF CAN ALWAYS SEE THEM */
+        /* Close button: smaller margin on tiny screens */
+        @media (max-width: 575px) {
+            #fullReportModal .btn-close.position-absolute {
+                margin: 0.5rem !important;
+                padding: 6px !important;
+            }
+        }
+
         :root {
             --rep-primary: #1a355b;
             --rep-primary-10: rgba(26,53,91,0.1);
@@ -427,6 +524,13 @@ $pending_results_count = $conn->query("SELECT COUNT(*) FROM categories WHERE sta
         .custom-report-ui .rep-id-label { font-size: 0.6rem; text-transform: uppercase; letter-spacing: 0.15em; font-weight: 700; color: var(--rep-primary-60); }
         .custom-report-ui .rep-id-value { font-family: monospace; font-size: 0.85rem; font-weight: 700; color: var(--rep-primary); }
 
+        /* SECTION 3 FIX: Report title smaller on mobile */
+        @media (max-width: 575px) {
+            .custom-report-ui .rep-title { font-size: 1.6rem; }
+            .custom-report-ui .rep-container { padding: 1rem; }
+            .custom-report-ui .rep-identity { flex-direction: column; align-items: flex-start; }
+        }
+
         /* Report Metrics */
         .custom-report-ui .rep-metrics-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 1.5rem; margin-bottom: 2.5rem; }
         .custom-report-ui .rep-metric-card { background: var(--rep-white); padding: 1.5rem; border-radius: var(--rep-radius-xl); border: 1px solid var(--rep-primary-10); box-shadow: 0 1px 3px rgba(0,0,0,0.06); display: flex; align-items: center; gap: 1.25rem; }
@@ -434,6 +538,16 @@ $pending_results_count = $conn->query("SELECT COUNT(*) FROM categories WHERE sta
         .custom-report-ui .rep-metric-icon i { font-size: 1.75rem; }
         .custom-report-ui .rep-metric-label { font-size: 0.8rem; font-weight: 500; color: var(--rep-slate-500); margin-bottom: 0.15rem; }
         .custom-report-ui .rep-metric-value { font-size: 1.875rem; font-weight: 900; color: var(--rep-slate-900); }
+
+        /* SECTION 3 FIX: Metric cards compact on mobile */
+        @media (max-width: 575px) {
+            .custom-report-ui .rep-metrics-grid {
+                grid-template-columns: 1fr;
+                gap: 0.75rem;
+                margin-bottom: 1.25rem;
+            }
+            .custom-report-ui .rep-metric-card { padding: 0.75rem 1rem; }
+        }
 
         /* Report Grid & Cards */
         .custom-report-ui .rep-main-grid { display: grid; grid-template-columns: 1fr; gap: 2rem; margin-bottom: 2.5rem; }
@@ -460,6 +574,14 @@ $pending_results_count = $conn->query("SELECT COUNT(*) FROM categories WHERE sta
         .custom-report-ui .badge-gold { background: var(--rep-amber-100); color: var(--rep-amber-700); }
         .custom-report-ui .badge-silver { background: var(--rep-slate-100); color: var(--rep-slate-600); }
         .custom-report-ui .badge-bronze { background: var(--rep-orange-100); color: var(--rep-orange-700); }
+
+        /* SECTION 3 FIX: Medal table compact on mobile */
+        @media (max-width: 575px) {
+            .custom-report-ui th,
+            .custom-report-ui td { padding: 0.6rem 0.75rem; font-size: 0.8rem; }
+            .custom-report-ui .rep-card-body { padding: 1rem; }
+            .custom-report-ui .rep-card-header { padding: 0.75rem 1rem; }
+        }
 
         /* Report Events */
         .custom-report-ui .rep-events-list { display: flex; flex-direction: column; gap: 1.5rem; }
@@ -490,10 +612,31 @@ $pending_results_count = $conn->query("SELECT COUNT(*) FROM categories WHERE sta
         .custom-report-ui .rep-official-email { font-size: 0.65rem; color: var(--rep-slate-400); }
         
         .custom-report-ui .rep-team-tags { display: flex; flex-wrap: wrap; gap: 0.75rem; }
-        .custom-report-ui .rep-team-tag { display: flex; align-items: center; gap: 0.5rem; background: var(--rep-slate-50); padding: 0.5rem 0.75rem; border-radius: var(--rep-radius-lg); border: 1px solid var(--rep-slate-100); width: calc(50% - 0.5rem);}
-        @media (min-width: 1024px) { .custom-report-ui .rep-team-tag { width: 100%; } }
+
+        /* SECTION 3 FIX: Team tags full-width on mobile, half on tablet, full on large desktop sidebar */
+        .custom-report-ui .rep-team-tag {
+            display: flex; align-items: center; gap: 0.5rem;
+            background: var(--rep-slate-50); padding: 0.5rem 0.75rem;
+            border-radius: var(--rep-radius-lg); border: 1px solid var(--rep-slate-100);
+            width: 100%;
+        }
+        @media (min-width: 480px) and (max-width: 1023px) {
+            .custom-report-ui .rep-team-tag { width: calc(50% - 0.5rem); }
+        }
+        @media (min-width: 1024px) {
+            .custom-report-ui .rep-team-tag { width: 100%; }
+        }
+
         .custom-report-ui .rep-team-logo { width: 2rem; height: 2rem; border-radius: var(--rep-radius); object-fit: cover; border: 1px solid #ddd; background: white;}
         .custom-report-ui .rep-team-name { font-size: 0.75rem; font-weight: 700; color: var(--rep-slate-700); white-space: nowrap; overflow: hidden; text-overflow: ellipsis;}
+
+        /* SECTION 3 FIX: Analytics chart grid single column on mobile */
+        @media (max-width: 599px) {
+            .custom-report-ui .rep-card-body > div[style*="grid"] {
+                grid-template-columns: 1fr !important;
+            }
+            .chart-container { height: 220px !important; }
+        }
 
         /* Report Footer */
         .custom-report-ui .rep-footer { margin-top: 3rem; padding-top: 2rem; border-top: 1px solid var(--rep-slate-200); display: flex; flex-wrap: wrap; justify-content: space-between; gap: 1rem; color: var(--rep-slate-400); font-size: 0.75rem; font-weight: 500; }
@@ -503,12 +646,17 @@ $pending_results_count = $conn->query("SELECT COUNT(*) FROM categories WHERE sta
         .custom-report-ui .rep-footer-verified { display: inline-flex; align-items: center; gap: 0.25rem; color: var(--rep-primary); font-weight: 700;}
         .custom-report-ui .rep-footer-verified i { font-size: 1rem; }
 
+        /* SECTION 3 FIX: Footer stacks on mobile */
+        @media (max-width: 575px) {
+            .custom-report-ui .rep-footer { flex-direction: column; }
+            .custom-report-ui .rep-footer-right { flex-direction: column; gap: 0.75rem; }
+        }
+
         /* ========================================
            6. PRINT STYLES (Full Data Capture)
            ======================================== */
         @media print {
             @page { margin: 0.5in; }
-
             body > *:not(#fullReportModal) { display: none !important; }
             html, body { height: auto !important; overflow: visible !important; background: white !important; }
             
@@ -518,36 +666,28 @@ $pending_results_count = $conn->query("SELECT COUNT(*) FROM categories WHERE sta
                 height: auto !important; max-height: none !important; overflow: visible !important; 
                 border: none !important; box-shadow: none !important; background: white !important; padding: 0 !important;
             }
-            
             .custom-report-ui .rep-header-actions, .btn-close { display: none !important; }
             .custom-report-ui .rep-main-grid { display: block !important; }
             .custom-report-ui .rep-left-col, .custom-report-ui .rep-right-col { display: block !important; width: 100% !important; }
-            
-            /* --- COMPRESS HEADER & TITLE FOR PAGE 1 FIT --- */
             .custom-report-ui .rep-header { padding-bottom: 0.25rem !important; margin-bottom: 0.5rem !important; }
             .custom-report-ui .rep-title { font-size: 1.5rem !important; margin-bottom: 0.25rem !important; }
             .custom-report-ui .rep-identity { margin-bottom: 0.75rem !important; }
-            
-            /* --- SHRINK METRICS CARDS SO TABLE CAN FIT BELOW IT --- */
             .custom-report-ui .rep-metrics-grid { gap: 0.5rem !important; margin-bottom: 1rem !important; }
             .custom-report-ui .rep-metric-card { padding: 0.5rem 1rem !important; gap: 0.75rem !important; }
             .custom-report-ui .rep-metric-icon { width: 2.5rem !important; height: 2.5rem !important; }
             .custom-report-ui .rep-metric-icon i { font-size: 1.2rem !important; }
             .custom-report-ui .rep-metric-value { font-size: 1.25rem !important; }
             .custom-report-ui .rep-metric-label { font-size: 0.7rem !important; margin-bottom: 0 !important; }
-
-            /* --- SHRINK TABLE PADDING SO IT DOESN'T JUMP TO PAGE 2 --- */
             .custom-report-ui th, .custom-report-ui td { padding: 0.5rem !important; }
-            
             .custom-report-ui .rep-card { border: 1px solid #ddd !important; margin-bottom: 1.5rem !important; box-shadow: none !important; }
             .custom-report-ui .rep-card-header { page-break-after: avoid !important; break-after: avoid !important; padding: 0.75rem !important; }
             .custom-report-ui table tr { page-break-inside: avoid !important; break-inside: avoid !important; }
-            
             .pdf-page-break { page-break-before: always !important; break-before: page !important; }
             .custom-report-ui .rep-table-wrap { overflow: visible !important; }
-            
             canvas { max-width: 100% !important; }
             .chart-container { height: auto !important; min-height: 250px !important; page-break-inside: avoid !important; }
+            /* Hide backdrop on print */
+            .sidebar-backdrop { display: none !important; }
         }
     </style>
 </head>
